@@ -11,6 +11,8 @@
     .row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
     input{padding:10px 12px;border:1px solid #ddd;border-radius:10px;min-width:320px}
     button{padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer}
+    .group{border:1px solid #eee;border-radius:14px;padding:12px 14px;margin:12px 0}
+    .groupTitle{font-weight:700;margin-bottom:10px}
     .card{border:1px solid #e6e6e6;border-radius:14px;padding:12px 14px;margin:10px 0}
     .small{font-size:12px;opacity:.75}
     .pill{display:inline-block;padding:3px 8px;border:1px solid #eee;border-radius:999px;margin-left:8px;font-size:12px;opacity:.85}
@@ -22,7 +24,7 @@
   <div class="meta" id="meta">Not connected yet.</div>
 
   <div class="row">
-    <input id="api" placeholder="Paste your Cloudflare Worker URL here (ends with /players)" />
+    <input id="api" placeholder="Paste your Worker /players URL here" />
     <button id="save">Save</button>
     <button id="refresh">Refresh</button>
   </div>
@@ -53,10 +55,20 @@
       }[c]));
     }
 
+    function renderPlayerCard(p){
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `
+        <div><b>${esc(p.displayName || p.username)}</b> <span class="small">(@${esc(p.username)})</span>${p.team ? `<span class="pill">${esc(p.team)}</span>` : ""}</div>
+        <div class="small">UserId: ${Number(p.userId) || ""}</div>
+      `;
+      return div;
+    }
+
     async function refresh(){
       const url = apiInput.value.trim();
       if (!url){
-        statusEl.textContent = "Paste your Worker URL first.";
+        statusEl.textContent = "Paste your Worker /players URL first.";
         statusEl.className = "small error";
         return;
       }
@@ -69,29 +81,55 @@
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
 
-        meta.textContent =
-          `Updated: ${data.updatedAt || "never"} | PlaceId: ${data.placeId || "-"} | Server: ${data.jobId || "-"}`;
-
         list.innerHTML = "";
-        const players = Array.isArray(data.players) ? data.players : [];
 
-        if (!players.length){
-          list.innerHTML = "<p>No players online.</p>";
+        if (Array.isArray(data.players)) {
+          meta.textContent = `Updated: ${data.updatedAt || "?"} | PlaceId: ${data.placeId || "-"} | Server: ${data.jobId || "-"}`;
+
+          if (data.players.length === 0){
+            list.innerHTML = "<p>No players online.</p>";
+            statusEl.textContent = "OK.";
+            return;
+          }
+
+          for (const p of data.players) list.appendChild(renderPlayerCard(p));
           statusEl.textContent = "OK.";
           return;
         }
 
-        for (const p of players){
-          const div = document.createElement("div");
-          div.className = "card";
-          div.innerHTML = `
-            <div><b>${esc(p.displayName || p.username)}</b> <span class="small">(@${esc(p.username)})</span>${p.team ? `<span class="pill">${esc(p.team)}</span>` : ""}</div>
-            <div class="small">UserId: ${Number(p.userId) || ""}</div>
-          `;
-          list.appendChild(div);
+        if (Array.isArray(data.servers)) {
+          meta.textContent = `Updated: ${data.updatedAt || "?"} | Servers: ${data.servers.length}`;
+
+          let total = 0;
+          for (const s of data.servers) total += Array.isArray(s.players) ? s.players.length : 0;
+
+          if (total === 0){
+            list.innerHTML = "<p>No players online.</p>";
+            statusEl.textContent = "OK.";
+            return;
+          }
+
+          for (const s of data.servers){
+            const players = Array.isArray(s.players) ? s.players : [];
+            if (players.length === 0) continue;
+
+            const g = document.createElement("div");
+            g.className = "group";
+            g.innerHTML = `
+              <div class="groupTitle">PlaceId: ${esc(s.placeId)} <span class="pill">Server: ${esc(s.jobId)}</span> <span class="pill">${players.length} players</span></div>
+            `;
+
+            for (const p of players) g.appendChild(renderPlayerCard(p));
+            list.appendChild(g);
+          }
+
+          statusEl.textContent = "OK.";
+          return;
         }
 
-        statusEl.textContent = "OK.";
+        meta.textContent = "Connected, but response format is not recognized.";
+        statusEl.textContent = "Unexpected JSON format.";
+        statusEl.className = "small error";
       }catch(e){
         statusEl.textContent = "Failed to load: " + e.message;
         statusEl.className = "small error";
