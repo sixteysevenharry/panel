@@ -3,51 +3,98 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Roblox Live Players</title>
+  <title>Roblox Panel</title>
   <style>
-    body{font-family:system-ui,Arial;margin:24px;max-width:900px}
-    h1{margin:0 0 8px}
-    .meta{opacity:.8;margin-bottom:18px}
-    .row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
-    input{padding:10px 12px;border:1px solid #ddd;border-radius:10px;min-width:320px}
+    body{font-family:system-ui,Arial;margin:24px;max-width:1200px}
+    .top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    h1{margin:0;font-size:34px;letter-spacing:-.5px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px}
+    .col{border:1px solid #eee;border-radius:16px;padding:16px}
+    .colTitle{font-size:28px;margin:0 0 12px}
+    .scroll{height:420px;overflow:auto;border-top:1px solid #f0f0f0;padding-top:12px}
+    .card{border:1px solid #e6e6e6;border-radius:14px;padding:12px 14px;margin:10px 0;cursor:pointer;user-select:none}
+    .card:hover{border-color:#d7d7d7}
+    .selected{outline:3px solid #111; outline-offset:0}
+    .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px}
+    input{padding:10px 12px;border:1px solid #ddd;border-radius:10px;min-width:280px}
     button{padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer}
-    .group{border:1px solid #eee;border-radius:14px;padding:12px 14px;margin:12px 0}
-    .groupTitle{font-weight:700;margin-bottom:10px}
-    .card{border:1px solid #e6e6e6;border-radius:14px;padding:12px 14px;margin:10px 0}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .meta{opacity:.8;margin-top:10px}
     .small{font-size:12px;opacity:.75}
     .pill{display:inline-block;padding:3px 8px;border:1px solid #eee;border-radius:999px;margin-left:8px;font-size:12px;opacity:.85}
     .error{color:#b00020}
+    .btns{display:flex;gap:10px;flex-wrap:wrap}
+    .divider{height:1px;background:#eee;margin:14px 0}
+    .label{font-size:12px;opacity:.8;margin-bottom:6px}
   </style>
 </head>
 <body>
-  <h1>Players in-game</h1>
-  <div class="meta" id="meta">Not connected yet.</div>
-
-  <div class="row">
-    <input id="api" placeholder="Paste your Worker /players URL here" />
-    <button id="save">Save</button>
-    <button id="refresh">Refresh</button>
+  <div class="top">
+    <h1>Players in-game</h1>
+    <div class="small" id="status"></div>
   </div>
 
-  <div id="status" class="small"></div>
-  <div id="list"></div>
+  <div class="row">
+    <div>
+      <div class="label">Players API URL</div>
+      <input id="playersApi" placeholder="https://panel.sixteysevenharry.workers.dev/players" />
+    </div>
+    <div>
+      <div class="label">Admin Key</div>
+      <input id="adminKey" placeholder="ADMIN_KEY (stored in your browser)" />
+    </div>
+    <div class="btns" style="margin-top:18px">
+      <button id="save">Save</button>
+      <button id="refresh">Refresh</button>
+      <button id="clearModerated">Clear Moderated List</button>
+    </div>
+  </div>
+
+  <div class="meta" id="meta">Updated: ? | PlaceId: - | Server: -</div>
+
+  <div class="grid">
+    <div class="col">
+      <div class="colTitle">Active Users</div>
+      <div class="scroll" id="activeList"></div>
+    </div>
+
+    <div class="col">
+      <div class="colTitle">Moderated Users</div>
+      <div class="scroll" id="moderatedList"></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="btns">
+    <button id="kick">Kick</button>
+    <button id="kickReason">Kick With Reason</button>
+    <button id="ban">Ban</button>
+    <button id="banReason">Ban With Reason</button>
+    <button id="unban">Unban</button>
+    <button id="unbanReason">Unban With Reason</button>
+  </div>
 
   <script>
-    const apiInput = document.getElementById("api");
-    const meta = document.getElementById("meta");
-    const list = document.getElementById("list");
-    const statusEl = document.getElementById("status");
-
-    const saved = localStorage.getItem("players_api_url");
-    if (saved) apiInput.value = saved;
-
-    document.getElementById("save").onclick = () => {
-      localStorage.setItem("players_api_url", apiInput.value.trim());
-      statusEl.textContent = "Saved.";
-      statusEl.className = "small";
+    const els = {
+      status: document.getElementById("status"),
+      meta: document.getElementById("meta"),
+      playersApi: document.getElementById("playersApi"),
+      adminKey: document.getElementById("adminKey"),
+      save: document.getElementById("save"),
+      refresh: document.getElementById("refresh"),
+      activeList: document.getElementById("activeList"),
+      moderatedList: document.getElementById("moderatedList"),
+      clearModerated: document.getElementById("clearModerated"),
+      kick: document.getElementById("kick"),
+      kickReason: document.getElementById("kickReason"),
+      ban: document.getElementById("ban"),
+      banReason: document.getElementById("banReason"),
+      unban: document.getElementById("unban"),
+      unbanReason: document.getElementById("unbanReason")
     };
 
-    document.getElementById("refresh").onclick = () => refresh();
+    const MOD_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/admin/moderate";
 
     function esc(s){
       return String(s ?? "").replace(/[&<>"']/g, c => ({
@@ -55,89 +102,288 @@
       }[c]));
     }
 
-    function renderPlayerCard(p){
-      const div = document.createElement("div");
-      div.className = "card";
-      div.innerHTML = `
-        <div><b>${esc(p.displayName || p.username)}</b> <span class="small">(@${esc(p.username)})</span>${p.team ? `<span class="pill">${esc(p.team)}</span>` : ""}</div>
-        <div class="small">UserId: ${Number(p.userId) || ""}</div>
-      `;
-      return div;
+    function loadModerated(){
+      try {
+        const raw = localStorage.getItem("moderated_users_v1");
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+      } catch {
+        return [];
+      }
     }
 
-    async function refresh(){
-      const url = apiInput.value.trim();
-      if (!url){
-        statusEl.textContent = "Paste your Worker /players URL first.";
-        statusEl.className = "small error";
+    function saveModerated(list){
+      localStorage.setItem("moderated_users_v1", JSON.stringify(list));
+    }
+
+    function upsertModerated(user, reason){
+      const list = loadModerated();
+      const idx = list.findIndex(x => Number(x.userId) === Number(user.userId));
+      const entry = {
+        userId: Number(user.userId),
+        username: user.username || "",
+        displayName: user.displayName || "",
+        team: user.team || null,
+        reason: reason || "",
+        updatedAt: new Date().toISOString()
+      };
+      if (idx >= 0) list[idx] = entry;
+      else list.unshift(entry);
+      saveModerated(list);
+    }
+
+    function removeModerated(userId){
+      const list = loadModerated().filter(x => Number(x.userId) !== Number(userId));
+      saveModerated(list);
+    }
+
+    let activePlayers = [];
+    let selectedActiveUserId = null;
+    let selectedModeratedUserId = null;
+
+    function setSelectedActive(userId){
+      selectedActiveUserId = Number(userId);
+      selectedModeratedUserId = null;
+      renderActive();
+      renderModerated();
+      updateButtons();
+    }
+
+    function setSelectedModerated(userId){
+      selectedModeratedUserId = Number(userId);
+      selectedActiveUserId = null;
+      renderActive();
+      renderModerated();
+      updateButtons();
+    }
+
+    function updateButtons(){
+      const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
+      const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
+
+      els.kick.disabled = !hasActive;
+      els.kickReason.disabled = !hasActive;
+      els.ban.disabled = !hasActive;
+      els.banReason.disabled = !hasActive;
+
+      els.unban.disabled = !hasMod;
+      els.unbanReason.disabled = !hasMod;
+    }
+
+    function makeCardHTML(p){
+      const name = esc(p.displayName || p.username);
+      const handle = esc(p.username || "");
+      const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
+      return `
+        <div><b>${name}</b> <span class="small">(@${handle})</span> ${team}</div>
+        <div class="small">UserId: ${Number(p.userId) || ""}</div>
+      `;
+    }
+
+    function renderActive(){
+      els.activeList.innerHTML = "";
+      if (!activePlayers.length) {
+        els.activeList.innerHTML = "<div class='small'>No players online.</div>";
         return;
       }
 
-      statusEl.textContent = "Loading...";
-      statusEl.className = "small";
+      for (const p of activePlayers){
+        const div = document.createElement("div");
+        div.className = "card" + (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "");
+        div.innerHTML = makeCardHTML(p);
+        div.onclick = () => setSelectedActive(p.userId);
+        els.activeList.appendChild(div);
+      }
+    }
+
+    function renderModerated(){
+      els.moderatedList.innerHTML = "";
+      const list = loadModerated();
+
+      if (!list.length) {
+        els.moderatedList.innerHTML = "<div class='small'>No moderated users.</div>";
+        return;
+      }
+
+      for (const p of list){
+        const div = document.createElement("div");
+        div.className = "card" + (Number(p.userId) === Number(selectedModeratedUserId) ? " selected" : "");
+        div.innerHTML = makeCardHTML(p) + (p.reason ? `<div class="small">Reason: ${esc(p.reason)}</div>` : "");
+        div.onclick = () => setSelectedModerated(p.userId);
+        els.moderatedList.appendChild(div);
+      }
+    }
+
+    async function fetchPlayers(){
+      const url = els.playersApi.value.trim();
+      if (!url) {
+        els.status.textContent = "Paste your /players URL.";
+        els.status.className = "small error";
+        return;
+      }
+
+      els.status.textContent = "Loading...";
+      els.status.className = "small";
 
       try{
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
 
-        list.innerHTML = "";
+        els.meta.textContent = `Updated: ${data.updatedAt || "?"} | PlaceId: ${data.placeId || "-"} | Server: ${data.jobId || "-"}`;
 
-        if (Array.isArray(data.players)) {
-          meta.textContent = `Updated: ${data.updatedAt || "?"} | PlaceId: ${data.placeId || "-"} | Server: ${data.jobId || "-"}`;
+        activePlayers = Array.isArray(data.players) ? data.players : [];
+        activePlayers.sort((a,b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
 
-          if (data.players.length === 0){
-            list.innerHTML = "<p>No players online.</p>";
-            statusEl.textContent = "OK.";
-            return;
-          }
-
-          for (const p of data.players) list.appendChild(renderPlayerCard(p));
-          statusEl.textContent = "OK.";
-          return;
+        if (selectedActiveUserId && !activePlayers.some(p => Number(p.userId) === Number(selectedActiveUserId))) {
+          selectedActiveUserId = null;
         }
 
-        if (Array.isArray(data.servers)) {
-          meta.textContent = `Updated: ${data.updatedAt || "?"} | Servers: ${data.servers.length}`;
-
-          let total = 0;
-          for (const s of data.servers) total += Array.isArray(s.players) ? s.players.length : 0;
-
-          if (total === 0){
-            list.innerHTML = "<p>No players online.</p>";
-            statusEl.textContent = "OK.";
-            return;
-          }
-
-          for (const s of data.servers){
-            const players = Array.isArray(s.players) ? s.players : [];
-            if (players.length === 0) continue;
-
-            const g = document.createElement("div");
-            g.className = "group";
-            g.innerHTML = `
-              <div class="groupTitle">PlaceId: ${esc(s.placeId)} <span class="pill">Server: ${esc(s.jobId)}</span> <span class="pill">${players.length} players</span></div>
-            `;
-
-            for (const p of players) g.appendChild(renderPlayerCard(p));
-            list.appendChild(g);
-          }
-
-          statusEl.textContent = "OK.";
-          return;
-        }
-
-        meta.textContent = "Connected, but response format is not recognized.";
-        statusEl.textContent = "Unexpected JSON format.";
-        statusEl.className = "small error";
-      }catch(e){
-        statusEl.textContent = "Failed to load: " + e.message;
-        statusEl.className = "small error";
+        els.status.textContent = "OK.";
+        els.status.className = "small";
+        renderActive();
+        renderModerated();
+        updateButtons();
+      } catch(e){
+        els.status.textContent = "Failed: " + e.message;
+        els.status.className = "small error";
       }
     }
 
-    refresh();
-    setInterval(refresh, 5000);
+    async function sendModeration(action, userId, reason){
+      const adminKey = els.adminKey.value.trim();
+      if (!adminKey) {
+        alert("Enter ADMIN_KEY first.");
+        return { ok: false };
+      }
+
+      const payload = { action, userId };
+      if (reason) payload.reason = reason;
+
+      const res = await fetch(MOD_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey
+        },
+        body: JSON.stringify(payload)
+      });
+
+      let body = null;
+      try { body = await res.json(); } catch {}
+
+      if (!res.ok) {
+        alert((body && body.error) ? body.error : ("Request failed: HTTP " + res.status));
+        return { ok: false };
+      }
+
+      return { ok: true };
+    }
+
+    function getSelectedActive(){
+      return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null;
+    }
+
+    function getSelectedModerated(){
+      return loadModerated().find(p => Number(p.userId) === Number(selectedModeratedUserId)) || null;
+    }
+
+    els.kick.onclick = async () => {
+      const p = getSelectedActive();
+      if (!p) return;
+      const ok = await sendModeration("kick", p.userId, "");
+      if (ok.ok) {
+        await fetchPlayers();
+      }
+    };
+
+    els.kickReason.onclick = async () => {
+      const p = getSelectedActive();
+      if (!p) return;
+      const r = prompt("Kick reason?") || "";
+      const ok = await sendModeration("kick", p.userId, r);
+      if (ok.ok) {
+        await fetchPlayers();
+      }
+    };
+
+    els.ban.onclick = async () => {
+      const p = getSelectedActive();
+      if (!p) return;
+      const ok = await sendModeration("ban", p.userId, "");
+      if (ok.ok) {
+        upsertModerated(p, "");
+        renderModerated();
+        await fetchPlayers();
+      }
+    };
+
+    els.banReason.onclick = async () => {
+      const p = getSelectedActive();
+      if (!p) return;
+      const r = prompt("Ban reason?") || "";
+      const ok = await sendModeration("ban", p.userId, r);
+      if (ok.ok) {
+        upsertModerated(p, r);
+        renderModerated();
+        await fetchPlayers();
+      }
+    };
+
+    els.unban.onclick = async () => {
+      const p = getSelectedModerated();
+      if (!p) return;
+      const ok = await sendModeration("unban", p.userId, "");
+      if (ok.ok) {
+        removeModerated(p.userId);
+        selectedModeratedUserId = null;
+        renderModerated();
+        updateButtons();
+      }
+    };
+
+    els.unbanReason.onclick = async () => {
+      const p = getSelectedModerated();
+      if (!p) return;
+      const r = prompt("Unban note?") || "";
+      const ok = await sendModeration("unban", p.userId, r);
+      if (ok.ok) {
+        removeModerated(p.userId);
+        selectedModeratedUserId = null;
+        renderModerated();
+        updateButtons();
+      }
+    };
+
+    els.save.onclick = () => {
+      localStorage.setItem("players_api_url", els.playersApi.value.trim());
+      localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
+      els.status.textContent = "Saved.";
+      els.status.className = "small";
+    };
+
+    els.refresh.onclick = () => fetchPlayers();
+
+    els.clearModerated.onclick = () => {
+      if (!confirm("Clear moderated list (local only)?")) return;
+      saveModerated([]);
+      selectedModeratedUserId = null;
+      renderModerated();
+      updateButtons();
+    };
+
+    const savedApi = localStorage.getItem("players_api_url");
+    const savedAdmin = localStorage.getItem("admin_key_v1");
+    if (savedApi) els.playersApi.value = savedApi;
+    else els.playersApi.value = "https://panel.sixteysevenharry.workers.dev/players";
+    if (savedAdmin) els.adminKey.value = savedAdmin;
+
+    renderActive();
+    renderModerated();
+    updateButtons();
+
+    fetchPlayers();
+    setInterval(fetchPlayers, 5000);
   </script>
 </body>
 </html>
