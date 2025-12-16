@@ -26,6 +26,14 @@
     .btns{display:flex;gap:10px;flex-wrap:wrap}
     .divider{height:1px;background:#eee;margin:14px 0}
     .label{font-size:12px;opacity:.8;margin-bottom:6px}
+
+    .staffPill{border-color:#d0d0d0; opacity:.9}
+    .staffCard{
+      opacity:.55;
+      cursor:not-allowed;
+      filter:grayscale(1);
+    }
+    .staffCard:hover{border-color:#e6e6e6}
   </style>
 </head>
 <body>
@@ -76,6 +84,14 @@
   </div>
 
   <script>
+    const STAFF_IDS = new Set([
+      8007453710,
+      4976035348,
+      154251360,
+      9930928180,
+      485280430
+    ]);
+
     const els = {
       status: document.getElementById("status"),
       meta: document.getElementById("meta"),
@@ -100,6 +116,10 @@
       return String(s ?? "").replace(/[&<>"']/g, c => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
       }[c]));
+    }
+
+    function isStaff(userId){
+      return STAFF_IDS.has(Number(userId));
     }
 
     function loadModerated(){
@@ -161,10 +181,11 @@
       const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
       const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
 
-      els.kick.disabled = !hasActive;
-      els.kickReason.disabled = !hasActive;
-      els.ban.disabled = !hasActive;
-      els.banReason.disabled = !hasActive;
+      const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
+      els.kick.disabled = !hasActive || activeIsStaff;
+      els.kickReason.disabled = !hasActive || activeIsStaff;
+      els.ban.disabled = !hasActive || activeIsStaff;
+      els.banReason.disabled = !hasActive || activeIsStaff;
 
       els.unban.disabled = !hasMod;
       els.unbanReason.disabled = !hasMod;
@@ -174,8 +195,9 @@
       const name = esc(p.displayName || p.username);
       const handle = esc(p.username || "");
       const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
+      const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
       return `
-        <div><b>${name}</b> <span class="small">(@${handle})</span> ${team}</div>
+        <div><b>${name}</b> <span class="small">(@${handle})</span> ${team} ${staff}</div>
         <div class="small">UserId: ${Number(p.userId) || ""}</div>
       `;
     }
@@ -188,10 +210,19 @@
       }
 
       for (const p of activePlayers){
+        const staff = isStaff(p.userId);
         const div = document.createElement("div");
-        div.className = "card" + (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "");
+        div.className =
+          "card" +
+          (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
+          (staff ? " staffCard" : "");
+
         div.innerHTML = makeCardHTML(p);
-        div.onclick = () => setSelectedActive(p.userId);
+
+        if (!staff) {
+          div.onclick = () => setSelectedActive(p.userId);
+        }
+
         els.activeList.appendChild(div);
       }
     }
@@ -206,10 +237,19 @@
       }
 
       for (const p of list){
+        const staff = isStaff(p.userId);
         const div = document.createElement("div");
-        div.className = "card" + (Number(p.userId) === Number(selectedModeratedUserId) ? " selected" : "");
+        div.className =
+          "card" +
+          (Number(p.userId) === Number(selectedModeratedUserId) ? " selected" : "") +
+          (staff ? " staffCard" : "");
+
         div.innerHTML = makeCardHTML(p) + (p.reason ? `<div class="small">Reason: ${esc(p.reason)}</div>` : "");
-        div.onclick = () => setSelectedModerated(p.userId);
+
+        if (!staff) {
+          div.onclick = () => setSelectedModerated(p.userId);
+        }
+
         els.moderatedList.appendChild(div);
       }
     }
@@ -251,6 +291,11 @@
     }
 
     async function sendModeration(action, userId, reason){
+      if (isStaff(userId)) {
+        alert("That user is marked as STAFF and cannot be moderated from this panel.");
+        return { ok: false };
+      }
+
       const adminKey = els.adminKey.value.trim();
       if (!adminKey) {
         alert("Enter ADMIN_KEY first.");
@@ -292,9 +337,7 @@
       const p = getSelectedActive();
       if (!p) return;
       const ok = await sendModeration("kick", p.userId, "");
-      if (ok.ok) {
-        await fetchPlayers();
-      }
+      if (ok.ok) await fetchPlayers();
     };
 
     els.kickReason.onclick = async () => {
@@ -302,9 +345,7 @@
       if (!p) return;
       const r = prompt("Kick reason?") || "";
       const ok = await sendModeration("kick", p.userId, r);
-      if (ok.ok) {
-        await fetchPlayers();
-      }
+      if (ok.ok) await fetchPlayers();
     };
 
     els.ban.onclick = async () => {
