@@ -28,15 +28,20 @@ export default {
       if (request.method === "OPTIONS") return new Response(null, { headers: cors });
 
       if (!env || !env.LIVE) {
-        return json({ error: "KV binding LIVE missing (check Worker Settings → Bindings)" }, 500);
+        return json(
+          { error: "KV binding LIVE missing (check Worker → Settings → Bindings)" },
+          500
+        );
       }
 
-      /* =======================
-         /update (Roblox -> Worker)
-         ======================= */
+      /* =====================================================
+         ROBLOX -> UPDATE SERVER SNAPSHOT
+         ===================================================== */
       if (url.pathname === "/update" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
-        if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
+        if (!env.API_KEY || key !== env.API_KEY) {
+          return json({ error: "Unauthorized" }, 401);
+        }
 
         let body;
         try {
@@ -46,17 +51,32 @@ export default {
         }
 
         const placeId = Number(body.placeId || 0);
-        const jobId = String(body.jobId || "");
+        let jobId = String(body.jobId || "");
         const players = Array.isArray(body.players) ? body.players : null;
 
-        if (!placeId || !jobId || !players) {
-          return json({ error: "Invalid payload", expected: { placeId: "number", jobId: "string", players: "array" } }, 400);
+        // ✅ FIX: allow Studio (empty JobId)
+        if (!jobId) {
+          jobId = "studio-" + crypto.randomUUID();
+        }
+
+        if (!placeId || !players) {
+          return json(
+            {
+              error: "Invalid payload",
+              expected: {
+                placeId: "number",
+                jobId: "string",
+                players: "array"
+              }
+            },
+            400
+          );
         }
 
         const now = Date.now();
         const serverKey = `srv:${placeId}:${jobId}`;
 
-        const snap = {
+        const snapshot = {
           placeId,
           jobId,
           updatedAt: now,
@@ -68,22 +88,29 @@ export default {
           }))
         };
 
-        await env.LIVE.put(serverKey, JSON.stringify(snap), { expirationTtl: 180 });
+        // Store snapshot (auto-expire)
+        await env.LIVE.put(serverKey, JSON.stringify(snapshot), {
+          expirationTtl: 180
+        });
 
+        // Update server index (NO KV.list)
         const index = safeParseObj(await env.LIVE.get("server_index"));
         index[serverKey] = now;
 
         for (const k in index) {
-          if (now - Number(index[k] || 0) > 180000) delete index[k];
+          if (now - Number(index[k] || 0) > 180000) {
+            delete index[k];
+          }
         }
 
         await env.LIVE.put("server_index", JSON.stringify(index));
+
         return json({ ok: true });
       }
 
-      /* =======================
-         /players (Website -> Worker)
-         ======================= */
+      /* =====================================================
+         WEBSITE -> GET ALL ACTIVE PLAYERS
+         ===================================================== */
       if (url.pathname === "/players" && request.method === "GET") {
         const index = safeParseObj(await env.LIVE.get("server_index"));
 
@@ -93,6 +120,7 @@ export default {
         for (const serverKey in index) {
           const raw = await env.LIVE.get(serverKey);
           if (!raw) continue;
+
           try {
             const snap = JSON.parse(raw);
             for (const p of snap.players || []) {
@@ -105,7 +133,8 @@ export default {
         }
 
         combined.sort((a, b) =>
-          String(a.displayName || a.username).localeCompare(String(b.displayName || b.username))
+          String(a.displayName || a.username)
+            .localeCompare(String(b.displayName || b.username))
         );
 
         return json({
@@ -115,12 +144,14 @@ export default {
         });
       }
 
-      /* =======================
-         /admin/moderate (Panel -> Worker)
-         ======================= */
+      /* =====================================================
+         PANEL -> CREATE MODERATION COMMAND
+         ===================================================== */
       if (url.pathname === "/admin/moderate" && request.method === "POST") {
         const adminKey = request.headers.get("x-admin-key") || "";
-        if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) return json({ error: "Unauthorized" }, 401);
+        if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) {
+          return json({ error: "Unauthorized" }, 401);
+        }
 
         let body;
         try {
@@ -140,68 +171,85 @@ export default {
         const id = crypto.randomUUID();
         const now = Date.now();
 
-        await env.LIVE.put(`cmd:${id}`, JSON.stringify({ id, createdAt: now, action, userId, reason }), { expirationTtl: 600 });
+        await env.LIVE.put(
+          `cmd:${id}`,
+          JSON.stringify({ id, createdAt: now, action, userId, reason }),
+          { expirationTtl: 600 }
+        );
 
-        const idx = safeParseObj(await env.LIVE.get("command_index"));
-        idx[id] = now;
-        await env.LIVE.put("command_index", JSON.stringify(idx));
+        const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
+        cmdIndex[id] = now;
+        await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
 
         return json({ ok: true, id });
       }
 
-      /* =======================
-         /commands (Roblox polls)
-         ======================= */
+      /* =====================================================
+         ROBLOX -> GET MODERATION COMMANDS
+         ===================================================== */
       if (url.pathname === "/commands" && request.method === "GET") {
         const key = request.headers.get("x-api-key") || "";
-        if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
+        if (!env.API_KEY || key !== env.API_KEY) {
+          return json({ error: "Unauthorized" }, 401);
+        }
 
-        const idx = safeParseObj(await env.LIVE.get("command_index"));
+        const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
         const now = Date.now();
         const commands = [];
 
-        for (const id in idx) {
-          if (now - Number(idx[id] || 0) > 600000) {
-            delete idx[id];
+        for (const id in cmdIndex) {
+          if (now - Number(cmdIndex[id] || 0) > 600000) {
+            delete cmdIndex[id];
             continue;
           }
+
           const raw = await env.LIVE.get(`cmd:${id}`);
           if (!raw) continue;
-          try { commands.push(JSON.parse(raw)); } catch {}
+
+          try {
+            commands.push(JSON.parse(raw));
+          } catch {}
         }
 
-        await env.LIVE.put("command_index", JSON.stringify(idx));
+        await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
         return json({ ok: true, commands });
       }
 
-      /* =======================
-         /ack (Roblox -> Worker)
-         ======================= */
+      /* =====================================================
+         ROBLOX -> ACK COMMAND
+         ===================================================== */
       if (url.pathname === "/ack" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
-        if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
+        if (!env.API_KEY || key !== env.API_KEY) {
+          return json({ error: "Unauthorized" }, 401);
+        }
 
         let body;
-        try { body = await request.json(); } catch { body = {}; }
+        try {
+          body = await request.json();
+        } catch {
+          body = {};
+        }
 
         const id = String(body.id || "");
         if (!id) return json({ error: "Missing id" }, 400);
 
         await env.LIVE.delete(`cmd:${id}`);
 
-        const idx = safeParseObj(await env.LIVE.get("command_index"));
-        delete idx[id];
-        await env.LIVE.put("command_index", JSON.stringify(idx));
+        const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
+        delete cmdIndex[id];
+        await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
 
         return json({ ok: true });
       }
 
       return new Response("Not found", { status: 404, headers: cors });
+
     } catch (e) {
-      return new Response(JSON.stringify({ error: "Worker exception", message: String(e?.message || e) }), {
-        status: 500,
-        headers: { "content-type": "application/json", ...cors }
-      });
+      return json(
+        { error: "Worker exception", message: String(e?.message || e) },
+        500
+      );
     }
   }
 };
