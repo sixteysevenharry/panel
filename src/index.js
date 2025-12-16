@@ -9,7 +9,9 @@ export default {
 
     try {
       const url = new URL(request.url);
-      if (request.method === "OPTIONS") return new Response(null, { headers: cors });
+      if (request.method === "OPTIONS") {
+        return new Response(null, { headers: cors });
+      }
 
       if (!env?.LIVE) {
         return new Response(JSON.stringify({ error: "KV binding LIVE missing" }), {
@@ -18,9 +20,9 @@ export default {
         });
       }
 
-      /* ================================
-         ROBLOX -> UPDATE SNAPSHOT
-         ================================ */
+      /* =========================================================
+         ROBLOX -> UPDATE SERVER SNAPSHOT
+         ========================================================= */
       if (url.pathname === "/update" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) {
@@ -31,7 +33,7 @@ export default {
         }
 
         const body = await request.json();
-        const placeId = Number(body.placeId || 0);
+        const placeId = Number(body.placeId);
         const jobId = String(body.jobId || "");
         const players = Array.isArray(body.players) ? body.players : null;
 
@@ -45,29 +47,17 @@ export default {
         const now = Date.now();
         const serverKey = `srv:${placeId}:${jobId}`;
 
-        const snapshot = {
+        await env.LIVE.put(serverKey, JSON.stringify({
           placeId,
           jobId,
           updatedAt: now,
-          players: players.map(p => ({
-            userId: Number(p.userId),
-            username: String(p.username || ""),
-            displayName: String(p.displayName || ""),
-            team: p.team ? String(p.team) : null
-          }))
-        };
+          players
+        }), { expirationTtl: 180 });
 
-        // Store server snapshot (auto-expires)
-        await env.LIVE.put(serverKey, JSON.stringify(snapshot), {
-          expirationTtl: 180
-        });
-
-        // Update server index (single key)
-        const indexRaw = await env.LIVE.get("server_index");
-        let index = indexRaw ? JSON.parse(indexRaw) : {};
+        const rawIndex = await env.LIVE.get("server_index");
+        const index = rawIndex ? JSON.parse(rawIndex) : {};
         index[serverKey] = now;
 
-        // Prune dead servers
         for (const k in index) {
           if (now - index[k] > 180000) delete index[k];
         }
@@ -79,12 +69,12 @@ export default {
         });
       }
 
-      /* ================================
-         WEBSITE -> GET PLAYERS
-         ================================ */
+      /* =========================================================
+         WEBSITE -> GET ALL PLAYERS
+         ========================================================= */
       if (url.pathname === "/players" && request.method === "GET") {
-        const indexRaw = await env.LIVE.get("server_index");
-        if (!indexRaw) {
+        const rawIndex = await env.LIVE.get("server_index");
+        if (!rawIndex) {
           return new Response(JSON.stringify({
             updatedAt: null,
             totalPlayers: 0,
@@ -92,7 +82,7 @@ export default {
           }), { headers: { "content-type": "application/json", ...cors }});
         }
 
-        const index = JSON.parse(indexRaw);
+        const index = JSON.parse(rawIndex);
         const combined = [];
         const seen = new Set();
 
@@ -100,21 +90,14 @@ export default {
           const raw = await env.LIVE.get(serverKey);
           if (!raw) continue;
 
-          try {
-            const snap = JSON.parse(raw);
-            for (const p of snap.players || []) {
-              const id = Number(p.userId);
-              if (!id || seen.has(id)) continue;
-              seen.add(id);
+          const snap = JSON.parse(raw);
+          for (const p of snap.players || []) {
+            if (!seen.has(p.userId)) {
+              seen.add(p.userId);
               combined.push(p);
             }
-          } catch {}
+          }
         }
-
-        combined.sort((a, b) =>
-          String(a.displayName || a.username)
-            .localeCompare(String(b.displayName || b.username))
-        );
 
         return new Response(JSON.stringify({
           updatedAt: new Date().toISOString(),
@@ -123,10 +106,9 @@ export default {
         }), { headers: { "content-type": "application/json", ...cors }});
       }
 
-      /* ================================
-         MODERATION ENDPOINTS (UNCHANGED)
-         ================================ */
-
+      /* =========================================================
+         PANEL -> CREATE MODERATION COMMAND
+         ========================================================= */
       if (url.pathname === "/admin/moderate" && request.method === "POST") {
         const adminKey = request.headers.get("x-admin-key") || "";
         if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) {
@@ -137,7 +119,7 @@ export default {
         }
 
         const body = await request.json();
-        const action = String(body.action || "");
+        const action = body.action;
         const userId = Number(body.userId);
         const reason = String(body.reason || "");
 
@@ -148,23 +130,26 @@ export default {
           });
         }
 
-        const cmd = {
-          id: crypto.randomUUID(),
-          createdAt: Date.now(),
-          action,
-          userId,
-          reason: reason.slice(0, 180)
-        };
+        const id = crypto.randomUUID();
+        const now = Date.now();
 
-        await env.LIVE.put(`cmd:${cmd.id}`, JSON.stringify(cmd), {
-          expirationTtl: 600
-        });
+        await env.LIVE.put(`cmd:${id}`, JSON.stringify({
+          id, action, userId, reason, createdAt: now
+        }), { expirationTtl: 600 });
+
+        const raw = await env.LIVE.get("command_index");
+        const index = raw ? JSON.parse(raw) : {};
+        index[id] = now;
+        await env.LIVE.put("command_index", JSON.stringify(index));
 
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json", ...cors }
         });
       }
 
+      /* =========================================================
+         ROBLOX -> GET COMMANDS (NO KV.list)
+         ========================================================= */
       if (url.pathname === "/commands" && request.method === "GET") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) {
@@ -174,21 +159,36 @@ export default {
           });
         }
 
-        const indexRaw = await env.LIVE.get("server_index");
-        const listRaw = await env.LIVE.list({ prefix: "cmd:" });
-        const cmds = [];
-
-        for (const k of listRaw.keys) {
-          const raw = await env.LIVE.get(k.name);
-          if (!raw) continue;
-          try { cmds.push(JSON.parse(raw)); } catch {}
+        const raw = await env.LIVE.get("command_index");
+        if (!raw) {
+          return new Response(JSON.stringify({ ok: true, commands: [] }), {
+            headers: { "content-type": "application/json", ...cors }
+          });
         }
 
-        return new Response(JSON.stringify({ ok: true, commands: cmds }), {
+        const index = JSON.parse(raw);
+        const now = Date.now();
+        const commands = [];
+
+        for (const id in index) {
+          if (now - index[id] > 600000) {
+            delete index[id];
+            continue;
+          }
+          const rawCmd = await env.LIVE.get(`cmd:${id}`);
+          if (rawCmd) commands.push(JSON.parse(rawCmd));
+        }
+
+        await env.LIVE.put("command_index", JSON.stringify(index));
+
+        return new Response(JSON.stringify({ ok: true, commands }), {
           headers: { "content-type": "application/json", ...cors }
         });
       }
 
+      /* =========================================================
+         ROBLOX -> ACK COMMAND
+         ========================================================= */
       if (url.pathname === "/ack" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) {
@@ -199,7 +199,9 @@ export default {
         }
 
         const body = await request.json();
-        if (body.id) await env.LIVE.delete(`cmd:${body.id}`);
+        if (body.id) {
+          await env.LIVE.delete(`cmd:${body.id}`);
+        }
 
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json", ...cors }
@@ -207,6 +209,7 @@ export default {
       }
 
       return new Response("Not found", { status: 404, headers: cors });
+
     } catch (e) {
       return new Response(JSON.stringify({
         error: "Worker exception",
