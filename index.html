@@ -270,7 +270,8 @@
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
 
-        els.meta.textContent = `Updated: ${data.updatedAt || "?"} | PlaceId: ${data.placeId || "-"} | Server: ${data.jobId || "-"}`;
+els.meta.textContent =
+  `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? (data.players ? data.players.length : 0)}`;
 
         activePlayers = Array.isArray(data.players) ? data.players : [];
         activePlayers.sort((a,b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
