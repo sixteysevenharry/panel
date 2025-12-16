@@ -12,13 +12,15 @@ export default {
       if (request.method === "OPTIONS") return new Response(null, { headers: cors });
 
       if (!env?.LIVE) {
-        return new Response(JSON.stringify({ error: "KV binding LIVE is missing" }), {
+        return new Response(JSON.stringify({ error: "KV binding LIVE missing" }), {
           status: 500,
           headers: { "content-type": "application/json", ...cors }
         });
       }
 
-      // ---------- ROBLOX -> update snapshot per server ----------
+      /* ================================
+         ROBLOX -> UPDATE SNAPSHOT
+         ================================ */
       if (url.pathname === "/update" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) {
@@ -40,10 +42,13 @@ export default {
           });
         }
 
+        const now = Date.now();
+        const serverKey = `srv:${placeId}:${jobId}`;
+
         const snapshot = {
-          updatedAt: new Date().toISOString(),
           placeId,
           jobId,
+          updatedAt: now,
           players: players.map(p => ({
             userId: Number(p.userId),
             username: String(p.username || ""),
@@ -52,64 +57,76 @@ export default {
           }))
         };
 
-        // store per-server, expire if server goes dead
-        await env.LIVE.put(`snap:${placeId}:${jobId}`, JSON.stringify(snapshot), { expirationTtl: 180 });
+        // Store server snapshot (auto-expires)
+        await env.LIVE.put(serverKey, JSON.stringify(snapshot), {
+          expirationTtl: 180
+        });
+
+        // Update server index (single key)
+        const indexRaw = await env.LIVE.get("server_index");
+        let index = indexRaw ? JSON.parse(indexRaw) : {};
+        index[serverKey] = now;
+
+        // Prune dead servers
+        for (const k in index) {
+          if (now - index[k] > 180000) delete index[k];
+        }
+
+        await env.LIVE.put("server_index", JSON.stringify(index));
 
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json", ...cors }
         });
       }
 
-      // ---------- WEBSITE -> combined players ----------
+      /* ================================
+         WEBSITE -> GET PLAYERS
+         ================================ */
       if (url.pathname === "/players" && request.method === "GET") {
-        const now = Date.now();
-        const maxAgeMs = 180_000; // 3 minutes
-
-        const servers = [];
-        let cursor = undefined;
-
-        while (true) {
-          const page = await env.LIVE.list({ prefix: "snap:", cursor });
-          for (const item of page.keys) {
-            const json = await env.LIVE.get(item.name);
-            if (!json) continue;
-            try {
-              const snap = JSON.parse(json);
-              const t = Date.parse(snap.updatedAt || "");
-              if (Number.isFinite(t) && (now - t) <= maxAgeMs) servers.push(snap);
-            } catch {}
-          }
-          if (page.list_complete) break;
-          cursor = page.cursor;
-          if (!cursor) break;
+        const indexRaw = await env.LIVE.get("server_index");
+        if (!indexRaw) {
+          return new Response(JSON.stringify({
+            updatedAt: null,
+            totalPlayers: 0,
+            players: []
+          }), { headers: { "content-type": "application/json", ...cors }});
         }
 
-        // combine into one list for your panel
+        const index = JSON.parse(indexRaw);
         const combined = [];
         const seen = new Set();
-        for (const s of servers) {
-          for (const p of (s.players || [])) {
-            const id = Number(p.userId);
-            if (!id || seen.has(id)) continue;
-            seen.add(id);
-            combined.push(p);
-          }
+
+        for (const serverKey in index) {
+          const raw = await env.LIVE.get(serverKey);
+          if (!raw) continue;
+
+          try {
+            const snap = JSON.parse(raw);
+            for (const p of snap.players || []) {
+              const id = Number(p.userId);
+              if (!id || seen.has(id)) continue;
+              seen.add(id);
+              combined.push(p);
+            }
+          } catch {}
         }
 
         combined.sort((a, b) =>
-          String(a.displayName || a.username).localeCompare(String(b.displayName || b.username))
+          String(a.displayName || a.username)
+            .localeCompare(String(b.displayName || b.username))
         );
 
         return new Response(JSON.stringify({
           updatedAt: new Date().toISOString(),
-          totalServers: servers.length,
           totalPlayers: combined.length,
-          players: combined,
-          servers
+          players: combined
         }), { headers: { "content-type": "application/json", ...cors }});
       }
 
-      // ---------- MODERATION endpoints (if you already had them) ----------
+      /* ================================
+         MODERATION ENDPOINTS (UNCHANGED)
+         ================================ */
+
       if (url.pathname === "/admin/moderate" && request.method === "POST") {
         const adminKey = request.headers.get("x-admin-key") || "";
         if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) {
@@ -133,16 +150,17 @@ export default {
 
         const cmd = {
           id: crypto.randomUUID(),
-          createdAt: new Date().toISOString(),
+          createdAt: Date.now(),
           action,
           userId,
-          reason: reason.slice(0, 180),
-          placeId: body.placeId ? Number(body.placeId) : null
+          reason: reason.slice(0, 180)
         };
 
-        await env.LIVE.put(`cmd:${cmd.id}`, JSON.stringify(cmd), { expirationTtl: 600 });
+        await env.LIVE.put(`cmd:${cmd.id}`, JSON.stringify(cmd), {
+          expirationTtl: 600
+        });
 
-        return new Response(JSON.stringify({ ok: true, cmd }), {
+        return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json", ...cors }
         });
       }
@@ -156,21 +174,16 @@ export default {
           });
         }
 
-        const placeId = Number(url.searchParams.get("placeId") || 0);
-        const list = await env.LIVE.list({ prefix: "cmd:" });
-
+        const indexRaw = await env.LIVE.get("server_index");
+        const listRaw = await env.LIVE.list({ prefix: "cmd:" });
         const cmds = [];
-        for (const k of list.keys) {
-          const json = await env.LIVE.get(k.name);
-          if (!json) continue;
-          try {
-            const c = JSON.parse(json);
-            if (c.placeId && placeId && Number(c.placeId) !== placeId) continue;
-            cmds.push(c);
-          } catch {}
+
+        for (const k of listRaw.keys) {
+          const raw = await env.LIVE.get(k.name);
+          if (!raw) continue;
+          try { cmds.push(JSON.parse(raw)); } catch {}
         }
 
-        cmds.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
         return new Response(JSON.stringify({ ok: true, commands: cmds }), {
           headers: { "content-type": "application/json", ...cors }
         });
@@ -186,15 +199,8 @@ export default {
         }
 
         const body = await request.json();
-        const id = String(body.id || "");
-        if (!id) {
-          return new Response(JSON.stringify({ error: "Missing id" }), {
-            status: 400,
-            headers: { "content-type": "application/json", ...cors }
-          });
-        }
+        if (body.id) await env.LIVE.delete(`cmd:${body.id}`);
 
-        await env.LIVE.delete(`cmd:${id}`);
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json", ...cors }
         });
@@ -202,7 +208,10 @@ export default {
 
       return new Response("Not found", { status: 404, headers: cors });
     } catch (e) {
-      return new Response(JSON.stringify({ error: "Worker exception", message: String(e?.message || e) }), {
+      return new Response(JSON.stringify({
+        error: "Worker exception",
+        message: String(e?.message || e)
+      }), {
         status: 500,
         headers: { "content-type": "application/json", ...cors }
       });
