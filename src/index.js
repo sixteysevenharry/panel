@@ -18,16 +18,7 @@ export default {
         });
       }
 
-      // ----- PUBLIC: website reads players -----
-      if (url.pathname === "/players" && request.method === "GET") {
-        const json = await env.LIVE.get("snapshot");
-        return new Response(
-          json || JSON.stringify({ updatedAt: null, placeId: null, jobId: null, players: [] }),
-          { headers: { "content-type": "application/json", ...cors } }
-        );
-      }
-
-      // ----- ROBLOX: game writes players -----
+      // ---------- ROBLOX -> update snapshot per server ----------
       if (url.pathname === "/update" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) {
@@ -38,7 +29,11 @@ export default {
         }
 
         const body = await request.json();
-        if (!Array.isArray(body.players)) {
+        const placeId = Number(body.placeId || 0);
+        const jobId = String(body.jobId || "");
+        const players = Array.isArray(body.players) ? body.players : null;
+
+        if (!placeId || !jobId || !players) {
           return new Response(JSON.stringify({ error: "Invalid payload" }), {
             status: 400,
             headers: { "content-type": "application/json", ...cors }
@@ -47,9 +42,9 @@ export default {
 
         const snapshot = {
           updatedAt: new Date().toISOString(),
-          placeId: body.placeId ?? null,
-          jobId: body.jobId ?? null,
-          players: body.players.map(p => ({
+          placeId,
+          jobId,
+          players: players.map(p => ({
             userId: Number(p.userId),
             username: String(p.username || ""),
             displayName: String(p.displayName || ""),
@@ -57,13 +52,64 @@ export default {
           }))
         };
 
-        await env.LIVE.put("snapshot", JSON.stringify(snapshot));
+        // store per-server, expire if server goes dead
+        await env.LIVE.put(`snap:${placeId}:${jobId}`, JSON.stringify(snapshot), { expirationTtl: 180 });
+
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json", ...cors }
         });
       }
 
-      // ----- PANEL: create moderation command (kick/ban/unban) -----
+      // ---------- WEBSITE -> combined players ----------
+      if (url.pathname === "/players" && request.method === "GET") {
+        const now = Date.now();
+        const maxAgeMs = 180_000; // 3 minutes
+
+        const servers = [];
+        let cursor = undefined;
+
+        while (true) {
+          const page = await env.LIVE.list({ prefix: "snap:", cursor });
+          for (const item of page.keys) {
+            const json = await env.LIVE.get(item.name);
+            if (!json) continue;
+            try {
+              const snap = JSON.parse(json);
+              const t = Date.parse(snap.updatedAt || "");
+              if (Number.isFinite(t) && (now - t) <= maxAgeMs) servers.push(snap);
+            } catch {}
+          }
+          if (page.list_complete) break;
+          cursor = page.cursor;
+          if (!cursor) break;
+        }
+
+        // combine into one list for your panel
+        const combined = [];
+        const seen = new Set();
+        for (const s of servers) {
+          for (const p of (s.players || [])) {
+            const id = Number(p.userId);
+            if (!id || seen.has(id)) continue;
+            seen.add(id);
+            combined.push(p);
+          }
+        }
+
+        combined.sort((a, b) =>
+          String(a.displayName || a.username).localeCompare(String(b.displayName || b.username))
+        );
+
+        return new Response(JSON.stringify({
+          updatedAt: new Date().toISOString(),
+          totalServers: servers.length,
+          totalPlayers: combined.length,
+          players: combined,
+          servers
+        }), { headers: { "content-type": "application/json", ...cors }});
+      }
+
+      // ---------- MODERATION endpoints (if you already had them) ----------
       if (url.pathname === "/admin/moderate" && request.method === "POST") {
         const adminKey = request.headers.get("x-admin-key") || "";
         if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) {
@@ -91,11 +137,9 @@ export default {
           action,
           userId,
           reason: reason.slice(0, 180),
-          // optional: target a specific place (send placeId from the panel if you want)
           placeId: body.placeId ? Number(body.placeId) : null
         };
 
-        // Store command for up to 10 minutes
         await env.LIVE.put(`cmd:${cmd.id}`, JSON.stringify(cmd), { expirationTtl: 600 });
 
         return new Response(JSON.stringify({ ok: true, cmd }), {
@@ -103,7 +147,6 @@ export default {
         });
       }
 
-      // ----- ROBLOX: poll commands -----
       if (url.pathname === "/commands" && request.method === "GET") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) {
@@ -114,10 +157,9 @@ export default {
         }
 
         const placeId = Number(url.searchParams.get("placeId") || 0);
-
         const list = await env.LIVE.list({ prefix: "cmd:" });
-        const cmds = [];
 
+        const cmds = [];
         for (const k of list.keys) {
           const json = await env.LIVE.get(k.name);
           if (!json) continue;
@@ -129,13 +171,11 @@ export default {
         }
 
         cmds.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
-
         return new Response(JSON.stringify({ ok: true, commands: cmds }), {
           headers: { "content-type": "application/json", ...cors }
         });
       }
 
-      // ----- ROBLOX: acknowledge command processed -----
       if (url.pathname === "/ack" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) {
@@ -155,7 +195,6 @@ export default {
         }
 
         await env.LIVE.delete(`cmd:${id}`);
-
         return new Response(JSON.stringify({ ok: true }), {
           headers: { "content-type": "application/json", ...cors }
         });
