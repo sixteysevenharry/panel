@@ -24,7 +24,6 @@
       --radius:16px;
       --radius2:14px;
       --shadow: 0 10px 30px rgba(17,19,24,.08);
-
       --focus: 0 0 0 4px rgba(17,19,24,.12);
     }
 
@@ -50,7 +49,6 @@
 
     *{box-sizing:border-box}
 
-    /* Center the whole app */
     body{
       font-family:system-ui,Arial;
       margin:0;
@@ -65,7 +63,6 @@
       padding:24px;
     }
 
-    /* App container */
     .app{
       width:min(1200px, 100%);
       margin:0 auto;
@@ -300,6 +297,65 @@
     [data-theme="dark"] .toast.ok{border-color:rgba(61,220,132,.35)}
     [data-theme="dark"] .toast.err{border-color:rgba(255,77,109,.35)}
 
+    /* Login overlay */
+    .overlay{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.08), transparent 55%),
+                  rgba(0,0,0,.22);
+      backdrop-filter: blur(8px);
+      z-index:9998;
+    }
+    [data-theme="dark"] .overlay{
+      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.10), transparent 55%),
+                  rgba(0,0,0,.55);
+    }
+
+    .loginCard{
+      width:min(520px, 100%);
+      border:1px solid var(--border);
+      border-radius:18px;
+      background:var(--surface);
+      box-shadow: var(--shadow);
+      padding:18px;
+      animation: toastIn .18s ease-out;
+    }
+    .loginTitle{
+      font-size:22px;
+      margin:0 0 8px;
+    }
+    .loginHint{
+      margin:0 0 14px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .loginRow{
+      display:flex;
+      gap:10px;
+      align-items:flex-end;
+      flex-wrap:wrap;
+    }
+    .loginRow .field{flex:1 1 240px; min-width:240px}
+    .loginFoot{
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .ghostBtn{
+      border:1px solid var(--border);
+      background:transparent;
+    }
+    .ghostBtn:hover{background:var(--btnHover)}
+
     @media (prefers-reduced-motion: reduce){
       *{transition:none !important;animation:none !important}
     }
@@ -307,7 +363,7 @@
 </head>
 
 <body>
-  <div class="app">
+  <div class="app" id="app" style="display:none">
     <div class="top">
       <h1>
         Players in-game
@@ -320,9 +376,10 @@
       <div class="toolbar">
         <div class="seg" role="group" aria-label="Theme">
           <button id="themeLight" type="button" aria-pressed="false" title="Light">☀️</button>
-          <button id="themeDark" type="button" aria-pressed="false" title="Dark">🌙</button>
-          <button id="themeAuto" type="button" aria-pressed="true" title="Auto">🖥️</button>
+          <button id="themeDark" type="button" aria-pressed="true" title="Dark">🌙</button>
+          <button id="themeAuto" type="button" aria-pressed="false" title="Auto">🖥️</button>
         </div>
+        <button id="logout" type="button" class="ghostBtn" title="Log out">🚪 Logout</button>
       </div>
     </div>
 
@@ -374,9 +431,44 @@
     </div>
   </div>
 
+  <!-- Login overlay -->
+  <div class="overlay" id="loginOverlay" style="display:none">
+    <div class="loginCard">
+      <h2 class="loginTitle">Panel Login</h2>
+      <p class="loginHint">Enter your panel username to continue.</p>
+
+      <div class="loginRow">
+        <div class="field">
+          <div class="label">Username</div>
+          <input id="loginUser" placeholder="e.g. Eagla" autocomplete="off" />
+        </div>
+        <button id="loginBtn" type="button">🔓 Login</button>
+      </div>
+
+      <div class="loginFoot">
+        <span class="small" id="loginStatus"></span>
+        <span class="small">Tip: usernames are case-insensitive</span>
+      </div>
+    </div>
+  </div>
+
   <div class="toastWrap" id="toasts"></div>
 
   <script>
+    /* IMPORTANT NOTE:
+       This is a UI gate only (client-side). If someone can view the HTML/JS, they can bypass it.
+       For real protection, enforce auth server-side (Cloudflare Access / Basic Auth / token check at your Worker).
+    */
+
+    const ALLOWED_USERNAMES = new Set([
+      "eagla",
+      "nebula",
+      "specimen",
+      "arrow",
+      "damage",
+      "caprie"
+    ]);
+
     const STAFF_IDS = new Set([
       8007453710,
       4976035348,
@@ -386,6 +478,13 @@
     ]);
 
     const els = {
+      app: document.getElementById("app"),
+      loginOverlay: document.getElementById("loginOverlay"),
+      loginUser: document.getElementById("loginUser"),
+      loginBtn: document.getElementById("loginBtn"),
+      loginStatus: document.getElementById("loginStatus"),
+      logout: document.getElementById("logout"),
+
       status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
       meta: document.getElementById("meta"),
@@ -419,10 +518,6 @@
       }[c]));
     }
 
-    function isStaff(userId){
-      return STAFF_IDS.has(Number(userId));
-    }
-
     function toast(kind, title, body){
       const div = document.createElement("div");
       div.className = "toast " + (kind || "");
@@ -444,6 +539,7 @@
       els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
     }
 
+    /* THEME: default to dark */
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
       els.themeLight.setAttribute("aria-pressed", mode === "light");
@@ -457,7 +553,8 @@
       document.documentElement.setAttribute("data-theme", mode);
     }
 
-    const savedTheme = localStorage.getItem("panel_theme_mode") || "auto";
+    // Default dark if nothing saved
+    const savedTheme = localStorage.getItem("panel_theme_mode") || "dark";
     applyTheme(savedTheme);
 
     els.themeLight.onclick = () => applyTheme("light");
@@ -467,9 +564,81 @@
     const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
     if (mq && mq.addEventListener){
       mq.addEventListener("change", () => {
-        const mode = localStorage.getItem("panel_theme_mode") || "auto";
+        const mode = localStorage.getItem("panel_theme_mode") || "dark";
         if (mode === "auto") applyTheme("auto");
       });
+    }
+
+    /* LOGIN GATE (client-side) */
+    function normalizeUser(s){
+      return String(s || "").trim().toLowerCase();
+    }
+
+    function isLoggedIn(){
+      return localStorage.getItem("panel_logged_in") === "1";
+    }
+
+    function setLoggedIn(username){
+      localStorage.setItem("panel_logged_in", "1");
+      localStorage.setItem("panel_login_user", String(username || ""));
+    }
+
+    function clearLoggedIn(){
+      localStorage.removeItem("panel_logged_in");
+      localStorage.removeItem("panel_login_user");
+    }
+
+    function showLogin(){
+      els.app.style.display = "none";
+      els.loginOverlay.style.display = "flex";
+      els.loginStatus.textContent = "";
+      els.loginUser.value = "";
+      els.loginUser.focus();
+    }
+
+    function showApp(){
+      els.loginOverlay.style.display = "none";
+      els.app.style.display = "block";
+    }
+
+    function attemptLogin(){
+      const raw = els.loginUser.value;
+      const u = normalizeUser(raw);
+      if (!u){
+        els.loginStatus.textContent = "Enter a username.";
+        els.loginStatus.className = "small error";
+        return;
+      }
+      if (!ALLOWED_USERNAMES.has(u)){
+        els.loginStatus.textContent = "Invalid username.";
+        els.loginStatus.className = "small error";
+        toast("err", "Login denied", "That username is not allowed");
+        return;
+      }
+      setLoggedIn(u);
+      els.loginStatus.textContent = "Logged in.";
+      els.loginStatus.className = "small";
+      toast("ok", "Logged in", "Welcome");
+      showApp();
+      // start panel after login
+      initPanel();
+    }
+
+    els.loginBtn.onclick = attemptLogin;
+    els.loginUser.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") attemptLogin();
+    });
+
+    els.logout.onclick = () => {
+      if (!confirm("Log out?")) return;
+      clearLoggedIn();
+      toast("ok", "Logged out", "");
+      showLogin();
+    };
+
+    /* Panel logic (unchanged functionality) */
+    function isStaff(userId){
+      return STAFF_IDS.has(Number(userId));
     }
 
     function loadModerated(){
@@ -510,6 +679,7 @@
     let activePlayers = [];
     let selectedActiveUserId = null;
     let selectedModeratedUserId = null;
+    let pollTimer = null;
 
     function setSelectedActive(userId){
       selectedActiveUserId = Number(userId);
@@ -576,9 +746,7 @@
 
         div.innerHTML = makeCardHTML(p);
 
-        if (!staff) {
-          div.onclick = () => setSelectedActive(p.userId);
-        }
+        if (!staff) div.onclick = () => setSelectedActive(p.userId);
 
         els.activeList.appendChild(div);
       }
@@ -606,9 +774,7 @@
           makeCardHTML(p) +
           (p.reason ? `<div class="small">Reason: ${esc(p.reason)}</div>` : "");
 
-        if (!staff) {
-          div.onclick = () => setSelectedModerated(p.userId);
-        }
+        if (!staff) div.onclick = () => setSelectedModerated(p.userId);
 
         els.moderatedList.appendChild(div);
       }
@@ -782,18 +948,30 @@
       toast("ok", "Cleared", "Moderated list cleared (local)");
     };
 
-    const savedApi = localStorage.getItem("players_api_url");
-    const savedAdmin = localStorage.getItem("admin_key_v1");
-    if (savedApi) els.playersApi.value = savedApi;
-    else els.playersApi.value = "https://panel.sixteysevenharry.workers.dev/players";
-    if (savedAdmin) els.adminKey.value = savedAdmin;
+    function initPanel(){
+      const savedApi = localStorage.getItem("players_api_url");
+      const savedAdmin = localStorage.getItem("admin_key_v1");
+      if (savedApi) els.playersApi.value = savedApi;
+      else els.playersApi.value = "https://panel.sixteysevenharry.workers.dev/players";
+      if (savedAdmin) els.adminKey.value = savedAdmin;
 
-    renderActive();
-    renderModerated();
-    updateButtons();
+      renderActive();
+      renderModerated();
+      updateButtons();
 
-    fetchPlayers();
-    setInterval(fetchPlayers, 5000);
+      fetchPlayers();
+
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(fetchPlayers, 5000);
+    }
+
+    // Boot
+    if (isLoggedIn()){
+      showApp();
+      initPanel();
+    } else {
+      showLogin();
+    }
   </script>
 </body>
 </html>
