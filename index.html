@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Roblox Live Players</title>
+  <style>
+    body{font-family:system-ui,Arial;margin:24px;max-width:900px}
+    h1{margin:0 0 8px}
+    .meta{opacity:.8;margin-bottom:18px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+    input{padding:10px 12px;border:1px solid #ddd;border-radius:10px;min-width:320px}
+    button{padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer}
+    .card{border:1px solid #e6e6e6;border-radius:14px;padding:12px 14px;margin:10px 0}
+    .small{font-size:12px;opacity:.75}
+    .pill{display:inline-block;padding:3px 8px;border:1px solid #eee;border-radius:999px;margin-left:8px;font-size:12px;opacity:.85}
+    .error{color:#b00020}
+  </style>
+</head>
+<body>
+  <h1>Players in-game</h1>
+  <div class="meta" id="meta">Not connected yet.</div>
+
+  <div class="row">
+    <input id="api" placeholder="Paste your Cloudflare Worker URL here (ends with /players)" />
+    <button id="save">Save</button>
+    <button id="refresh">Refresh</button>
+  </div>
+
+  <div id="status" class="small"></div>
+  <div id="list"></div>
+
+  <script>
+    const apiInput = document.getElementById("api");
+    const meta = document.getElementById("meta");
+    const list = document.getElementById("list");
+    const statusEl = document.getElementById("status");
+
+    const saved = localStorage.getItem("players_api_url");
+    if (saved) apiInput.value = saved;
+
+    document.getElementById("save").onclick = () => {
+      localStorage.setItem("players_api_url", apiInput.value.trim());
+      statusEl.textContent = "Saved.";
+      statusEl.className = "small";
+    };
+
+    document.getElementById("refresh").onclick = () => refresh();
+
+    function esc(s){
+      return String(s ?? "").replace(/[&<>"']/g, c => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+      }[c]));
+    }
+
+    async function refresh(){
+      const url = apiInput.value.trim();
+      if (!url){
+        statusEl.textContent = "Paste your Worker URL first.";
+        statusEl.className = "small error";
+        return;
+      }
+
+      statusEl.textContent = "Loading...";
+      statusEl.className = "small";
+
+      try{
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+
+        meta.textContent =
+          `Updated: ${data.updatedAt || "never"} | PlaceId: ${data.placeId || "-"} | Server: ${data.jobId || "-"}`;
+
+        list.innerHTML = "";
+        const players = Array.isArray(data.players) ? data.players : [];
+
+        if (!players.length){
+          list.innerHTML = "<p>No players online.</p>";
+          statusEl.textContent = "OK.";
+          return;
+        }
+
+        for (const p of players){
+          const div = document.createElement("div");
+          div.className = "card";
+          div.innerHTML = `
+            <div><b>${esc(p.displayName || p.username)}</b> <span class="small">(@${esc(p.username)})</span>${p.team ? `<span class="pill">${esc(p.team)}</span>` : ""}</div>
+            <div class="small">UserId: ${Number(p.userId) || ""}</div>
+          `;
+          list.appendChild(div);
+        }
+
+        statusEl.textContent = "OK.";
+      }catch(e){
+        statusEl.textContent = "Failed to load: " + e.message;
+        statusEl.className = "small error";
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>
