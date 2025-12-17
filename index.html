@@ -55,7 +55,6 @@
       color:var(--text);
       background:var(--bg);
       transition: background .25s ease, color .25s ease;
-
       min-height:100vh;
       display:flex;
       justify-content:center;
@@ -63,10 +62,7 @@
       padding:24px;
     }
 
-    .app{
-      width:min(1200px, 100%);
-      margin:0 auto;
-    }
+    .app{ width:min(1200px, 100%); margin:0 auto; }
 
     .top{
       display:flex;
@@ -97,10 +93,7 @@
     }
     [data-theme="dark"] .pillStatus{background:rgba(18,23,34,.6)}
 
-    .dot{
-      width:8px;height:8px;border-radius:50%;
-      background:var(--muted);
-    }
+    .dot{ width:8px;height:8px;border-radius:50%; background:var(--muted); }
     .dot.ok{background:var(--ok)}
     .dot.err{background:var(--danger)}
     .dot.load{background:var(--muted); animation:pulse 1.2s ease-in-out infinite}
@@ -228,7 +221,6 @@
     button:disabled{opacity:.45;cursor:not-allowed;transform:none}
 
     .btns{display:flex;gap:10px;flex-wrap:wrap}
-
     .divider{height:1px;background:var(--border);margin:14px 0}
 
     .meta{
@@ -240,11 +232,11 @@
       gap:10px;
       flex-wrap:wrap;
     }
+
     .small{font-size:12px;opacity:.88;color:var(--muted)}
     .error{color:var(--danger);opacity:1}
 
     .label{font-size:12px;opacity:.9;margin-bottom:6px;color:var(--muted)}
-
     .pill{
       display:inline-block;
       padding:3px 8px;
@@ -297,7 +289,6 @@
     [data-theme="dark"] .toast.ok{border-color:rgba(61,220,132,.35)}
     [data-theme="dark"] .toast.err{border-color:rgba(255,77,109,.35)}
 
-    /* Login overlay */
     .overlay{
       position:fixed;
       inset:0;
@@ -324,21 +315,21 @@
       padding:18px;
       animation: toastIn .18s ease-out;
     }
-    .loginTitle{
-      font-size:22px;
-      margin:0 0 8px;
+
+    .modalCard{
+      width:min(720px, 100%);
+      border:1px solid var(--border);
+      border-radius:18px;
+      background:var(--surface);
+      box-shadow: var(--shadow);
+      padding:18px;
+      animation: toastIn .18s ease-out;
     }
-    .loginHint{
-      margin:0 0 14px;
-      color:var(--muted);
-      font-size:13px;
-    }
-    .loginRow{
-      display:flex;
-      gap:10px;
-      align-items:flex-end;
-      flex-wrap:wrap;
-    }
+
+    .loginTitle{ font-size:22px; margin:0 0 8px; }
+    .loginHint{ margin:0 0 14px; color:var(--muted); font-size:13px; }
+
+    .loginRow{ display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
     .loginRow .field{flex:1 1 240px; min-width:240px}
     .loginFoot{
       margin-top:10px;
@@ -350,15 +341,47 @@
       flex-wrap:wrap;
       align-items:center;
     }
-    .ghostBtn{
-      border:1px solid var(--border);
-      background:transparent;
-    }
+
+    .ghostBtn{ border:1px solid var(--border); background:transparent; }
     .ghostBtn:hover{background:var(--btnHover)}
 
-    @media (prefers-reduced-motion: reduce){
-      *{transition:none !important;animation:none !important}
+    .twoCol{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+      margin-top:12px;
     }
+    @media (max-width: 860px){ .twoCol{grid-template-columns:1fr} }
+
+    .subCard{
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:12px;
+      background:linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
+    }
+    .subTitle{font-weight:800;margin:0 0 6px;font-size:14px}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;}
+    .checkRow{display:flex;align-items:center;gap:10px;margin-top:8px;color:var(--muted);font-size:13px}
+    .checkRow input{width:auto}
+    .hintLine{margin:8px 0 0;color:var(--muted);font-size:12px}
+    .log{
+      height:140px;
+      overflow:auto;
+      border-top:1px solid var(--border);
+      margin-top:10px;
+      padding-top:10px;
+      padding-right:6px;
+    }
+    .logItem{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px 12px;
+      margin:8px 0;
+      background:var(--surface2);
+      font-size:12px;
+      color:var(--muted);
+    }
+    .logItem b{color:var(--text)}
   </style>
 </head>
 
@@ -374,6 +397,8 @@
       </h1>
 
       <div class="toolbar">
+        <button id="helpBtn" type="button" class="ghostBtn" title="How to use">❓ Help</button>
+
         <div class="seg" role="group" aria-label="Theme">
           <button id="themeLight" type="button" aria-pressed="false" title="Light">☀️</button>
           <button id="themeDark" type="button" aria-pressed="true" title="Dark">🌙</button>
@@ -392,6 +417,7 @@
         <div class="label">Admin Key</div>
         <input id="adminKey" placeholder="ADMIN_KEY (stored in your browser)" />
       </div>
+
       <div class="btns" style="margin-top:18px">
         <button id="save" type="button">💾 Save</button>
         <button id="refresh" type="button">🔄 Refresh</button>
@@ -399,13 +425,51 @@
       </div>
     </div>
 
-    <div class="meta" id="meta">Updated: ? | PlaceId: - | Server: -</div>
+    <div class="twoCol">
+      <div class="subCard">
+        <div class="subTitle">Options</div>
+
+        <label class="checkRow">
+          <input id="optHideStaff" type="checkbox" />
+          Hide STAFF users in Active list
+        </label>
+
+        <label class="checkRow">
+          <input id="optConfirm" type="checkbox" />
+          Confirm before Kick / Ban / Unban
+        </label>
+
+        <label class="checkRow">
+          <input id="optAutoRefresh" type="checkbox" />
+          Auto refresh (every 10s)
+        </label>
+
+        <div class="hintLine">Tip: refresh is still rate-limited; manual refresh has a 10s cooldown.</div>
+      </div>
+
+      <div class="subCard">
+        <div class="subTitle">Selected user</div>
+        <div class="small" id="selectedInfo">Nothing selected yet.</div>
+        <div class="btns" style="margin-top:10px">
+          <button id="copyUserId" type="button">📋 Copy UserId</button>
+          <button id="openProfile" type="button">🔗 Open Profile</button>
+          <button id="deselect" type="button" class="ghostBtn">✖ Deselect</button>
+        </div>
+        <div class="hintLine">Select a user from Active or Moderated to enable quick actions.</div>
+      </div>
+    </div>
+
+    <div class="meta" id="meta">Updated: ? | Total Players: -</div>
 
     <div class="grid">
       <div class="col">
         <div class="colTitle">
           <span>Active Users</span>
           <span class="countPill" id="activeCount">0</span>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <div class="label">Search Active</div>
+          <input id="activeSearch" placeholder="Search by name, @username, userId, team..." />
         </div>
         <div class="scroll" id="activeList"></div>
       </div>
@@ -414,6 +478,10 @@
         <div class="colTitle">
           <span>Moderated Users</span>
           <span class="countPill" id="moderatedCount">0</span>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <div class="label">Search Moderated</div>
+          <input id="modSearch" placeholder="Search moderated list..." />
         </div>
         <div class="scroll" id="moderatedList"></div>
       </div>
@@ -429,9 +497,17 @@
       <button id="unban" type="button">✅ Unban</button>
       <button id="unbanReason" type="button">🗒️ Unban With Reason</button>
     </div>
+
+    <div class="subCard" style="margin-top:18px">
+      <div class="subTitle">Action log</div>
+      <div class="small">This is just for you (stored in your browser).</div>
+      <div class="log" id="actionLog"></div>
+      <div class="btns" style="margin-top:10px">
+        <button id="clearLog" type="button" class="ghostBtn">🧽 Clear log</button>
+      </div>
+    </div>
   </div>
 
-  <!-- Login overlay -->
   <div class="overlay" id="loginOverlay" style="display:none">
     <div class="loginCard">
       <h2 class="loginTitle">Panel Login</h2>
@@ -452,24 +528,67 @@
     </div>
   </div>
 
+  <div class="overlay" id="helpOverlay" style="display:none">
+    <div class="modalCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <h2 class="loginTitle" style="margin:0">How to use</h2>
+        <button id="closeHelp" type="button" class="ghostBtn">✕ Close</button>
+      </div>
+
+      <div class="twoCol">
+        <div class="subCard">
+          <div class="subTitle">1) Setup</div>
+          <div class="small">
+            • Paste your <span class="mono">/players</span> URL<br/>
+            • Paste your <span class="mono">ADMIN_KEY</span><br/>
+            • Press <b>Save</b>
+          </div>
+        </div>
+
+        <div class="subCard">
+          <div class="subTitle">2) Refresh</div>
+          <div class="small">
+            Press <b>Refresh</b> to load active players.<br/>
+            Refresh has a <b>10 second cooldown</b>.
+          </div>
+        </div>
+
+        <div class="subCard">
+          <div class="subTitle">3) Moderate</div>
+          <div class="small">
+            Click a user in <b>Active</b> then press Kick/Ban.<br/>
+            Moderation buttons have a <b>3 second cooldown</b>.
+          </div>
+        </div>
+
+        <div class="subCard">
+          <div class="subTitle">4) Unban</div>
+          <div class="small">
+            Click a user in <b>Moderated</b> then press Unban.
+          </div>
+        </div>
+
+        <div class="subCard" style="grid-column:1/-1">
+          <div class="subTitle">Notes</div>
+          <div class="small">
+            • STAFF users can’t be moderated from this panel.<br/>
+            • “Moderated Users” list is local (browser) for tracking who you acted on.<br/>
+            • If you enable Auto refresh, it refreshes every 10 seconds (still rate-limited).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toastWrap" id="toasts"></div>
 
   <script>
     const ALLOWED_USERNAMES = new Set([
-      "eagla",
-      "nebula",
-      "specimen",
-      "arrow",
-      "damage",
-      "caprie"
+      "eagla","nebula","specimen","arrow","damage","caprie"
     ]);
 
     const STAFF_IDS = new Set([
-      8007453710,
-      4976035348,
-      154251360,
-      9930928180,
-      485280430
+      8007453710,4976035348,154251360,9930928180,485280430
     ]);
 
     const els = {
@@ -479,6 +598,10 @@
       loginBtn: document.getElementById("loginBtn"),
       loginStatus: document.getElementById("loginStatus"),
       logout: document.getElementById("logout"),
+
+      helpOverlay: document.getElementById("helpOverlay"),
+      helpBtn: document.getElementById("helpBtn"),
+      closeHelp: document.getElementById("closeHelp"),
 
       status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
@@ -503,6 +626,21 @@
       themeLight: document.getElementById("themeLight"),
       themeDark: document.getElementById("themeDark"),
       themeAuto: document.getElementById("themeAuto"),
+
+      optHideStaff: document.getElementById("optHideStaff"),
+      optConfirm: document.getElementById("optConfirm"),
+      optAutoRefresh: document.getElementById("optAutoRefresh"),
+
+      activeSearch: document.getElementById("activeSearch"),
+      modSearch: document.getElementById("modSearch"),
+
+      selectedInfo: document.getElementById("selectedInfo"),
+      copyUserId: document.getElementById("copyUserId"),
+      openProfile: document.getElementById("openProfile"),
+      deselect: document.getElementById("deselect"),
+
+      actionLog: document.getElementById("actionLog"),
+      clearLog: document.getElementById("clearLog"),
     };
 
     const MOD_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/admin/moderate";
@@ -534,13 +672,11 @@
       els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
     }
 
-    /* THEME: default to dark */
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
       els.themeLight.setAttribute("aria-pressed", mode === "light");
       els.themeDark.setAttribute("aria-pressed", mode === "dark");
       els.themeAuto.setAttribute("aria-pressed", mode === "auto");
-
       if (mode === "auto"){
         document.documentElement.removeAttribute("data-theme");
         return;
@@ -563,14 +699,9 @@
       });
     }
 
-    /* LOGIN GATE (client-side) */
-    function normalizeUser(s){
-      return String(s || "").trim().toLowerCase();
-    }
+    function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
 
-    function isLoggedIn(){
-      return localStorage.getItem("panel_logged_in") === "1";
-    }
+    function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
 
     function setLoggedIn(username){
       localStorage.setItem("panel_logged_in", "1");
@@ -585,6 +716,7 @@
     function showLogin(){
       els.app.style.display = "none";
       els.loginOverlay.style.display = "flex";
+      els.helpOverlay.style.display = "none";
       els.loginStatus.textContent = "";
       els.loginUser.value = "";
       els.loginUser.focus();
@@ -596,8 +728,7 @@
     }
 
     function attemptLogin(){
-      const raw = els.loginUser.value;
-      const u = normalizeUser(raw);
+      const u = normalizeUser(els.loginUser.value);
       if (!u){
         els.loginStatus.textContent = "Enter a username.";
         els.loginStatus.className = "small error";
@@ -610,8 +741,6 @@
         return;
       }
       setLoggedIn(u);
-      els.loginStatus.textContent = "Logged in.";
-      els.loginStatus.className = "small";
       toast("ok", "Logged in", "Welcome");
       showApp();
       initPanel();
@@ -629,18 +758,20 @@
       showLogin();
     };
 
-    function isStaff(userId){
-      return STAFF_IDS.has(Number(userId));
-    }
+    els.helpBtn.onclick = () => { els.helpOverlay.style.display = "flex"; };
+    els.closeHelp.onclick = () => { els.helpOverlay.style.display = "none"; };
+    els.helpOverlay.addEventListener("click", (e) => {
+      if (e.target === els.helpOverlay) els.helpOverlay.style.display = "none";
+    });
+
+    function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
     function loadModerated(){
       try {
         const raw = localStorage.getItem("moderated_users_v1");
         const list = raw ? JSON.parse(raw) : [];
         return Array.isArray(list) ? list : [];
-      } catch {
-        return [];
-      }
+      } catch { return []; }
     }
 
     function saveModerated(list){
@@ -668,11 +799,67 @@
       saveModerated(list);
     }
 
+    function loadOpts(){
+      const v = (k, d) => {
+        const raw = localStorage.getItem(k);
+        if (raw === null) return d;
+        return raw === "1";
+      };
+      els.optHideStaff.checked = v("opt_hide_staff", true);
+      els.optConfirm.checked = v("opt_confirm", true);
+      els.optAutoRefresh.checked = v("opt_auto_refresh", false);
+    }
+
+    function saveOpts(){
+      localStorage.setItem("opt_hide_staff", els.optHideStaff.checked ? "1" : "0");
+      localStorage.setItem("opt_confirm", els.optConfirm.checked ? "1" : "0");
+      localStorage.setItem("opt_auto_refresh", els.optAutoRefresh.checked ? "1" : "0");
+    }
+
+    els.optHideStaff.onchange = () => { saveOpts(); renderActive(); };
+    els.optConfirm.onchange = () => { saveOpts(); };
+    els.optAutoRefresh.onchange = () => { saveOpts(); setupAutoRefresh(); };
+
+    function loadLog(){
+      try{
+        const raw = localStorage.getItem("panel_action_log_v1");
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+      } catch { return []; }
+    }
+    function saveLog(list){
+      localStorage.setItem("panel_action_log_v1", JSON.stringify(list.slice(0, 60)));
+    }
+    function addLog(text){
+      const list = loadLog();
+      list.unshift({ t: new Date().toISOString(), text: String(text || "") });
+      saveLog(list);
+      renderLog();
+    }
+    function renderLog(){
+      const list = loadLog();
+      els.actionLog.innerHTML = "";
+      if (!list.length){
+        els.actionLog.innerHTML = "<div class='small'>No actions yet.</div>";
+        return;
+      }
+      for (const it of list){
+        const div = document.createElement("div");
+        div.className = "logItem";
+        div.innerHTML = `<div><b>${esc(it.text)}</b></div><div>${esc(it.t)}</div>`;
+        els.actionLog.appendChild(div);
+      }
+    }
+    els.clearLog.onclick = () => {
+      localStorage.removeItem("panel_action_log_v1");
+      renderLog();
+      toast("ok", "Cleared", "Action log cleared");
+    };
+
     let activePlayers = [];
     let selectedActiveUserId = null;
     let selectedModeratedUserId = null;
 
-    // Refresh cooldown (10s)
     let refreshCooldownUntil = 0;
     let refreshCooldownTimer = null;
 
@@ -692,18 +879,16 @@
           refreshCooldownTimer = null;
         }
       };
-
       tick();
     }
 
-    // Generic 3s cooldown for any non-theme button
     const __btnOriginalText = new WeakMap();
     function startButtonCooldown(btn, seconds){
       if (!btn || btn.disabled) return false;
-
       const original = btn.textContent;
       __btnOriginalText.set(btn, original);
       btn.disabled = true;
+      const until = Date.now() + (seconds * 1000);
 
       const tick = () => {
         const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
@@ -714,13 +899,72 @@
           btn.textContent = __btnOriginalText.get(btn) || original;
           btn.disabled = false;
           __btnOriginalText.delete(btn);
+          updateButtons();
         }
       };
-
-      const until = Date.now() + (seconds * 1000);
       tick();
       return true;
     }
+
+    function getSearchText(p){
+      return (
+        String(p.displayName || "") + " " +
+        String(p.username || "") + " " +
+        String(p.team || "") + " " +
+        String(p.userId || "")
+      ).toLowerCase();
+    }
+
+    function setSelectedInfo(){
+      const sel = getSelectedActive() || getSelectedModerated();
+      if (!sel){
+        els.selectedInfo.textContent = "Nothing selected yet.";
+        els.copyUserId.disabled = true;
+        els.openProfile.disabled = true;
+        els.deselect.disabled = true;
+        return;
+      }
+      const name = sel.displayName || sel.username || "Unknown";
+      const uid = Number(sel.userId) || 0;
+      const team = sel.team ? ` | Team: ${sel.team}` : "";
+      els.selectedInfo.textContent = `${name} (@${sel.username || ""}) | UserId: ${uid}${team}`;
+      els.copyUserId.disabled = !uid;
+      els.openProfile.disabled = !uid;
+      els.deselect.disabled = false;
+    }
+
+    function deselectAll(){
+      selectedActiveUserId = null;
+      selectedModeratedUserId = null;
+      renderActive();
+      renderModerated();
+      updateButtons();
+      setSelectedInfo();
+    }
+
+    els.deselect.onclick = () => { if (!startButtonCooldown(els.deselect, 3)) return; deselectAll(); };
+
+    els.copyUserId.onclick = async () => {
+      const sel = getSelectedActive() || getSelectedModerated();
+      if (!sel) return;
+      if (!startButtonCooldown(els.copyUserId, 3)) return;
+      const uid = String(Number(sel.userId) || "");
+      try{
+        await navigator.clipboard.writeText(uid);
+        toast("ok", "Copied", "UserId copied to clipboard");
+      } catch {
+        toast("err", "Copy failed", "Your browser blocked clipboard access");
+      }
+    };
+
+    els.openProfile.onclick = () => {
+      const sel = getSelectedActive() || getSelectedModerated();
+      if (!sel) return;
+      if (!startButtonCooldown(els.openProfile, 3)) return;
+      const uid = Number(sel.userId) || 0;
+      if (!uid) return;
+      window.open(`https://www.roblox.com/users/${uid}/profile`, "_blank", "noopener,noreferrer");
+    };
 
     function setSelectedActive(userId){
       selectedActiveUserId = Number(userId);
@@ -728,6 +972,7 @@
       renderActive();
       renderModerated();
       updateButtons();
+      setSelectedInfo();
     }
 
     function setSelectedModerated(userId){
@@ -736,30 +981,7 @@
       renderActive();
       renderModerated();
       updateButtons();
-    }
-
-    function updateButtons(){
-      const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
-      const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
-
-      const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
-      els.kick.disabled = !hasActive || activeIsStaff;
-      els.kickReason.disabled = !hasActive || activeIsStaff;
-      els.ban.disabled = !hasActive || activeIsStaff;
-      els.banReason.disabled = !hasActive || activeIsStaff;
-
-      els.unban.disabled = !hasMod;
-      els.unbanReason.disabled = !hasMod;
-
-      // If a button is currently cooling down, keep it disabled and keep its text
-      for (const b of [els.save, els.clearModerated, els.kick, els.kickReason, els.ban, els.banReason, els.unban, els.unbanReason]) {
-        if (b && __btnOriginalText.has(b)) {
-          b.disabled = true;
-        }
-      }
-      if (els.refresh && refreshCooldownTimer) {
-        els.refresh.disabled = true;
-      }
+      setSelectedInfo();
     }
 
     function makeCardHTML(p){
@@ -774,20 +996,38 @@
     }
 
     function setCounts(){
-      els.activeCount.textContent = String(activePlayers.length || 0);
-      els.moderatedCount.textContent = String(loadModerated().length || 0);
+      const modCount = loadModerated().length || 0;
+      els.moderatedCount.textContent = String(modCount);
+
+      const hideStaff = !!els.optHideStaff.checked;
+      const q = (els.activeSearch.value || "").trim().toLowerCase();
+      const filtered = activePlayers.filter(p => {
+        if (hideStaff && isStaff(p.userId)) return false;
+        if (!q) return true;
+        return getSearchText(p).includes(q);
+      });
+      els.activeCount.textContent = String(filtered.length || 0);
     }
 
     function renderActive(){
       els.activeList.innerHTML = "";
       setCounts();
 
-      if (!activePlayers.length) {
-        els.activeList.innerHTML = "<div class='small'>No players online.</div>";
+      const hideStaff = !!els.optHideStaff.checked;
+      const q = (els.activeSearch.value || "").trim().toLowerCase();
+
+      const list = activePlayers.filter(p => {
+        if (hideStaff && isStaff(p.userId)) return false;
+        if (!q) return true;
+        return getSearchText(p).includes(q);
+      });
+
+      if (!list.length) {
+        els.activeList.innerHTML = "<div class='small'>No matching active users.</div>";
         return;
       }
 
-      for (const p of activePlayers){
+      for (const p of list){
         const staff = isStaff(p.userId);
         const div = document.createElement("div");
         div.className =
@@ -807,9 +1047,14 @@
       els.moderatedList.innerHTML = "";
       setCounts();
 
-      const list = loadModerated();
+      const q = (els.modSearch.value || "").trim().toLowerCase();
+      const list = loadModerated().filter(p => {
+        if (!q) return true;
+        return getSearchText(p).includes(q);
+      });
+
       if (!list.length) {
-        els.moderatedList.innerHTML = "<div class='small'>No moderated users.</div>";
+        els.moderatedList.innerHTML = "<div class='small'>No matching moderated users.</div>";
         return;
       }
 
@@ -829,6 +1074,28 @@
 
         els.moderatedList.appendChild(div);
       }
+    }
+
+    els.activeSearch.addEventListener("input", () => renderActive());
+    els.modSearch.addEventListener("input", () => renderModerated());
+
+    function updateButtons(){
+      const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
+      const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
+
+      const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
+
+      const cooling = (b) => b && __btnOriginalText.has(b);
+
+      els.kick.disabled = !hasActive || activeIsStaff || cooling(els.kick);
+      els.kickReason.disabled = !hasActive || activeIsStaff || cooling(els.kickReason);
+      els.ban.disabled = !hasActive || activeIsStaff || cooling(els.ban);
+      els.banReason.disabled = !hasActive || activeIsStaff || cooling(els.banReason);
+
+      els.unban.disabled = !hasMod || cooling(els.unban);
+      els.unbanReason.disabled = !hasMod || cooling(els.unbanReason);
+
+      if (refreshCooldownTimer) els.refresh.disabled = true;
     }
 
     async function fetchPlayers(){
@@ -859,6 +1126,7 @@
         renderActive();
         renderModerated();
         updateButtons();
+        setSelectedInfo();
       } catch(e){
         setStatus("error", "Failed: " + e.message);
         toast("err", "Refresh failed", e.message);
@@ -908,31 +1176,46 @@
       return loadModerated().find(p => Number(p.userId) === Number(selectedModeratedUserId)) || null;
     }
 
+    function confirmIfNeeded(text){
+      if (!els.optConfirm.checked) return true;
+      return confirm(text);
+    }
+
     els.kick.onclick = async () => {
       const p = getSelectedActive();
       if (!p) return;
+      if (!confirmIfNeeded(`Kick ${p.displayName || p.username} (${p.userId})?`)) return;
       if (!startButtonCooldown(els.kick, 3)) return;
       const ok = await sendModeration("kick", p.userId, "");
-      if (ok.ok) toast("ok", "Kick sent", `${p.displayName || p.username} (${p.userId})`);
+      if (ok.ok){
+        toast("ok", "Kick sent", `${p.displayName || p.username} (${p.userId})`);
+        addLog(`Kick: ${p.displayName || p.username} (${p.userId})`);
+      }
     };
 
     els.kickReason.onclick = async () => {
       const p = getSelectedActive();
       if (!p) return;
       const r = prompt("Kick reason?") || "";
+      if (!confirmIfNeeded(`Kick ${p.displayName || p.username} (${p.userId})${r ? ` with reason: ${r}` : ""}?`)) return;
       if (!startButtonCooldown(els.kickReason, 3)) return;
       const ok = await sendModeration("kick", p.userId, r);
-      if (ok.ok) toast("ok", "Kick sent", r ? `Reason: ${r}` : `${p.displayName || p.username} (${p.userId})`);
+      if (ok.ok){
+        toast("ok", "Kick sent", r ? `Reason: ${r}` : `${p.displayName || p.username} (${p.userId})`);
+        addLog(`Kick: ${p.displayName || p.username} (${p.userId})${r ? ` | ${r}` : ""}`);
+      }
     };
 
     els.ban.onclick = async () => {
       const p = getSelectedActive();
       if (!p) return;
+      if (!confirmIfNeeded(`Ban ${p.displayName || p.username} (${p.userId})?`)) return;
       if (!startButtonCooldown(els.ban, 3)) return;
       const ok = await sendModeration("ban", p.userId, "");
-      if (ok.ok) {
+      if (ok.ok){
         upsertModerated(p, "");
         toast("ok", "Ban sent", `${p.displayName || p.username} (${p.userId})`);
+        addLog(`Ban: ${p.displayName || p.username} (${p.userId})`);
         renderModerated();
       }
     };
@@ -941,11 +1224,13 @@
       const p = getSelectedActive();
       if (!p) return;
       const r = prompt("Ban reason?") || "";
+      if (!confirmIfNeeded(`Ban ${p.displayName || p.username} (${p.userId})${r ? ` with reason: ${r}` : ""}?`)) return;
       if (!startButtonCooldown(els.banReason, 3)) return;
       const ok = await sendModeration("ban", p.userId, r);
-      if (ok.ok) {
+      if (ok.ok){
         upsertModerated(p, r);
         toast("ok", "Ban sent", r ? `Reason: ${r}` : `${p.displayName || p.username} (${p.userId})`);
+        addLog(`Ban: ${p.displayName || p.username} (${p.userId})${r ? ` | ${r}` : ""}`);
         renderModerated();
       }
     };
@@ -953,14 +1238,17 @@
     els.unban.onclick = async () => {
       const p = getSelectedModerated();
       if (!p) return;
+      if (!confirmIfNeeded(`Unban ${p.displayName || p.username} (${p.userId})?`)) return;
       if (!startButtonCooldown(els.unban, 3)) return;
       const ok = await sendModeration("unban", p.userId, "");
-      if (ok.ok) {
+      if (ok.ok){
         removeModerated(p.userId);
         selectedModeratedUserId = null;
         toast("ok", "Unban sent", `${p.displayName || p.username} (${p.userId})`);
+        addLog(`Unban: ${p.displayName || p.username} (${p.userId})`);
         renderModerated();
         updateButtons();
+        setSelectedInfo();
       }
     };
 
@@ -968,14 +1256,17 @@
       const p = getSelectedModerated();
       if (!p) return;
       const r = prompt("Unban note?") || "";
+      if (!confirmIfNeeded(`Unban ${p.displayName || p.username} (${p.userId})${r ? ` (note: ${r})` : ""}?`)) return;
       if (!startButtonCooldown(els.unbanReason, 3)) return;
       const ok = await sendModeration("unban", p.userId, r);
-      if (ok.ok) {
+      if (ok.ok){
         removeModerated(p.userId);
         selectedModeratedUserId = null;
         toast("ok", "Unban sent", r ? `Note: ${r}` : `${p.displayName || p.username} (${p.userId})`);
+        addLog(`Unban: ${p.displayName || p.username} (${p.userId})${r ? ` | ${r}` : ""}`);
         renderModerated();
         updateButtons();
+        setSelectedInfo();
       }
     };
 
@@ -985,13 +1276,14 @@
       localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
       setStatus("ok", "Saved");
       toast("ok", "Saved", "API URL + Admin Key stored in this browser");
+      addLog("Saved settings");
     };
 
-    // Refresh ONLY on click + 10s cooldown
     els.refresh.onclick = async () => {
       if (els.refresh.disabled) return;
       startRefreshCooldown(10);
       await fetchPlayers();
+      addLog("Refreshed players list");
     };
 
     els.clearModerated.onclick = () => {
@@ -1001,8 +1293,21 @@
       selectedModeratedUserId = null;
       renderModerated();
       updateButtons();
+      setSelectedInfo();
       toast("ok", "Cleared", "Moderated list cleared (local)");
+      addLog("Cleared moderated list");
     };
+
+    let autoTimer = null;
+    function setupAutoRefresh(){
+      if (autoTimer){ clearInterval(autoTimer); autoTimer = null; }
+      if (!els.optAutoRefresh.checked) return;
+      autoTimer = setInterval(() => {
+        if (els.refresh.disabled) return;
+        startRefreshCooldown(10);
+        fetchPlayers();
+      }, 10000);
+    }
 
     function initPanel(){
       const savedApi = localStorage.getItem("players_api_url");
@@ -1011,12 +1316,15 @@
       else els.playersApi.value = "https://panel.sixteysevenharry.workers.dev/players";
       if (savedAdmin) els.adminKey.value = savedAdmin;
 
+      loadOpts();
       renderActive();
       renderModerated();
+      renderLog();
       updateButtons();
+      setSelectedInfo();
 
-      // No auto-fetch. User must press Refresh.
       setStatus("ok", "Ready (press Refresh)");
+      setupAutoRefresh();
     }
 
     if (isLoggedIn()){
