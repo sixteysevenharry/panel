@@ -595,7 +595,7 @@
       return logs;
     }
 
-    async function fetchPlayersOnce(){async function fetchPlayersOnce(){
+    async function fetchPlayersOnce(){
       const url = endpoint("/players");
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Players HTTP " + res.status);
@@ -637,7 +637,7 @@
       return { ok:false, timeout:true };
     }
 
-    async function sendModeration(action, user, reason){async function sendModeration(action, user, reason){
+    async function sendModeration(action, user, reason){
   if (!user) return { ok:false };
   const userId = Number(user.userId || 0);
 
