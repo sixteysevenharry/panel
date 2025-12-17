@@ -973,5 +973,116 @@ setSelectedModerated = function(id){
 };
 </script>
 
+
+<script>
+/* === LIVE UNBAN SYNC + PENDING STATE === */
+
+const PENDING_KEY = "panel_pending_unbans_v1";
+
+function loadPending(){
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || "[]"); }
+  catch { return []; }
+}
+function savePending(list){
+  localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+}
+
+function markPending(userId){
+  const p = loadPending();
+  if (!p.includes(userId)) {
+    p.push(userId);
+    savePending(p);
+  }
+}
+
+function clearPending(userId){
+  const p = loadPending().filter(id => Number(id) !== Number(userId));
+  savePending(p);
+}
+
+function isPending(userId){
+  return loadPending().includes(Number(userId));
+}
+
+/* override renderModerated to show loading + disable clicks */
+const _renderModerated = renderModerated;
+renderModerated = function(){
+  els.moderatedList.innerHTML = "";
+  setCounts();
+
+  const list = loadModerated();
+  if (!list.length) {
+    els.moderatedList.innerHTML = "<div class='small'>No moderated users.</div>";
+    return;
+  }
+
+  for (const p of list){
+    const staff = isStaff(p.userId);
+    const pending = isPending(p.userId);
+
+    const div = document.createElement("div");
+    div.className =
+      "card" +
+      (Number(p.userId) === Number(selectedModeratedUserId) ? " selected" : "") +
+      (staff ? " staffCard" : "");
+
+    div.innerHTML =
+      makeCardHTML(p) +
+      (p.reason ? `<div class="small">Reason: ${esc(p.reason)}</div>` : "") +
+      (pending ? `<div class="small">⏳ Verifying unban…</div>` : "");
+
+    if (!staff && !pending) {
+      div.onclick = () => setSelectedModerated(p.userId);
+    }
+
+    els.moderatedList.appendChild(div);
+  }
+};
+
+/* wrap unban handlers */
+async function unbanWithSync(p, note){
+  markPending(p.userId);
+  renderModerated();
+  forceUpdateButtons();
+
+  const ok = await sendModeration("unban", p.userId, note || "");
+  if (!ok.ok) {
+    clearPending(p.userId);
+    renderModerated();
+    forceUpdateButtons();
+    return;
+  }
+
+  // poll players list until user disappears from bans
+  let tries = 0;
+  const check = async () => {
+    tries++;
+    await fetchPlayers();
+    if (!loadModerated().some(x => Number(x.userId) === Number(p.userId))) {
+      clearPending(p.userId);
+      selectedModeratedUserId = null;
+      renderModerated();
+      forceUpdateButtons();
+      return;
+    }
+    if (tries < 6) setTimeout(check, 2000);
+  };
+  setTimeout(check, 1500);
+}
+
+els.unban.onclick = async () => {
+  const p = getSelectedModerated();
+  if (!p || isPending(p.userId)) return;
+  await unbanWithSync(p, "");
+};
+
+els.unbanReason.onclick = async () => {
+  const p = getSelectedModerated();
+  if (!p || isPending(p.userId)) return;
+  const r = prompt("Unban note?") || "";
+  await unbanWithSync(p, r);
+};
+</script>
+
 </body>
 </html>
