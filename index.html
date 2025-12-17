@@ -975,112 +975,130 @@ setSelectedModerated = function(id){
 
 
 <script>
-/* === LIVE UNBAN SYNC + PENDING STATE === */
-
+/* === LIVE MODERATED SYNC + PENDING UNBAN (FIXED) ===
+   - No loadModerated() (this panel uses server-backed moderatedLog)
+   - Polls /moderated every 4s for "live" updates (does NOT auto-refresh players list)
+*/
 const PENDING_KEY = "panel_pending_unbans_v1";
 
-function loadPending(){
+function _loadPending(){
   try { return JSON.parse(localStorage.getItem(PENDING_KEY) || "[]"); }
   catch { return []; }
 }
-function savePending(list){
+function _savePending(list){
   localStorage.setItem(PENDING_KEY, JSON.stringify(list));
 }
-
-function markPending(userId){
-  const p = loadPending();
-  if (!p.includes(userId)) {
-    p.push(userId);
-    savePending(p);
-  }
-}
-
-function clearPending(userId){
-  const p = loadPending().filter(id => Number(id) !== Number(userId));
-  savePending(p);
-}
-
 function isPending(userId){
-  return loadPending().includes(Number(userId));
+  return _loadPending().includes(Number(userId));
+}
+function markPending(userId){
+  const id = Number(userId);
+  const p = _loadPending();
+  if (!p.includes(id)) { p.push(id); _savePending(p); }
+}
+function clearPending(userId){
+  const id = Number(userId);
+  _savePending(_loadPending().filter(x => Number(x) !== id));
 }
 
-/* override renderModerated to show loading + disable clicks */
-const _renderModerated = renderModerated;
-renderModerated = function(){
-  els.moderatedList.innerHTML = "";
-  setCounts();
-
-  const list = loadModerated();
-  if (!list.length) {
-    els.moderatedList.innerHTML = "<div class='small'>No moderated users.</div>";
-    return;
+/* Patch: add a "verifying" line into moderated cards */
+const _makeModeratedCardHTML = makeModeratedCardHTML;
+makeModeratedCardHTML = function(entry){
+  const base = _makeModeratedCardHTML(entry);
+  if (isPending(entry.userId)){
+    return base + `<div class="small">⏳ Verifying unban…</div>`;
   }
-
-  for (const p of list){
-    const staff = isStaff(p.userId);
-    const pending = isPending(p.userId);
-
-    const div = document.createElement("div");
-    div.className =
-      "card" +
-      (Number(p.userId) === Number(selectedModeratedUserId) ? " selected" : "") +
-      (staff ? " staffCard" : "");
-
-    div.innerHTML =
-      makeCardHTML(p) +
-      (p.reason ? `<div class="small">Reason: ${esc(p.reason)}</div>` : "") +
-      (pending ? `<div class="small">⏳ Verifying unban…</div>` : "");
-
-    if (!staff && !pending) {
-      div.onclick = () => setSelectedModerated(p.userId);
-    }
-
-    els.moderatedList.appendChild(div);
-  }
+  return base;
 };
 
-/* wrap unban handlers */
-async function unbanWithSync(p, note){
+/* Patch: prevent selecting pending entries */
+const _setSelectedModerated2 = setSelectedModerated;
+setSelectedModerated = function(userId){
+  if (isPending(userId)) return;
+  _setSelectedModerated2(userId);
+  if (typeof forceUpdateButtons === "function") forceUpdateButtons();
+};
+
+/* Patch: renderModerated is already server-backed; just re-render to reflect pending */
+function rerenderModeratedSafe(){
+  try { renderModerated(); } catch {}
+  if (typeof forceUpdateButtons === "function") forceUpdateButtons();
+}
+
+/* When moderated list updates from server, clear pending if item is gone */
+const _fetchModerated = fetchModerated;
+fetchModerated = async function(){
+  await _fetchModerated();
+  const pend = _loadPending();
+  if (!pend.length) return;
+
+  const still = [];
+  for (const id of pend){
+    const exists = (Array.isArray(moderatedLog) ? moderatedLog : []).some(x => Number(x.userId) === Number(id));
+    if (exists) still.push(Number(id));
+  }
+  _savePending(still);
+  rerenderModeratedSafe();
+};
+
+/* Live sync just for moderated list (not players) */
+let _moderatedLiveTimer = null;
+function startModeratedLiveSync(){
+  if (_moderatedLiveTimer) clearInterval(_moderatedLiveTimer);
+  _moderatedLiveTimer = setInterval(() => {
+    // only sync if app visible + logged in
+    if (document.hidden) return;
+    try { fetchModerated(); } catch {}
+  }, 4000);
+}
+
+/* Wrap unban buttons: set pending, disable interaction, then wait for server to remove it */
+async function unbanWithVerify(note){
+  const p = getSelectedModerated();
+  if (!p) return;
+  if (isPending(p.userId)) return;
+
   markPending(p.userId);
-  renderModerated();
-  forceUpdateButtons();
+  rerenderModeratedSafe();
 
   const ok = await sendModeration("unban", p.userId, note || "");
-  if (!ok.ok) {
+  if (!ok.ok){
     clearPending(p.userId);
-    renderModerated();
-    forceUpdateButtons();
+    rerenderModeratedSafe();
     return;
   }
 
-  // poll players list until user disappears from bans
+  // Poll /moderated until server confirms removal (max ~12s)
   let tries = 0;
-  const check = async () => {
+  const poll = async () => {
     tries++;
-    await fetchPlayers();
-    if (!loadModerated().some(x => Number(x.userId) === Number(p.userId))) {
+    await fetchModerated();
+    const stillThere = (Array.isArray(moderatedLog) ? moderatedLog : []).some(x => Number(x.userId) === Number(p.userId));
+    if (!stillThere){
       clearPending(p.userId);
       selectedModeratedUserId = null;
-      renderModerated();
-      forceUpdateButtons();
+      rerenderModeratedSafe();
       return;
     }
-    if (tries < 6) setTimeout(check, 2000);
+    if (tries < 6) setTimeout(poll, 2000);
   };
-  setTimeout(check, 1500);
+  setTimeout(poll, 1500);
 }
 
-els.unban.onclick = async () => {
-  const p = getSelectedModerated();
-  if (!p || isPending(p.userId)) return;
-  await unbanWithSync(p, "");
+els.unban.onclick = async () => { await unbanWithVerify(""); };
+els.unbanReason.onclick = async () => {
+  const r = prompt("Unban note?") || "";
+  await unbanWithVerify(r);
 };
 
-els.unbanReason.onclick = async () => {
-  const p = getSelectedModerated();
-  if (!p || isPending(p.userId)) return;
-  const r = prompt("Unban note?") || "";
-  await unbanWithSync(p, r);
+/* Ensure moderated live sync starts after panel init */
+const _initPanel = initPanel;
+initPanel = function(){
+  _initPanel();
+  // start "live" moderated sync
+  startModeratedLiveSync();
+  // also fetch moderated once so list is up-to-date
+  try { fetchModerated(); } catch {}
 };
 </script>
 
