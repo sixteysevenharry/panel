@@ -138,6 +138,15 @@
       transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
     }
 
+    /* Highlight moderated column when dragging over it */
+    .col.dropHot{
+      border-color: var(--danger);
+      box-shadow: 0 0 0 4px rgba(176,0,32,.12), var(--shadow);
+    }
+    [data-theme="dark"] .col.dropHot{
+      box-shadow: 0 0 0 4px rgba(255,77,109,.14), var(--shadow);
+    }
+
     .colTitle{
       font-size:22px;
       margin:0 0 12px;
@@ -179,16 +188,6 @@
     .card:hover{border-color:var(--border2);transform:translateY(-1px)}
     .selected{outline:3px solid var(--ring);outline-offset:0;transform:translateY(-1px) scale(1.01)}
     .dragging{opacity:.6;transform:none}
-    .dropZone{
-      border:2px dashed var(--border2);
-      border-radius:12px;
-      padding:10px 12px;
-      margin:6px 0 12px;
-      color:var(--muted);
-      background:rgba(0,0,0,.02);
-    }
-    [data-theme="dark"] .dropZone{background:rgba(255,255,255,.04)}
-    .dropZone.hot{border-color:var(--danger); color:var(--danger)}
 
     .row{
       display:flex;
@@ -230,7 +229,6 @@
     button:disabled{opacity:.45;cursor:not-allowed;transform:none}
 
     .btns{display:flex;gap:10px;flex-wrap:wrap}
-
     .divider{height:1px;background:var(--border);margin:14px 0}
 
     .meta{
@@ -387,7 +385,7 @@
     <div class="meta" id="meta">Updated: ? | Total Players: ?</div>
 
     <div class="grid">
-      <div class="col">
+      <div class="col" id="activeCol">
         <div class="colTitle">
           <span>Active Users</span>
           <span class="countPill" id="activeCount">0</span>
@@ -403,13 +401,11 @@
         <div class="scroll" id="activeList"></div>
       </div>
 
-      <div class="col" id="moderatedCol">
+      <div class="col" id="moderatedCol" title="Drop active players anywhere in this column to instantly BAN them (no reason)">
         <div class="colTitle">
           <span>Moderated Users</span>
           <span class="countPill" id="moderatedCount">0</span>
         </div>
-
-        <div class="dropZone" id="dropZone">Drag a player here to instantly BAN (no reason)</div>
 
         <div class="row" style="margin-top:0">
           <div class="field" style="min-width:0;flex:1 1 auto">
@@ -476,13 +472,14 @@
       save: document.getElementById("save"),
       refresh: document.getElementById("refresh"),
 
+      activeCol: document.getElementById("activeCol"),
+      moderatedCol: document.getElementById("moderatedCol"),
+
       activeSearch: document.getElementById("activeSearch"),
       moderatedSearch: document.getElementById("moderatedSearch"),
 
       activeList: document.getElementById("activeList"),
       moderatedList: document.getElementById("moderatedList"),
-      moderatedCol: document.getElementById("moderatedCol"),
-      dropZone: document.getElementById("dropZone"),
 
       kick: document.getElementById("kick"),
       kickReason: document.getElementById("kickReason"),
@@ -530,6 +527,7 @@
       els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
     }
 
+    /* THEME (no cooldown) */
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
       els.themeLight.setAttribute("aria-pressed", mode === "light");
@@ -538,12 +536,12 @@
       if (mode === "auto"){ document.documentElement.removeAttribute("data-theme"); return; }
       document.documentElement.setAttribute("data-theme", mode);
     }
-
     applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
     els.themeLight.onclick = () => applyTheme("light");
     els.themeDark.onclick = () => applyTheme("dark");
     els.themeAuto.onclick = () => applyTheme("auto");
 
+    /* LOGIN */
     function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
     function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
     function getLoggedInUser(){ return String(localStorage.getItem("panel_login_user") || ""); }
@@ -555,7 +553,6 @@
       localStorage.removeItem("panel_logged_in");
       localStorage.removeItem("panel_login_user");
     }
-
     function showLogin(){
       els.app.style.display = "none";
       els.loginOverlay.style.display = "flex";
@@ -570,53 +567,30 @@
 
     function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
-    let activePlayers = [];
-    let moderatedLog = [];
-    let selectedActiveUserId = null;
-    let selectedModeratedUserId = null;
+    /* COOLDOWNS */
+    const cooldownUntil = new WeakMap();
+    const cooldownText = new WeakMap();
 
-    let refreshCooldownUntil = 0;
-    let refreshCooldownTimer = null;
+    function nowMs(){ return Date.now(); }
 
-    function startRefreshCooldown(seconds){
-      refreshCooldownUntil = Date.now() + (seconds * 1000);
-      els.refresh.disabled = true;
-
-      const tick = () => {
-        const left = Math.max(0, Math.ceil((refreshCooldownUntil - Date.now()) / 1000));
-        if (left > 0) {
-          els.refresh.textContent = `⏳ Refresh (${left}s)`;
-          refreshCooldownTimer = setTimeout(tick, 250);
-        } else {
-          els.refresh.textContent = "🔄 Refresh";
-          els.refresh.disabled = false;
-          if (refreshCooldownTimer) clearTimeout(refreshCooldownTimer);
-          refreshCooldownTimer = null;
-        }
-      };
-      tick();
-    }
-
-    const __btnCooldown = new WeakMap();
-    function startBtnCooldown(btn, seconds){
+    function startBtnCooldown(btn, seconds, label){
       if (!btn) return false;
-      if (btn.disabled) return false;
+      const until = nowMs() + seconds * 1000;
+      cooldownUntil.set(btn, until);
 
-      const original = btn.textContent;
+      if (!cooldownText.has(btn)) cooldownText.set(btn, btn.textContent);
+      const original = cooldownText.get(btn);
+
       btn.disabled = true;
 
-      const until = Date.now() + seconds * 1000;
       const tick = () => {
-        const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+        const left = Math.max(0, Math.ceil((until - nowMs()) / 1000));
         if (left > 0) {
-          btn.textContent = `⏳ (${left}s)`;
-          __btnCooldown.set(btn, setTimeout(tick, 250));
+          btn.textContent = `⏳ ${label || ""}${label ? " " : ""}(${left}s)`;
+          requestAnimationFrame(tick);
         } else {
           btn.textContent = original;
-          btn.disabled = false;
-          const t = __btnCooldown.get(btn);
-          if (t) clearTimeout(t);
-          __btnCooldown.delete(btn);
+          cooldownUntil.delete(btn);
           updateButtons();
         }
       };
@@ -624,35 +598,23 @@
       return true;
     }
 
-    function setSelectedActive(userId){
-      selectedActiveUserId = Number(userId);
-      selectedModeratedUserId = null;
-      renderActive();
-      renderModerated();
-      updateButtons();
-    }
-    function setSelectedModerated(userId){
-      selectedModeratedUserId = Number(userId);
-      selectedActiveUserId = null;
-      renderActive();
-      renderModerated();
-      updateButtons();
+    /* Refresh 10s cooldown */
+    function startRefreshCooldown(seconds){
+      startBtnCooldown(els.refresh, seconds, "Refresh");
     }
 
-    function updateButtons(){
-      const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
-      const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
-      const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
-
-      if (!els.kick.disabled) els.kick.disabled = !hasActive || activeIsStaff;
-      if (!els.kickReason.disabled) els.kickReason.disabled = !hasActive || activeIsStaff;
-      if (!els.ban.disabled) els.ban.disabled = !hasActive || activeIsStaff;
-      if (!els.banReason.disabled) els.banReason.disabled = !hasActive || activeIsStaff;
-
-      if (!els.unban.disabled) els.unban.disabled = !hasMod;
-      if (!els.unbanReason.disabled) els.unbanReason.disabled = !hasMod;
+    function buttonCooling(btn){
+      const until = cooldownUntil.get(btn);
+      return typeof until === "number" && until > nowMs();
     }
 
+    /* STATE */
+    let activePlayers = [];
+    let moderatedLog = [];
+    let selectedActiveUserId = null;
+    let selectedModeratedUserId = null;
+
+    /* Place name lookup */
     const placeNameCache = new Map();
 
     async function resolvePlaceNames(placeIds){
@@ -678,6 +640,55 @@
     function setCounts(){
       els.activeCount.textContent = String(activePlayers.length || 0);
       els.moderatedCount.textContent = String(moderatedLog.length || 0);
+    }
+
+    function matchesQuery(obj, q){
+      if (!q) return true;
+      const s = q.toLowerCase();
+      const fields = [
+        obj.displayName, obj.username, obj.userId,
+        obj.by, obj.action, obj.reason
+      ].map(v => String(v ?? "").toLowerCase());
+      return fields.some(v => v.includes(s));
+    }
+
+    function setSelectedActive(userId){
+      selectedActiveUserId = Number(userId);
+      selectedModeratedUserId = null;
+      renderActive();
+      renderModerated();
+      updateButtons();
+    }
+
+    function setSelectedModerated(userId){
+      selectedModeratedUserId = Number(userId);
+      selectedActiveUserId = null;
+      renderActive();
+      renderModerated();
+      updateButtons();
+    }
+
+    /* ✅ FIXED: always recompute disabled state (no "if (!disabled)" guards) */
+    function updateButtons(){
+      const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
+      const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
+      const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
+
+      const canKick = hasActive && !activeIsStaff;
+      const canBan = hasActive && !activeIsStaff;
+      const canUnban = hasMod;
+
+      els.kick.disabled = !canKick || buttonCooling(els.kick);
+      els.kickReason.disabled = !canKick || buttonCooling(els.kickReason);
+      els.ban.disabled = !canBan || buttonCooling(els.ban);
+      els.banReason.disabled = !canBan || buttonCooling(els.banReason);
+
+      els.unban.disabled = !canUnban || buttonCooling(els.unban);
+      els.unbanReason.disabled = !canUnban || buttonCooling(els.unbanReason);
+
+      els.save.disabled = buttonCooling(els.save);
+      els.logout.disabled = buttonCooling(els.logout);
+      els.refresh.disabled = buttonCooling(els.refresh);
     }
 
     function makeActiveCardHTML(p){
@@ -712,16 +723,6 @@
         ${reason ? `<div class="small">Reason: ${reason}</div>` : ""}
         ${when ? `<div class="small">At: ${esc(when)}</div>` : ""}
       `;
-    }
-
-    function matchesQuery(obj, q){
-      if (!q) return true;
-      const s = q.toLowerCase();
-      const fields = [
-        obj.displayName, obj.username, obj.userId,
-        obj.by, obj.action, obj.reason
-      ].map(v => String(v ?? "").toLowerCase());
-      return fields.some(v => v.includes(s));
     }
 
     function renderActive(){
@@ -891,15 +892,17 @@
     els.activeSearch.addEventListener("input", () => renderActive());
     els.moderatedSearch.addEventListener("input", () => renderModerated());
 
-    els.dropZone.addEventListener("dragover", (e) => {
+    /* ✅ Drag to BAN by dropping into the Moderated column itself */
+    els.moderatedCol.addEventListener("dragover", (e) => {
       e.preventDefault();
-      els.dropZone.classList.add("hot");
+      els.moderatedCol.classList.add("dropHot");
     });
-    els.dropZone.addEventListener("dragleave", () => els.dropZone.classList.remove("hot"));
-
-    els.dropZone.addEventListener("drop", async (e) => {
+    els.moderatedCol.addEventListener("dragleave", () => {
+      els.moderatedCol.classList.remove("dropHot");
+    });
+    els.moderatedCol.addEventListener("drop", async (e) => {
       e.preventDefault();
-      els.dropZone.classList.remove("hot");
+      els.moderatedCol.classList.remove("dropHot");
 
       let data;
       try { data = JSON.parse(e.dataTransfer.getData("text/plain") || "{}"); } catch { data = {}; }
@@ -911,7 +914,7 @@
         return;
       }
 
-      if (!startBtnCooldown(els.ban, 3)) return;
+      if (!startBtnCooldown(els.ban, 3, "Ban")) return;
 
       const ok = await sendModeration("ban", uid, "");
       if (ok.ok){
@@ -920,15 +923,16 @@
       }
     });
 
+    /* Buttons (3s cooldown) */
     els.kick.onclick = async () => {
-      if (!startBtnCooldown(els.kick, 3)) return;
+      if (!startBtnCooldown(els.kick, 3, "Kick")) return;
       const p = getSelectedActive(); if (!p) return;
       const ok = await sendModeration("kick", p.userId, "");
       if (ok.ok){ toast("ok", "Kick sent", `${p.displayName || p.username}`); await fetchModerated(); }
     };
 
     els.kickReason.onclick = async () => {
-      if (!startBtnCooldown(els.kickReason, 3)) return;
+      if (!startBtnCooldown(els.kickReason, 3, "Kick")) return;
       const p = getSelectedActive(); if (!p) return;
       const r = prompt("Kick reason?") || "";
       const ok = await sendModeration("kick", p.userId, r);
@@ -936,14 +940,14 @@
     };
 
     els.ban.onclick = async () => {
-      if (!startBtnCooldown(els.ban, 3)) return;
+      if (!startBtnCooldown(els.ban, 3, "Ban")) return;
       const p = getSelectedActive(); if (!p) return;
       const ok = await sendModeration("ban", p.userId, "");
       if (ok.ok){ toast("ok", "Ban sent", `${p.displayName || p.username}`); await fetchModerated(); }
     };
 
     els.banReason.onclick = async () => {
-      if (!startBtnCooldown(els.banReason, 3)) return;
+      if (!startBtnCooldown(els.banReason, 3, "Ban")) return;
       const p = getSelectedActive(); if (!p) return;
       const r = prompt("Ban reason?") || "";
       const ok = await sendModeration("ban", p.userId, r);
@@ -951,14 +955,14 @@
     };
 
     els.unban.onclick = async () => {
-      if (!startBtnCooldown(els.unban, 3)) return;
+      if (!startBtnCooldown(els.unban, 3, "Unban")) return;
       const p = getSelectedModerated(); if (!p) return;
       const ok = await sendModeration("unban", p.userId, "");
       if (ok.ok){ toast("ok", "Unban sent", `UserId: ${p.userId}`); await fetchModerated(); }
     };
 
     els.unbanReason.onclick = async () => {
-      if (!startBtnCooldown(els.unbanReason, 3)) return;
+      if (!startBtnCooldown(els.unbanReason, 3, "Unban")) return;
       const p = getSelectedModerated(); if (!p) return;
       const r = prompt("Unban note?") || "";
       const ok = await sendModeration("unban", p.userId, r);
@@ -966,7 +970,7 @@
     };
 
     els.save.onclick = () => {
-      if (!startBtnCooldown(els.save, 3)) return;
+      if (!startBtnCooldown(els.save, 3, "Save")) return;
       localStorage.setItem("players_api_url", els.playersApi.value.trim());
       localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
       setStatus("ok", "Saved");
@@ -974,14 +978,13 @@
     };
 
     els.refresh.onclick = async () => {
-      if (els.refresh.disabled) return;
-      startRefreshCooldown(10);
+      if (!startRefreshCooldown(10)) return;
       await fetchPlayers();
       await fetchModerated();
     };
 
     els.logout.onclick = () => {
-      if (!startBtnCooldown(els.logout, 3)) return;
+      if (!startBtnCooldown(els.logout, 3, "Logout")) return;
       if (!confirm("Log out?")) return;
       clearLoggedIn();
       toast("ok", "Logged out", "");
@@ -989,7 +992,7 @@
     };
 
     function attemptLogin(){
-      if (!startBtnCooldown(els.loginBtn, 3)) return;
+      if (!startBtnCooldown(els.loginBtn, 3, "Login")) return;
       const u = normalizeUser(els.loginUser.value);
       if (!u){
         els.loginStatus.textContent = "Enter a username.";
@@ -1023,6 +1026,7 @@
       updateButtons();
     }
 
+    /* Boot */
     if (isLoggedIn()){
       showApp();
       initPanel();
