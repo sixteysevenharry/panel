@@ -439,7 +439,7 @@
 
       <div class="col">
         <div class="colTitle">
-          <span>Moderated Users</span>
+          <span>Enforcement Logs</span>
           <span class="countPill" id="moderatedCountWrap"><span id="moderatedCount">0</span></span>
         </div>
         <div class="scroll" id="moderatedList"></div>
@@ -634,6 +634,24 @@
     let moderatedUsers = [];
     let selectedActiveUserId = null;
     let selectedModeratedUserId = null;
+    let uiLocked = false;
+
+    function beginVerifyLock(){
+      uiLocked = true;
+      selectedActiveUserId = null;
+      selectedModeratedUserId = null;
+      renderActive();
+      renderModerated();
+      updateButtons();
+      setStatus("loading", "Verifying...");
+    }
+
+    function endVerifyLock(){
+      uiLocked = false;
+      updateButtons();
+      setStatus("ok", "Ready");
+    }
+
 
     let verifying = false;
     let refreshCooldownUntil = 0;
@@ -676,7 +694,8 @@
     }
 
     function setSelectedActive(userId){
-      if (verifying) return;
+      if (uiLocked) return;
+if (verifying) return;
       selectedActiveUserId = Number(userId);
       selectedModeratedUserId = null;
       renderActive();
@@ -685,7 +704,8 @@
     }
 
     function setSelectedModerated(userId){
-      if (verifying) return;
+      if (uiLocked) return;
+if (verifying) return;
       selectedModeratedUserId = Number(userId);
       selectedActiveUserId = null;
       renderActive();
@@ -694,7 +714,16 @@
     }
 
     function updateButtons(){
-      const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
+      if (uiLocked){
+        els.kick.disabled = true;
+        els.kickReason.disabled = true;
+        els.ban.disabled = true;
+        els.banReason.disabled = true;
+        els.unban.disabled = true;
+        els.unbanReason.disabled = true;
+        return;
+      }
+const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
       const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
 
       const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
@@ -819,6 +848,30 @@
         if (selectedActiveUserId && !activePlayers.some(p => Number(p.userId) === Number(selectedActiveUserId))) {
           selectedActiveUserId = null;
         }
+    async function fetchPlayersOnce(){
+      const url = els.playersApi.value.trim();
+      if (!url) throw new Error("Players API URL missing");
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const players = Array.isArray(data.players) ? data.players : [];
+      return { data, players };
+    }
+
+    async function verifyByPresence(userId, timeoutMs){
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs){
+        try{
+          const { players } = await fetchPlayersOnce();
+          const stillHere = players.some(p => Number(p.userId) === Number(userId));
+          if (!stillHere) return { ok: true };
+        } catch(e){
+        }
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      return { ok: false, message: "TIME OUT" };
+    }
+
 
         setStatus("ok", "OK");
         renderActive();
@@ -900,7 +953,18 @@
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify(payload)
-      });
+      }
+    async function enforceAndVerify(action, user, reason){
+      const resp = await sendModeration(action, Number(user.userId), reason || "");
+      if (!resp.ok) return { ok: false };
+
+      if (action === "kick" || action === "ban"){
+        const v = await verifyByPresence(Number(user.userId), 12000);
+        return v.ok ? { ok: true } : { ok: false, timeout: true };
+      }
+      return { ok: true };
+    }
+);
 
       let body = null;
       try { body = await res.json(); } catch {}
@@ -955,48 +1019,120 @@
     }
 
     els.kick.onclick = async () => {
-      if (els.kick.disabled) return;
-      startButtonCooldown(els.kick, 3, "👢 Kick");
-      const p = getSelectedActive(); if (!p) return;
-      await runModerationFlow("kick", p.userId, "");
+      const p = getSelectedActive();
+      if (!p) return;
+
+      beginVerifyLock();
+      try {
+        const v = await enforceAndVerify("kick", p, "");
+        if (v.ok) {
+          toast("ok", "Enforcement action approved", "");
+          if ("kick" === "ban") { upsertModerated(p, ""); renderModerated(); }
+          if ("kick" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
+        } else {
+          toast("err", "ERROR: TIME OUT", "");
+        }
+      } finally {
+        endVerifyLock();
+      }
     };
 
     els.kickReason.onclick = async () => {
-      if (els.kickReason.disabled) return;
-      startButtonCooldown(els.kickReason, 3, "📝 Kick With Reason");
-      const p = getSelectedActive(); if (!p) return;
+      const p = getSelectedActive();
+      if (!p) return;
+
       const r = prompt("Kick reason?") || "";
-      await runModerationFlow("kick", p.userId, r);
+      beginVerifyLock();
+      try {
+        const v = await enforceAndVerify("kick", p, r);
+        if (v.ok) {
+          toast("ok", "Enforcement action approved", "");
+          if ("kick" === "ban") { upsertModerated(p, r); renderModerated(); }
+          if ("kick" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
+        } else {
+          toast("err", "ERROR: TIME OUT", "");
+        }
+      } finally {
+        endVerifyLock();
+      }
     };
 
     els.ban.onclick = async () => {
-      if (els.ban.disabled) return;
-      startButtonCooldown(els.ban, 3, "⛔ Ban");
-      const p = getSelectedActive(); if (!p) return;
-      await runModerationFlow("ban", p.userId, "");
+      const p = getSelectedActive();
+      if (!p) return;
+
+      beginVerifyLock();
+      try {
+        const v = await enforceAndVerify("ban", p, "");
+        if (v.ok) {
+          toast("ok", "Enforcement action approved", "");
+          if ("ban" === "ban") { upsertModerated(p, ""); renderModerated(); }
+          if ("ban" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
+        } else {
+          toast("err", "ERROR: TIME OUT", "");
+        }
+      } finally {
+        endVerifyLock();
+      }
     };
 
     els.banReason.onclick = async () => {
-      if (els.banReason.disabled) return;
-      startButtonCooldown(els.banReason, 3, "🧾 Ban With Reason");
-      const p = getSelectedActive(); if (!p) return;
+      const p = getSelectedActive();
+      if (!p) return;
+
       const r = prompt("Ban reason?") || "";
-      await runModerationFlow("ban", p.userId, r);
+      beginVerifyLock();
+      try {
+        const v = await enforceAndVerify("ban", p, r);
+        if (v.ok) {
+          toast("ok", "Enforcement action approved", "");
+          if ("ban" === "ban") { upsertModerated(p, r); renderModerated(); }
+          if ("ban" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
+        } else {
+          toast("err", "ERROR: TIME OUT", "");
+        }
+      } finally {
+        endVerifyLock();
+      }
     };
 
     els.unban.onclick = async () => {
-      if (els.unban.disabled) return;
-      startButtonCooldown(els.unban, 3, "✅ Unban");
-      const p = getSelectedModerated(); if (!p) return;
-      await runModerationFlow("unban", p.userId, "");
+      const p = getSelectedModerated();
+      if (!p) return;
+
+      beginVerifyLock();
+      try {
+        const v = await enforceAndVerify("unban", p, "");
+        if (v.ok) {
+          toast("ok", "Enforcement action approved", "");
+          if ("unban" === "ban") { upsertModerated(p, ""); renderModerated(); }
+          if ("unban" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
+        } else {
+          toast("err", "ERROR: TIME OUT", "");
+        }
+      } finally {
+        endVerifyLock();
+      }
     };
 
     els.unbanReason.onclick = async () => {
-      if (els.unbanReason.disabled) return;
-      startButtonCooldown(els.unbanReason, 3, "🗒️ Unban With Reason");
-      const p = getSelectedModerated(); if (!p) return;
+      const p = getSelectedModerated();
+      if (!p) return;
+
       const r = prompt("Unban note?") || "";
-      await runModerationFlow("unban", p.userId, r);
+      beginVerifyLock();
+      try {
+        const v = await enforceAndVerify("unban", p, r);
+        if (v.ok) {
+          toast("ok", "Enforcement action approved", "");
+          if ("unban" === "ban") { upsertModerated(p, r); renderModerated(); }
+          if ("unban" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
+        } else {
+          toast("err", "ERROR: TIME OUT", "");
+        }
+      } finally {
+        endVerifyLock();
+      }
     };
 
     els.save.onclick = () => {
