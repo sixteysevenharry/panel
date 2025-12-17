@@ -23,6 +23,35 @@ export default {
       }
     };
 
+    const safeParseArr = (raw) => {
+      if (!raw || typeof raw !== "string") return [];
+      try {
+        const v = JSON.parse(raw);
+        return Array.isArray(v) ? v : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    const kvPutWithRetry = async (key, value, options = {}) => {
+      let delay = 150;
+      for (let i = 0; i < 6; i++) {
+        try {
+          await env.LIVE.put(key, value, options);
+          return true;
+        } catch (e) {
+          const msg = String(e?.message || e);
+          const is429 = msg.includes("429") || msg.toLowerCase().includes("too many requests");
+          if (!is429) throw e;
+          await sleep(delay);
+          delay = Math.min(delay * 2, 2000);
+        }
+      }
+      return false;
+    };
+
     try {
       const url = new URL(request.url);
       if (request.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -54,10 +83,8 @@ export default {
         let jobId = String(body.jobId || "");
         const players = Array.isArray(body.players) ? body.players : null;
 
-        // ✅ FIX: allow Studio (empty JobId)
-        if (!jobId) {
-          jobId = "studio-" + crypto.randomUUID();
-        }
+        // allow Studio (empty JobId)
+        if (!jobId) jobId = "studio-" + crypto.randomUUID();
 
         if (!placeId || !players) {
           return json(
@@ -88,22 +115,26 @@ export default {
           }))
         };
 
-        // Store snapshot (auto-expire)
-        await env.LIVE.put(serverKey, JSON.stringify(snapshot), {
-          expirationTtl: 180
-        });
+        // Snapshot write (needed)
+        await kvPutWithRetry(serverKey, JSON.stringify(snapshot), { expirationTtl: 180 });
 
-        // Update server index (NO KV.list)
-        const index = safeParseObj(await env.LIVE.get("server_index"));
-        index[serverKey] = now;
+        // ✅ THROTTLE server_index writes (this is a hot KV PUT otherwise)
+        // Only update index if last index update was > 20s ago
+        const lastIdxKey = "server_index_last_write";
+        const lastWriteRaw = await env.LIVE.get(lastIdxKey);
+        const lastWrite = Number(lastWriteRaw || 0);
 
-        for (const k in index) {
-          if (now - Number(index[k] || 0) > 180000) {
-            delete index[k];
+        if (now - lastWrite > 20000) {
+          const index = safeParseObj(await env.LIVE.get("server_index"));
+          index[serverKey] = now;
+
+          for (const k in index) {
+            if (now - Number(index[k] || 0) > 180000) delete index[k];
           }
-        }
 
-        await env.LIVE.put("server_index", JSON.stringify(index));
+          await kvPutWithRetry("server_index", JSON.stringify(index));
+          await kvPutWithRetry(lastIdxKey, String(now), { expirationTtl: 300 });
+        }
 
         return json({ ok: true });
       }
@@ -171,15 +202,25 @@ export default {
         const id = crypto.randomUUID();
         const now = Date.now();
 
-        await env.LIVE.put(
+        // store command (needed)
+        await kvPutWithRetry(
           `cmd:${id}`,
           JSON.stringify({ id, createdAt: now, action, userId, reason }),
           { expirationTtl: 600 }
         );
 
-        const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
-        cmdIndex[id] = now;
-        await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
+        // ✅ Make command_index a LIST not an object map (smaller + cheaper),
+        // and only written when admin issues a command (low frequency).
+        const rawList = await env.LIVE.get("command_index_v2");
+        const list = safeParseArr(rawList);
+
+        list.push({ id, t: now });
+
+        // prune old
+        const cutoff = now - 600000;
+        const pruned = list.filter((x) => x && x.id && Number(x.t) >= cutoff);
+
+        await kvPutWithRetry("command_index_v2", JSON.stringify(pruned), { expirationTtl: 900 });
 
         return json({ ok: true, id });
       }
@@ -193,17 +234,18 @@ export default {
           return json({ error: "Unauthorized" }, 401);
         }
 
-        const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
+        // ✅ READ-ONLY: do NOT KV.put here (this was causing your 429s)
         const now = Date.now();
+        const idx = safeParseArr(await env.LIVE.get("command_index_v2"));
+
+        const cutoff = now - 600000;
         const commands = [];
 
-        for (const id in cmdIndex) {
-          if (now - Number(cmdIndex[id] || 0) > 600000) {
-            delete cmdIndex[id];
-            continue;
-          }
+        for (const item of idx) {
+          if (!item || !item.id) continue;
+          if (Number(item.t) < cutoff) continue;
 
-          const raw = await env.LIVE.get(`cmd:${id}`);
+          const raw = await env.LIVE.get(`cmd:${item.id}`);
           if (!raw) continue;
 
           try {
@@ -211,7 +253,6 @@ export default {
           } catch {}
         }
 
-        await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
         return json({ ok: true, commands });
       }
 
@@ -224,22 +265,8 @@ export default {
           return json({ error: "Unauthorized" }, 401);
         }
 
-        let body;
-        try {
-          body = await request.json();
-        } catch {
-          body = {};
-        }
-
-        const id = String(body.id || "");
-        if (!id) return json({ error: "Missing id" }, 400);
-
-        await env.LIVE.delete(`cmd:${id}`);
-
-        const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
-        delete cmdIndex[id];
-        await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
-
+        // ✅ NO-OP ACK (no KV deletes / puts)
+        // Roblox already de-dupes command ids client-side, so this is safe.
         return json({ ok: true });
       }
 
