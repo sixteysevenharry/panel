@@ -138,7 +138,6 @@
       transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
     }
 
-    /* Highlight moderated column when dragging over it */
     .col.dropHot{
       border-color: var(--danger);
       box-shadow: 0 0 0 4px rgba(176,0,32,.12), var(--shadow);
@@ -527,6 +526,8 @@
       els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
     }
 
+    function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
+
     /* THEME (no cooldown) */
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
@@ -565,32 +566,26 @@
       els.app.style.display = "block";
     }
 
-    function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
-
     /* COOLDOWNS */
-    const cooldownUntil = new WeakMap();
-    const cooldownText = new WeakMap();
+    const baseText = new WeakMap();
 
-    function nowMs(){ return Date.now(); }
-
-    function startBtnCooldown(btn, seconds, label){
+    function beginCooldown(btn, seconds, label){
       if (!btn) return false;
-      const until = nowMs() + seconds * 1000;
-      cooldownUntil.set(btn, until);
+      if (!baseText.has(btn)) baseText.set(btn, btn.textContent);
 
-      if (!cooldownText.has(btn)) cooldownText.set(btn, btn.textContent);
-      const original = cooldownText.get(btn);
+      const original = baseText.get(btn);
+      const until = Date.now() + seconds * 1000;
 
       btn.disabled = true;
 
       const tick = () => {
-        const left = Math.max(0, Math.ceil((until - nowMs()) / 1000));
-        if (left > 0) {
-          btn.textContent = `⏳ ${label || ""}${label ? " " : ""}(${left}s)`;
-          requestAnimationFrame(tick);
+        const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+        if (left > 0){
+          btn.textContent = `⏳ ${label} (${left}s)`;
+          setTimeout(tick, 200);
         } else {
           btn.textContent = original;
-          cooldownUntil.delete(btn);
+          btn.disabled = false;
           updateButtons();
         }
       };
@@ -598,44 +593,11 @@
       return true;
     }
 
-    /* Refresh 10s cooldown */
-    function startRefreshCooldown(seconds){
-      startBtnCooldown(els.refresh, seconds, "Refresh");
-    }
-
-    function buttonCooling(btn){
-      const until = cooldownUntil.get(btn);
-      return typeof until === "number" && until > nowMs();
-    }
-
     /* STATE */
     let activePlayers = [];
     let moderatedLog = [];
     let selectedActiveUserId = null;
     let selectedModeratedUserId = null;
-
-    /* Place name lookup */
-    const placeNameCache = new Map();
-
-    async function resolvePlaceNames(placeIds){
-      const ids = Array.from(new Set(placeIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
-      const missing = ids.filter(id => !placeNameCache.has(id));
-      if (!missing.length) return;
-
-      try{
-        const url = "https://games.roblox.com/v1/games/multiget-place-details?placeIds=" + missing.join(",");
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!Array.isArray(data)) return;
-
-        for (const item of data){
-          const pid = Number(item.placeId || 0);
-          const name = String(item.name || "");
-          if (pid) placeNameCache.set(pid, name || ("Place " + pid));
-        }
-      } catch {}
-    }
 
     function setCounts(){
       els.activeCount.textContent = String(activePlayers.length || 0);
@@ -645,10 +607,7 @@
     function matchesQuery(obj, q){
       if (!q) return true;
       const s = q.toLowerCase();
-      const fields = [
-        obj.displayName, obj.username, obj.userId,
-        obj.by, obj.action, obj.reason
-      ].map(v => String(v ?? "").toLowerCase());
+      const fields = [obj.displayName,obj.username,obj.userId,obj.by,obj.action,obj.reason].map(v => String(v ?? "").toLowerCase());
       return fields.some(v => v.includes(s));
     }
 
@@ -668,27 +627,23 @@
       updateButtons();
     }
 
-    /* ✅ FIXED: always recompute disabled state (no "if (!disabled)" guards) */
+    /* ✅ FIX: buttons enable purely from selection + staff */
     function updateButtons(){
-      const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
-      const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
+      const hasActive = Number.isFinite(selectedActiveUserId);
+      const hasMod = Number.isFinite(selectedModeratedUserId);
       const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
 
-      const canKick = hasActive && !activeIsStaff;
-      const canBan = hasActive && !activeIsStaff;
+      const canKickBan = hasActive && !activeIsStaff;
+      els.kick.disabled = !canKickBan || els.kick.disabled;
+      els.kickReason.disabled = !canKickBan || els.kickReason.disabled;
+      els.ban.disabled = !canKickBan || els.ban.disabled;
+      els.banReason.disabled = !canKickBan || els.banReason.disabled;
+
       const canUnban = hasMod;
+      els.unban.disabled = !canUnban || els.unban.disabled;
+      els.unbanReason.disabled = !canUnban || els.unbanReason.disabled;
 
-      els.kick.disabled = !canKick || buttonCooling(els.kick);
-      els.kickReason.disabled = !canKick || buttonCooling(els.kickReason);
-      els.ban.disabled = !canBan || buttonCooling(els.ban);
-      els.banReason.disabled = !canBan || buttonCooling(els.banReason);
-
-      els.unban.disabled = !canUnban || buttonCooling(els.unban);
-      els.unbanReason.disabled = !canUnban || buttonCooling(els.unbanReason);
-
-      els.save.disabled = buttonCooling(els.save);
-      els.logout.disabled = buttonCooling(els.logout);
-      els.refresh.disabled = buttonCooling(els.refresh);
+      setCounts();
     }
 
     function makeActiveCardHTML(p){
@@ -698,8 +653,7 @@
       const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
 
       const pid = Number(p.placeId || 0);
-      const pname = pid ? (placeNameCache.get(pid) || ("Place " + pid)) : "Place -";
-      const placePill = `<span class="pill">${esc(pname)}</span>`;
+      const placePill = `<span class="pill">${pid ? ("Place " + pid) : "Place -"}</span>`;
 
       return `
         <div><b>${name}</b> <span class="small">(@${handle})</span> ${team} ${placePill} ${staff}</div>
@@ -727,31 +681,29 @@
 
     function renderActive(){
       els.activeList.innerHTML = "";
-      setCounts();
 
       const q = String(els.activeSearch.value || "").trim().toLowerCase();
       const list = q ? activePlayers.filter(p => matchesQuery(p, q)) : activePlayers;
 
       if (!list.length){
         els.activeList.innerHTML = "<div class='small'>No players found.</div>";
+        updateButtons();
         return;
       }
 
       for (const p of list){
         const staff = isStaff(p.userId);
-
         const div = document.createElement("div");
         div.className =
           "card" +
           (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
           (staff ? " staffCard" : "");
-
         div.innerHTML = makeActiveCardHTML(p);
 
-        if (!staff) {
-          div.onclick = () => setSelectedActive(p.userId);
-
+        if (!staff){
+          div.addEventListener("click", () => setSelectedActive(p.userId));
           div.draggable = true;
+
           div.addEventListener("dragstart", (e) => {
             div.classList.add("dragging");
             e.dataTransfer.setData("text/plain", JSON.stringify({
@@ -763,22 +715,25 @@
             }));
             e.dataTransfer.effectAllowed = "move";
           });
+
           div.addEventListener("dragend", () => div.classList.remove("dragging"));
         }
 
         els.activeList.appendChild(div);
       }
+
+      updateButtons();
     }
 
     function renderModerated(){
       els.moderatedList.innerHTML = "";
-      setCounts();
 
       const q = String(els.moderatedSearch.value || "").trim().toLowerCase();
       const list = q ? moderatedLog.filter(m => matchesQuery(m, q)) : moderatedLog;
 
       if (!list.length){
         els.moderatedList.innerHTML = "<div class='small'>No moderated users found.</div>";
+        updateButtons();
         return;
       }
 
@@ -786,9 +741,11 @@
         const div = document.createElement("div");
         div.className = "card" + (Number(m.userId) === Number(selectedModeratedUserId) ? " selected" : "");
         div.innerHTML = makeModeratedCardHTML(m);
-        div.onclick = () => setSelectedModerated(m.userId);
+        div.addEventListener("click", () => setSelectedModerated(m.userId));
         els.moderatedList.appendChild(div);
       }
+
+      updateButtons();
     }
 
     async function fetchModerated(){
@@ -802,7 +759,6 @@
         for (const it of items){
           const uid = Number(it.userId || 0);
           if (!uid) continue;
-
           const existing = map.get(uid);
           if (!existing || Number(it.createdAt || 0) > Number(existing.createdAt || 0)){
             map.set(uid, it);
@@ -810,11 +766,12 @@
         }
 
         moderatedLog = Array.from(map.values()).sort((a,b) => Number(b.createdAt||0) - Number(a.createdAt||0));
-        if (selectedModeratedUserId && !moderatedLog.some(x => Number(x.userId) === Number(selectedModeratedUserId))){
+
+        if (Number.isFinite(selectedModeratedUserId) && !moderatedLog.some(x => Number(x.userId) === Number(selectedModeratedUserId))){
           selectedModeratedUserId = null;
         }
+
         renderModerated();
-        updateButtons();
       } catch(e){
         toast("err", "Moderated list failed", e.message);
       }
@@ -831,21 +788,18 @@
         if (!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
 
-        els.meta.textContent =
-          `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? (data.players ? data.players.length : 0)}`;
-
         activePlayers = Array.isArray(data.players) ? data.players : [];
         activePlayers.sort((a,b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
 
-        await resolvePlaceNames(activePlayers.map(p => Number(p.placeId || 0)));
+        els.meta.textContent =
+          `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
 
-        if (selectedActiveUserId && !activePlayers.some(p => Number(p.userId) === Number(selectedActiveUserId))) {
+        if (Number.isFinite(selectedActiveUserId) && !activePlayers.some(p => Number(p.userId) === Number(selectedActiveUserId))){
           selectedActiveUserId = null;
         }
 
         setStatus("ok", "OK");
         renderActive();
-        updateButtons();
       } catch(e){
         setStatus("error", "Failed: " + e.message);
         toast("err", "Refresh failed", e.message);
@@ -892,14 +846,9 @@
     els.activeSearch.addEventListener("input", () => renderActive());
     els.moderatedSearch.addEventListener("input", () => renderModerated());
 
-    /* ✅ Drag to BAN by dropping into the Moderated column itself */
-    els.moderatedCol.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      els.moderatedCol.classList.add("dropHot");
-    });
-    els.moderatedCol.addEventListener("dragleave", () => {
-      els.moderatedCol.classList.remove("dropHot");
-    });
+    /* Drag drop ban */
+    els.moderatedCol.addEventListener("dragover", (e) => { e.preventDefault(); els.moderatedCol.classList.add("dropHot"); });
+    els.moderatedCol.addEventListener("dragleave", () => els.moderatedCol.classList.remove("dropHot"));
     els.moderatedCol.addEventListener("drop", async (e) => {
       e.preventDefault();
       els.moderatedCol.classList.remove("dropHot");
@@ -914,7 +863,7 @@
         return;
       }
 
-      if (!startBtnCooldown(els.ban, 3, "Ban")) return;
+      if (!beginCooldown(els.ban, 3, "Ban")) return;
 
       const ok = await sendModeration("ban", uid, "");
       if (ok.ok){
@@ -925,66 +874,68 @@
 
     /* Buttons (3s cooldown) */
     els.kick.onclick = async () => {
-      if (!startBtnCooldown(els.kick, 3, "Kick")) return;
       const p = getSelectedActive(); if (!p) return;
+      if (!beginCooldown(els.kick, 3, "Kick")) return;
       const ok = await sendModeration("kick", p.userId, "");
       if (ok.ok){ toast("ok", "Kick sent", `${p.displayName || p.username}`); await fetchModerated(); }
     };
 
     els.kickReason.onclick = async () => {
-      if (!startBtnCooldown(els.kickReason, 3, "Kick")) return;
       const p = getSelectedActive(); if (!p) return;
+      if (!beginCooldown(els.kickReason, 3, "Kick")) return;
       const r = prompt("Kick reason?") || "";
       const ok = await sendModeration("kick", p.userId, r);
       if (ok.ok){ toast("ok", "Kick sent", r ? `Reason: ${r}` : ""); await fetchModerated(); }
     };
 
     els.ban.onclick = async () => {
-      if (!startBtnCooldown(els.ban, 3, "Ban")) return;
       const p = getSelectedActive(); if (!p) return;
+      if (!beginCooldown(els.ban, 3, "Ban")) return;
       const ok = await sendModeration("ban", p.userId, "");
       if (ok.ok){ toast("ok", "Ban sent", `${p.displayName || p.username}`); await fetchModerated(); }
     };
 
     els.banReason.onclick = async () => {
-      if (!startBtnCooldown(els.banReason, 3, "Ban")) return;
       const p = getSelectedActive(); if (!p) return;
+      if (!beginCooldown(els.banReason, 3, "Ban")) return;
       const r = prompt("Ban reason?") || "";
       const ok = await sendModeration("ban", p.userId, r);
       if (ok.ok){ toast("ok", "Ban sent", r ? `Reason: ${r}` : ""); await fetchModerated(); }
     };
 
     els.unban.onclick = async () => {
-      if (!startBtnCooldown(els.unban, 3, "Unban")) return;
       const p = getSelectedModerated(); if (!p) return;
+      if (!beginCooldown(els.unban, 3, "Unban")) return;
       const ok = await sendModeration("unban", p.userId, "");
       if (ok.ok){ toast("ok", "Unban sent", `UserId: ${p.userId}`); await fetchModerated(); }
     };
 
     els.unbanReason.onclick = async () => {
-      if (!startBtnCooldown(els.unbanReason, 3, "Unban")) return;
       const p = getSelectedModerated(); if (!p) return;
+      if (!beginCooldown(els.unbanReason, 3, "Unban")) return;
       const r = prompt("Unban note?") || "";
       const ok = await sendModeration("unban", p.userId, r);
       if (ok.ok){ toast("ok", "Unban sent", r ? `Note: ${r}` : ""); await fetchModerated(); }
     };
 
     els.save.onclick = () => {
-      if (!startBtnCooldown(els.save, 3, "Save")) return;
+      if (!beginCooldown(els.save, 3, "Save")) return;
       localStorage.setItem("players_api_url", els.playersApi.value.trim());
       localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
       setStatus("ok", "Saved");
       toast("ok", "Saved", "API URL + Admin Key stored in this browser");
     };
 
+    /* Refresh ONLY on click + 10s cooldown */
     els.refresh.onclick = async () => {
-      if (!startRefreshCooldown(10)) return;
+      if (els.refresh.disabled) return;
+      beginCooldown(els.refresh, 10, "Refresh");
       await fetchPlayers();
       await fetchModerated();
     };
 
     els.logout.onclick = () => {
-      if (!startBtnCooldown(els.logout, 3, "Logout")) return;
+      if (!beginCooldown(els.logout, 3, "Logout")) return;
       if (!confirm("Log out?")) return;
       clearLoggedIn();
       toast("ok", "Logged out", "");
@@ -992,7 +943,6 @@
     };
 
     function attemptLogin(){
-      if (!startBtnCooldown(els.loginBtn, 3, "Login")) return;
       const u = normalizeUser(els.loginUser.value);
       if (!u){
         els.loginStatus.textContent = "Enter a username.";
@@ -1023,10 +973,18 @@
       setStatus("ok", "Ready (press Refresh)");
       renderActive();
       renderModerated();
+
+      // start with buttons disabled until selection
+      els.kick.disabled = true;
+      els.kickReason.disabled = true;
+      els.ban.disabled = true;
+      els.banReason.disabled = true;
+      els.unban.disabled = true;
+      els.unbanReason.disabled = true;
+
       updateButtons();
     }
 
-    /* Boot */
     if (isLoggedIn()){
       showApp();
       initPanel();
