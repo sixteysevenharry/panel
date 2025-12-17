@@ -63,10 +63,7 @@
       padding:24px;
     }
 
-    .app{
-      width:min(1200px, 100%);
-      margin:0 auto;
-    }
+    .app{width:min(1200px, 100%);margin:0 auto;}
 
     .top{
       display:flex;
@@ -97,10 +94,7 @@
     }
     [data-theme="dark"] .pillStatus{background:rgba(18,23,34,.6)}
 
-    .dot{
-      width:8px;height:8px;border-radius:50%;
-      background:var(--muted);
-    }
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
     .dot.ok{background:var(--ok)}
     .dot.err{background:var(--danger)}
     .dot.load{background:var(--muted); animation:pulse 1.2s ease-in-out infinite}
@@ -125,10 +119,7 @@
       color:var(--muted);
     }
     .seg button:last-child{border-right:0}
-    .seg button[aria-pressed="true"]{
-      background:var(--btnHover);
-      color:var(--text);
-    }
+    .seg button[aria-pressed="true"]{background:var(--btnHover);color:var(--text);}
 
     .grid{
       display:grid;
@@ -323,21 +314,9 @@
       padding:18px;
       animation: toastIn .18s ease-out;
     }
-    .loginTitle{
-      font-size:22px;
-      margin:0 0 8px;
-    }
-    .loginHint{
-      margin:0 0 14px;
-      color:var(--muted);
-      font-size:13px;
-    }
-    .loginRow{
-      display:flex;
-      gap:10px;
-      align-items:flex-end;
-      flex-wrap:wrap;
-    }
+    .loginTitle{font-size:22px;margin:0 0 8px;}
+    .loginHint{margin:0 0 14px;color:var(--muted);font-size:13px;}
+    .loginRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
     .loginRow .field{flex:1 1 240px; min-width:240px}
     .loginFoot{
       margin-top:10px;
@@ -349,10 +328,7 @@
       flex-wrap:wrap;
       align-items:center;
     }
-    .ghostBtn{
-      border:1px solid var(--border);
-      background:transparent;
-    }
+    .ghostBtn{border:1px solid var(--border);background:transparent;}
     .ghostBtn:hover{background:var(--btnHover)}
 
     @media (prefers-reduced-motion: reduce){
@@ -453,22 +429,9 @@
   <div class="toastWrap" id="toasts"></div>
 
   <script>
-    const ALLOWED_USERNAMES = new Set([
-      "eagla",
-      "nebula",
-      "specimen",
-      "arrow",
-      "damage",
-      "caprie"
-    ]);
+    const ALLOWED_USERNAMES = new Set(["eagla","nebula","specimen","arrow","damage","caprie"]);
 
-    const STAFF_IDS = new Set([
-      8007453710,
-      4976035348,
-      154251360,
-      9930928180,
-      485280430
-    ]);
+    const STAFF_IDS = new Set([8007453710,4976035348,154251360,9930928180,485280430]);
 
     const els = {
       app: document.getElementById("app"),
@@ -537,17 +500,11 @@
       els.themeLight.setAttribute("aria-pressed", mode === "light");
       els.themeDark.setAttribute("aria-pressed", mode === "dark");
       els.themeAuto.setAttribute("aria-pressed", mode === "auto");
-
-      if (mode === "auto"){
-        document.documentElement.removeAttribute("data-theme");
-        return;
-      }
+      if (mode === "auto"){ document.documentElement.removeAttribute("data-theme"); return; }
       document.documentElement.setAttribute("data-theme", mode);
     }
 
-    const savedTheme = localStorage.getItem("panel_theme_mode") || "dark";
-    applyTheme(savedTheme);
-
+    applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
     els.themeLight.onclick = () => applyTheme("light");
     els.themeDark.onclick = () => applyTheme("dark");
     els.themeAuto.onclick = () => applyTheme("auto");
@@ -560,28 +517,18 @@
       });
     }
 
-    function normalizeUser(s){
-      return String(s || "").trim().toLowerCase();
-    }
-
-    function isLoggedIn(){
-      return localStorage.getItem("panel_logged_in") === "1";
-    }
-
-    function getLoggedInUser(){
-      return String(localStorage.getItem("panel_login_user") || "");
-    }
+    function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
+    function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
+    function getLoggedInUser(){ return String(localStorage.getItem("panel_login_user") || ""); }
 
     function setLoggedIn(username){
       localStorage.setItem("panel_logged_in", "1");
       localStorage.setItem("panel_login_user", String(username || ""));
     }
-
     function clearLoggedIn(){
       localStorage.removeItem("panel_logged_in");
       localStorage.removeItem("panel_login_user");
     }
-
     function showLogin(){
       els.app.style.display = "none";
       els.loginOverlay.style.display = "flex";
@@ -589,34 +536,25 @@
       els.loginUser.value = "";
       els.loginUser.focus();
     }
-
     function showApp(){
       els.loginOverlay.style.display = "none";
       els.app.style.display = "block";
     }
 
-    function isStaff(userId){
-      return STAFF_IDS.has(Number(userId));
-    }
+    function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
     function loadModerated(){
       try {
         const raw = localStorage.getItem("moderated_users_v1");
         const list = raw ? JSON.parse(raw) : [];
         return Array.isArray(list) ? list : [];
-      } catch {
-        return [];
-      }
+      } catch { return []; }
     }
-
-    function saveModerated(list){
-      localStorage.setItem("moderated_users_v1", JSON.stringify(list));
-    }
+    function saveModerated(list){ localStorage.setItem("moderated_users_v1", JSON.stringify(list)); }
 
     function upsertModerated(user, action, reason, by){
       const list = loadModerated();
       const idx = list.findIndex(x => Number(x.userId) === Number(user.userId));
-
       const entry = {
         userId: Number(user.userId),
         username: user.username || "",
@@ -627,15 +565,8 @@
         by: String(by || ""),
         updatedAt: new Date().toISOString()
       };
-
       if (idx >= 0) list[idx] = entry;
       else list.unshift(entry);
-
-      saveModerated(list);
-    }
-
-    function removeModerated(userId){
-      const list = loadModerated().filter(x => Number(x.userId) !== Number(userId));
       saveModerated(list);
     }
 
@@ -662,7 +593,6 @@
           refreshCooldownTimer = null;
         }
       };
-
       tick();
     }
 
@@ -675,7 +605,6 @@
       btn.disabled = true;
 
       const until = Date.now() + seconds * 1000;
-
       const tick = () => {
         const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
         if (left > 0) {
@@ -690,7 +619,6 @@
           updateButtons();
         }
       };
-
       tick();
       return true;
     }
@@ -702,7 +630,6 @@
       renderModerated();
       updateButtons();
     }
-
     function setSelectedModerated(userId){
       selectedModeratedUserId = Number(userId);
       selectedActiveUserId = null;
@@ -716,22 +643,25 @@
       const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
 
       const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
-      els.kick.disabled = !hasActive || activeIsStaff || els.kick.disabled;
-      els.kickReason.disabled = !hasActive || activeIsStaff || els.kickReason.disabled;
-      els.ban.disabled = !hasActive || activeIsStaff || els.ban.disabled;
-      els.banReason.disabled = !hasActive || activeIsStaff || els.banReason.disabled;
+      if (!els.kick.disabled) els.kick.disabled = !hasActive || activeIsStaff;
+      if (!els.kickReason.disabled) els.kickReason.disabled = !hasActive || activeIsStaff;
+      if (!els.ban.disabled) els.ban.disabled = !hasActive || activeIsStaff;
+      if (!els.banReason.disabled) els.banReason.disabled = !hasActive || activeIsStaff;
 
-      els.unban.disabled = !hasMod || els.unban.disabled;
-      els.unbanReason.disabled = !hasMod || els.unbanReason.disabled;
+      if (!els.unban.disabled) els.unban.disabled = !hasMod;
+      if (!els.unbanReason.disabled) els.unbanReason.disabled = !hasMod;
     }
 
-    function makeCardHTML(p){
+    function makeCardHTML(p, showPlace){
       const name = esc(p.displayName || p.username);
       const handle = esc(p.username || "");
       const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
       const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
+      const place = showPlace
+        ? `<span class="pill">Place ${esc(p.placeId ?? "-")}</span>`
+        : "";
       return `
-        <div><b>${name}</b> <span class="small">(@${handle})</span> ${team} ${staff}</div>
+        <div><b>${name}</b> <span class="small">(@${handle})</span> ${team} ${place} ${staff}</div>
         <div class="small">UserId: ${Number(p.userId) || ""}</div>
       `;
     }
@@ -758,7 +688,7 @@
           (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
           (staff ? " staffCard" : "");
 
-        div.innerHTML = makeCardHTML(p);
+        div.innerHTML = makeCardHTML(p, true);
 
         if (!staff) div.onclick = () => setSelectedActive(p.userId);
 
@@ -786,10 +716,10 @@
 
         const actionLine = p.action ? `<div class="small">Action: ${esc(p.action)}</div>` : "";
         const reasonLine = p.reason ? `<div class="small">Reason: ${esc(p.reason)}</div>` : "";
-        const byLine = p.by ? `<div class="small">By: ${esc(p.by)}</div>` : `<div class="small">By: Unknown</div>`;
+        const byLine = `<div class="small">By: ${esc(p.by || "Unknown")}</div>`;
         const timeLine = p.updatedAt ? `<div class="small">At: ${esc(p.updatedAt)}</div>` : "";
 
-        div.innerHTML = makeCardHTML(p) + actionLine + reasonLine + byLine + timeLine;
+        div.innerHTML = makeCardHTML(p, false) + actionLine + reasonLine + byLine + timeLine;
 
         if (!staff) div.onclick = () => setSelectedModerated(p.userId);
 
@@ -799,10 +729,7 @@
 
     async function fetchPlayers(){
       const url = els.playersApi.value.trim();
-      if (!url) {
-        setStatus("error", "Paste your /players URL.");
-        return;
-      }
+      if (!url) { setStatus("error", "Paste your /players URL."); return; }
 
       setStatus("loading", "Loading...");
 
@@ -838,22 +765,15 @@
       }
 
       const adminKey = els.adminKey.value.trim();
-      if (!adminKey) {
-        alert("Enter ADMIN_KEY first.");
-        return { ok: false };
-      }
+      if (!adminKey) { alert("Enter ADMIN_KEY first."); return { ok: false }; }
 
       const by = getLoggedInUser() || "";
-
       const payload = { action, userId, by };
       if (reason) payload.reason = reason;
 
       const res = await fetch(MOD_ENDPOINT, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-key": adminKey
-        },
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify(payload)
       });
 
@@ -871,7 +791,6 @@
     function getSelectedActive(){
       return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null;
     }
-
     function getSelectedModerated(){
       return loadModerated().find(p => Number(p.userId) === Number(selectedModeratedUserId)) || null;
     }
@@ -901,9 +820,7 @@
     }
 
     els.loginBtn.onclick = attemptLogin;
-    els.loginUser.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") attemptLogin();
-    });
+    els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
 
     els.logout.onclick = () => {
       if (!startBtnCooldown(els.logout, 3)) return;
@@ -915,9 +832,7 @@
 
     els.kick.onclick = async () => {
       if (!startBtnCooldown(els.kick, 3)) return;
-
-      const p = getSelectedActive();
-      if (!p) return;
+      const p = getSelectedActive(); if (!p) return;
       const ok = await sendModeration("kick", p.userId, "");
       if (ok.ok) {
         upsertModerated(p, "kick", "", ok.by);
@@ -928,9 +843,7 @@
 
     els.kickReason.onclick = async () => {
       if (!startBtnCooldown(els.kickReason, 3)) return;
-
-      const p = getSelectedActive();
-      if (!p) return;
+      const p = getSelectedActive(); if (!p) return;
       const r = prompt("Kick reason?") || "";
       const ok = await sendModeration("kick", p.userId, r);
       if (ok.ok) {
@@ -942,9 +855,7 @@
 
     els.ban.onclick = async () => {
       if (!startBtnCooldown(els.ban, 3)) return;
-
-      const p = getSelectedActive();
-      if (!p) return;
+      const p = getSelectedActive(); if (!p) return;
       const ok = await sendModeration("ban", p.userId, "");
       if (ok.ok) {
         upsertModerated(p, "ban", "", ok.by);
@@ -955,9 +866,7 @@
 
     els.banReason.onclick = async () => {
       if (!startBtnCooldown(els.banReason, 3)) return;
-
-      const p = getSelectedActive();
-      if (!p) return;
+      const p = getSelectedActive(); if (!p) return;
       const r = prompt("Ban reason?") || "";
       const ok = await sendModeration("ban", p.userId, r);
       if (ok.ok) {
@@ -969,9 +878,7 @@
 
     els.unban.onclick = async () => {
       if (!startBtnCooldown(els.unban, 3)) return;
-
-      const p = getSelectedModerated();
-      if (!p) return;
+      const p = getSelectedModerated(); if (!p) return;
       const ok = await sendModeration("unban", p.userId, "");
       if (ok.ok) {
         upsertModerated(p, "unban", "", ok.by);
@@ -982,9 +889,7 @@
 
     els.unbanReason.onclick = async () => {
       if (!startBtnCooldown(els.unbanReason, 3)) return;
-
-      const p = getSelectedModerated();
-      if (!p) return;
+      const p = getSelectedModerated(); if (!p) return;
       const r = prompt("Unban note?") || "";
       const ok = await sendModeration("unban", p.userId, r);
       if (ok.ok) {
@@ -994,9 +899,26 @@
       }
     };
 
+    function upsertModerated(user, action, reason, by){
+      const list = loadModerated();
+      const idx = list.findIndex(x => Number(x.userId) === Number(user.userId));
+      const entry = {
+        userId: Number(user.userId),
+        username: user.username || "",
+        displayName: user.displayName || "",
+        team: user.team || null,
+        action: String(action || ""),
+        reason: reason || "",
+        by: String(by || ""),
+        updatedAt: new Date().toISOString()
+      };
+      if (idx >= 0) list[idx] = entry;
+      else list.unshift(entry);
+      saveModerated(list);
+    }
+
     els.save.onclick = () => {
       if (!startBtnCooldown(els.save, 3)) return;
-
       localStorage.setItem("players_api_url", els.playersApi.value.trim());
       localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
       setStatus("ok", "Saved");
@@ -1011,7 +933,6 @@
 
     els.clearModerated.onclick = () => {
       if (!startBtnCooldown(els.clearModerated, 3)) return;
-
       if (!confirm("Clear moderated list (local only)?")) return;
       saveModerated([]);
       selectedModeratedUserId = null;
@@ -1023,23 +944,15 @@
     function initPanel(){
       const savedApi = localStorage.getItem("players_api_url");
       const savedAdmin = localStorage.getItem("admin_key_v1");
-      if (savedApi) els.playersApi.value = savedApi;
-      else els.playersApi.value = "https://panel.sixteysevenharry.workers.dev/players";
+      els.playersApi.value = savedApi || "https://panel.sixteysevenharry.workers.dev/players";
       if (savedAdmin) els.adminKey.value = savedAdmin;
-
       renderActive();
       renderModerated();
       updateButtons();
-
       setStatus("ok", "Ready (press Refresh)");
     }
 
-    if (isLoggedIn()){
-      showApp();
-      initPanel();
-    } else {
-      showLogin();
-    }
+    if (isLoggedIn()){ showApp(); initPanel(); } else { showLogin(); }
   </script>
 </body>
 </html>
