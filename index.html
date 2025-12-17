@@ -942,5 +942,36 @@
       showLogin();
     }
   </script>
+
+<script>
+/* === HOTFIX: reliable button enabling === */
+function forceUpdateButtons(){
+  const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
+  const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
+
+  const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
+
+  els.kick.disabled = !hasActive || activeIsStaff;
+  els.kickReason.disabled = !hasActive || activeIsStaff;
+  els.ban.disabled = !hasActive || activeIsStaff;
+  els.banReason.disabled = !hasActive || activeIsStaff;
+
+  els.unban.disabled = !hasMod;
+  els.unbanReason.disabled = !hasMod;
+}
+
+const _setSelectedActive = setSelectedActive;
+setSelectedActive = function(id){
+  _setSelectedActive(id);
+  forceUpdateButtons();
+};
+
+const _setSelectedModerated = setSelectedModerated;
+setSelectedModerated = function(id){
+  _setSelectedModerated(id);
+  forceUpdateButtons();
+};
+</script>
+
 </body>
 </html>
