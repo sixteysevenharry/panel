@@ -940,22 +940,53 @@ const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId 
       tick();
     }
 
-    async function sendModeration(action, userId, reason, user){
-      if (isStaff(userId)) { toast("err","Blocked","That user is STAFF."); return { ok:false }; }
+    async function sendModeration(action, user, reason){
+      if (!user || typeof user !== "object") return { ok: false };
 
-      const adminKey = els.adminKey.value.trim();
-      if (!adminKey) { toast("err","Missing key","Enter ADMIN_KEY first."); return { ok:false }; }
+      try{
+        if (typeof isStaff === "function" && isStaff(user.userId)) {
+          alert("That user is marked as STAFF and cannot be moderated from this panel.");
+          return { ok: false };
+        }
+      } catch {}
 
-      const payload = { action, userId, by: getLoginUser() };
-      if (reason) payload.reason = reason;
+      const adminKey = els.adminKey ? els.adminKey.value.trim() : (localStorage.getItem("admin_key_v1") || "").trim();
+      if (!adminKey) {
+        alert("Enter ADMIN_KEY first.");
+        return { ok: false };
+      }
+
+      const payload = {
+        action,
+        userId: Number(user.userId),
+        reason: reason || "",
+        username: user.username || "",
+        displayName: user.displayName || "",
+        by: (localStorage.getItem("panel_login_user") || "").toString()
+      };
 
       const res = await fetch(MOD_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey
+        },
         body: JSON.stringify(payload)
-      })
+      });
+
+      let body = null;
+      try { body = await res.json(); } catch {}
+
+      if (!res.ok) {
+        alert((body && body.error) ? body.error : ("Request failed: HTTP " + res.status));
+        return { ok: false };
+      }
+
+      return { ok: true, id: body && body.id ? body.id : null };
+    }
+
     async function enforceAndVerify(action, user, reason){
-      const resp = await sendModeration(action, Number(user.userId), reason || "", user);
+      const resp = await sendModeration(action, user, reason || "");
       if (!resp.ok) return { ok: false };
 
       if (action === "kick" || action === "ban"){
