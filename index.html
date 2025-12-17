@@ -940,7 +940,7 @@ const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId 
       tick();
     }
 
-    async function sendModeration(action, userId, reason){
+    async function sendModeration(action, userId, reason, user){
       if (isStaff(userId)) { toast("err","Blocked","That user is STAFF."); return { ok:false }; }
 
       const adminKey = els.adminKey.value.trim();
@@ -955,7 +955,7 @@ const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId 
         body: JSON.stringify(payload)
       }
     async function enforceAndVerify(action, user, reason){
-      const resp = await sendModeration(action, Number(user.userId), reason || "");
+      const resp = await sendModeration(action, Number(user.userId), reason || "", user);
       if (!resp.ok) return { ok: false };
 
       if (action === "kick" || action === "ban"){
