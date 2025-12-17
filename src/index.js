@@ -33,8 +33,11 @@ export default {
       }
     };
 
-    const LOG_KEY = "moderation_log_v2"; // verified-only log
-    const MAX_LOG = 900;
+    const MOD_LOG_KEY = "moderation_log_v1";
+    const MAX_LOG = 600;
+
+    // Active bans (current bans only)
+    const BAN_STATE_KEY = "ban_state_v1"; // { "<userId>": {userId, reason, by, bannedAt, lastId} }
 
     try {
       const url = new URL(request.url);
@@ -47,6 +50,9 @@ export default {
         );
       }
 
+      /* =====================================================
+         ROBLOX -> UPDATE SERVER SNAPSHOT
+         ===================================================== */
       if (url.pathname === "/update" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
@@ -57,10 +63,14 @@ export default {
         const placeId = Number(body.placeId || 0);
         let jobId = String(body.jobId || "");
         const players = Array.isArray(body.players) ? body.players : null;
+
         if (!jobId) jobId = "studio-" + crypto.randomUUID();
 
         if (!placeId || !players) {
-          return json({ error: "Invalid payload", expected: { placeId: "number", jobId: "string", players: "array" } }, 400);
+          return json(
+            { error: "Invalid payload", expected: { placeId: "number", jobId: "string", players: "array" } },
+            400
+          );
         }
 
         const now = Date.now();
@@ -82,12 +92,18 @@ export default {
 
         const index = safeParseObj(await env.LIVE.get("server_index"));
         index[serverKey] = now;
-        for (const k in index) if (now - Number(index[k] || 0) > 180000) delete index[k];
-        await env.LIVE.put("server_index", JSON.stringify(index));
 
+        for (const k in index) {
+          if (now - Number(index[k] || 0) > 180000) delete index[k];
+        }
+
+        await env.LIVE.put("server_index", JSON.stringify(index));
         return json({ ok: true });
       }
 
+      /* =====================================================
+         WEBSITE -> GET ALL ACTIVE PLAYERS (with placeId)
+         ===================================================== */
       if (url.pathname === "/players" && request.method === "GET") {
         const index = safeParseObj(await env.LIVE.get("server_index"));
 
@@ -97,12 +113,15 @@ export default {
         for (const serverKey in index) {
           const raw = await env.LIVE.get(serverKey);
           if (!raw) continue;
+
           try {
             const snap = JSON.parse(raw);
             const pid = Number(snap.placeId || 0);
+
             for (const p of snap.players || []) {
               const id = Number(p.userId);
               if (!id) continue;
+
               const unique = `${id}:${pid}`;
               if (seen.has(unique)) continue;
               seen.add(unique);
@@ -122,10 +141,16 @@ export default {
           String(a.displayName || a.username).localeCompare(String(b.displayName || b.username))
         );
 
-        return json({ updatedAt: new Date().toISOString(), totalPlayers: combined.length, players: combined });
+        return json({
+          updatedAt: new Date().toISOString(),
+          totalPlayers: combined.length,
+          players: combined
+        });
       }
 
-      // Create command (NO LOG HERE)
+      /* =====================================================
+         PANEL -> CREATE MODERATION COMMAND
+         ===================================================== */
       if (url.pathname === "/admin/moderate" && request.method === "POST") {
         const adminKey = request.headers.get("x-admin-key") || "";
         if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) return json({ error: "Unauthorized" }, 401);
@@ -137,27 +162,71 @@ export default {
         const userId = Number(body.userId || 0);
         const reason = String(body.reason || "").slice(0, 180);
         const by = String(body.by || "").slice(0, 60);
-        const username = String(body.username || "").slice(0, 40);
-        const displayName = String(body.displayName || "").slice(0, 60);
 
-        if (!userId || !["kick", "ban", "unban"].includes(action)) return json({ error: "Invalid command" }, 400);
+        if (!userId || !["kick", "ban", "unban"].includes(action)) {
+          return json({ error: "Invalid command" }, 400);
+        }
 
         const id = crypto.randomUUID();
         const now = Date.now();
 
-        const cmd = { id, createdAt: now, action, userId, reason, by, username, displayName };
-
-        await env.LIVE.put(`cmd:${id}`, JSON.stringify(cmd), { expirationTtl: 600 });
+        await env.LIVE.put(
+          `cmd:${id}`,
+          JSON.stringify({ id, createdAt: now, action, userId, reason, by }),
+          { expirationTtl: 600 }
+        );
 
         const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
         cmdIndex[id] = now;
         await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
 
-        await env.LIVE.put(`hist:${id}`, JSON.stringify({ ...cmd, status: "pending", ok: null, message: "", appliedAt: null }), { expirationTtl: 3600 });
+        // Shared moderation history (all users)
+        const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+        log.unshift({
+          id,
+          createdAt: now,
+          action,
+          userId,
+          reason,
+          by,
+          status: "pending"
+        });
+        if (log.length > MAX_LOG) log.length = MAX_LOG;
+        await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
 
         return json({ ok: true, id });
       }
 
+      /* =====================================================
+         WEBSITE -> CURRENTLY BANNED USERS (ACTIVE ONLY)
+         ===================================================== */
+      if (url.pathname === "/moderated" && request.method === "GET") {
+        const state = safeParseObj(await env.LIVE.get(BAN_STATE_KEY));
+        const items = Object.values(state || {})
+          .filter(Boolean)
+          .map((x) => ({
+            userId: Number(x.userId),
+            reason: String(x.reason || ""),
+            by: String(x.by || ""),
+            bannedAt: Number(x.bannedAt || 0),
+            lastId: String(x.lastId || "")
+          }))
+          .sort((a, b) => Number(b.bannedAt || 0) - Number(a.bannedAt || 0));
+
+        return json({ ok: true, items });
+      }
+
+      /* =====================================================
+         WEBSITE -> FULL MODERATION HISTORY
+         ===================================================== */
+      if (url.pathname === "/history" && request.method === "GET") {
+        const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+        return json({ ok: true, items: log });
+      }
+
+      /* =====================================================
+         ROBLOX -> GET MODERATION COMMANDS
+         ===================================================== */
       if (url.pathname === "/commands" && request.method === "GET") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
@@ -167,9 +236,14 @@ export default {
         const commands = [];
 
         for (const id in cmdIndex) {
-          if (now - Number(cmdIndex[id] || 0) > 600000) { delete cmdIndex[id]; continue; }
+          if (now - Number(cmdIndex[id] || 0) > 600000) {
+            delete cmdIndex[id];
+            continue;
+          }
+
           const raw = await env.LIVE.get(`cmd:${id}`);
           if (!raw) continue;
+
           try { commands.push(JSON.parse(raw)); } catch {}
         }
 
@@ -177,6 +251,10 @@ export default {
         return json({ ok: true, commands });
       }
 
+      /* =====================================================
+         ROBLOX -> ACK COMMAND (CONFIRMATION)
+         Body: { id, action, userId, ok }
+         ===================================================== */
       if (url.pathname === "/ack" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
@@ -185,6 +263,10 @@ export default {
         try { body = await request.json(); } catch { body = {}; }
 
         const id = String(body.id || "");
+        const action = String(body.action || "");
+        const userId = Number(body.userId || 0);
+        const ok = body.ok === true;
+
         if (!id) return json({ error: "Missing id" }, 400);
 
         await env.LIVE.delete(`cmd:${id}`);
@@ -193,70 +275,40 @@ export default {
         delete cmdIndex[id];
         await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
 
-        return json({ ok: true });
-      }
+        // Update history status for this command id
+        const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+        const idx = log.findIndex((x) => String(x?.id || "") === id);
+        if (idx >= 0) {
+          log[idx].status = ok ? "applied" : "failed";
+          log[idx].ackedAt = Date.now();
+          await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
+        }
 
-      // Roblox posts result here AFTER enforcement. Only then we add to shared log.
-      if (url.pathname === "/apply" && request.method === "POST") {
-        const key = request.headers.get("x-api-key") || "";
-        if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
+        // Update ACTIVE bans only when Roblox confirms
+        if (ok && userId > 0 && (action === "ban" || action === "unban")) {
+          const state = safeParseObj(await env.LIVE.get(BAN_STATE_KEY));
 
-        let body;
-        try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+          if (action === "ban") {
+            state[String(userId)] = {
+              userId,
+              reason: idx >= 0 ? String(log[idx]?.reason || "") : "",
+              by: idx >= 0 ? String(log[idx]?.by || "") : "",
+              bannedAt: Date.now(),
+              lastId: id
+            };
+          }
 
-        const id = String(body.id || "");
-        const ok = body.ok === true;
-        const message = String(body.message || "").slice(0, 180);
-        if (!id) return json({ error: "Missing id" }, 400);
+          if (action === "unban") {
+            delete state[String(userId)];
+          }
 
-        const raw = await env.LIVE.get(`hist:${id}`);
-        if (!raw) return json({ error: "Unknown id" }, 404);
-
-        let hist = null;
-        try { hist = JSON.parse(raw); } catch { hist = null; }
-        if (!hist) return json({ error: "Bad history" }, 500);
-
-        hist.status = "applied";
-        hist.ok = ok;
-        hist.message = message || "";
-        hist.appliedAt = Date.now();
-        await env.LIVE.put(`hist:${id}`, JSON.stringify(hist), { expirationTtl: 3600 });
-
-        if (ok) {
-          const log = safeParseArr(await env.LIVE.get(LOG_KEY));
-          log.unshift({
-            id: hist.id,
-            createdAt: hist.createdAt,
-            appliedAt: hist.appliedAt,
-            action: hist.action,
-            userId: hist.userId,
-            reason: hist.reason,
-            by: hist.by,
-            username: hist.username,
-            displayName: hist.displayName
-          });
-          if (log.length > MAX_LOG) log.length = MAX_LOG;
-          await env.LIVE.put(LOG_KEY, JSON.stringify(log));
+          await env.LIVE.put(BAN_STATE_KEY, JSON.stringify(state));
         }
 
         return json({ ok: true });
       }
 
-      if (url.pathname === "/moderated" && request.method === "GET") {
-        const log = safeParseArr(await env.LIVE.get(LOG_KEY));
-        return json({ ok: true, items: log });
-      }
-
-      if (url.pathname === "/history" && request.method === "GET") {
-        const id = url.searchParams.get("id") || "";
-        if (!id) return json({ error: "Missing id" }, 400);
-        const raw = await env.LIVE.get(`hist:${id}`);
-        const item = raw ? safeParseObj(raw) : null;
-        return json({ ok: true, item: item && Object.keys(item).length ? item : null });
-      }
-
       return new Response("Not found", { status: 404, headers: cors });
-
     } catch (e) {
       return json({ error: "Worker exception", message: String(e?.message || e) }, 500);
     }
