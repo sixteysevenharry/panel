@@ -635,79 +635,66 @@
       }
       return { ok:false, timeout:true };
     }
+async function sendModeration(action, user, reason){
+  if (!user) return { ok:false };
+  const userId = Number(user.userId || 0);
 
-        async function sendModeration(action, user, reason){
-      if (!user) return { ok:false };
-      const userId = Number(user.userId || 0);
+  if (isStaff(userId)) {
+    toast("err", "Blocked", "That user is STAFF and cannot be moderated.");
+    return { ok:false };
+  }
 
-      if (isStaff(userId)) {
-        toast("err", "Blocked", "That user is STAFF and cannot be moderated.");
-        return { ok:false };
-      }
+  const adminKey = els.adminKey.value.trim();
+  if (!adminKey) {
+    toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
+    return { ok:false };
+  }
 
-      const adminKey = els.adminKey.value.trim();
-      if (!adminKey) {
-        toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
-        return { ok:false };
-      }
+  // cache for nicer logs
+  try{ cacheNameFrom(user); } catch {}
 
-      // cache for nicer logs
-      try{ cacheNameFrom(user); } catch {}
+  const payload = {
+    action,
+    userId,
+    reason: String(reason || ""),
+    by: String(getLoginUser() || ""),
+    username: String(user.username || ""),
+    displayName: String(user.displayName || "")
+  };
 
-      const payload = {
-        action,
-        userId,
-        reason: String(reason || ""),
-        by: String(getLoginUser() || ""),
-        username: String(user.username || ""),
-        displayName: String(user.displayName || "")
-      };
+  let res, body = null;
+  try{
+    res = await fetch(endpoint("/moderate"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-key": adminKey
+      },
+      body: JSON.stringify(payload)
+    });
+    try { body = await res.json(); } catch { body = null; }
+  } catch(e){
+    toast("err", "Request failed", e.message);
+    return { ok:false };
+  }
 
-      let res, body = null;
-      try{
-        res = await fetch(MOD_ENDPOINT, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-key": adminKey
-          },
-          body: JSON.stringify(payload)
-        });
-        try { body = await res.json(); } catch { body = null; }
-      } catch(e){
-        toast("err", "Request failed", e.message);
-        return { ok:false };
-      }
+  if (!res || !res.ok) {
+    toast("err", "Request rejected", (body && body.error) ? body.error : ("HTTP " + (res ? res.status : "?")));
+    return { ok:false };
+  }
 
-      if (!res || !res.ok) {
-        toast("err", "Request rejected", (body && body.error) ? body.error : ("HTTP " + (res ? res.status : "?")));
-        return { ok:false };
-      }
+  return { ok:true, id: body && body.id ? String(body.id) : "" };
+}
 
-      return { ok:true, id: body && body.id ? String(body.id) : "" };
-    }
+async function enforceAndVerify(action, user, reason){
+  const sent = await sendModeration(action, user, reason || "");
+  if (!sent.ok || !sent.id) return { ok:false };
 
-      return { ok:true, id: body && body.id ? body.id : null };
-    }
+  const v = await waitHistoryOk(sent.id, 20000); // 20s timeout
+  if (!v.ok) return v;
 
-        async function enforceAndVerify(action, user, reason){
-      const sent = await sendModeration(action, user, reason || "");
-      if (!sent.ok || !sent.id) return { ok:false };
-
-      const v = await waitHistoryOk(sent.id, 20000); // 20s timeout
-      if (!v.ok) return v;
-
-      return { ok:true, id: sent.id };
-    }
-
-
-      if (sent.id){
-        const v = await waitHistoryOk(sent.id, 20000);
-        return v.ok ? { ok:true } : v;
-      }
-
-      return { ok:true };
-    }
+  return { ok:true, id: sent.id };
+}
 
     function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
     function getSelectedLog(){ return logs.find(e => String(e.id) === String(selectedLogId)) || null; }
