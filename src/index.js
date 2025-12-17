@@ -36,8 +36,32 @@ export default {
     const MOD_LOG_KEY = "moderation_log_v1";
     const MAX_LOG = 600;
 
-    // Active bans (current bans only)
-    const BAN_STATE_KEY = "ban_state_v1"; // { "<userId>": {userId, reason, by, bannedAt, lastId} }
+    const HIST_INDEX_KEY = "history_index_v1";
+    const HIST_TTL_SECONDS = 60 * 30; // 30 min
+    const MAX_HISTORY = 1200;
+
+    const nowMs = () => Date.now();
+
+    const putHistory = async (id, entry) => {
+      const now = nowMs();
+      const key = `hist:${id}`;
+      const payload = { ...entry, id, updatedAt: now };
+      await env.LIVE.put(key, JSON.stringify(payload), { expirationTtl: HIST_TTL_SECONDS });
+
+      const idx = safeParseObj(await env.LIVE.get(HIST_INDEX_KEY));
+      idx[id] = now;
+      // prune
+      const ids = Object.keys(idx);
+      if (ids.length > MAX_HISTORY) {
+        ids.sort((a, b) => Number(idx[b] || 0) - Number(idx[a] || 0));
+        for (let i = MAX_HISTORY; i < ids.length; i++) delete idx[ids[i]];
+      }
+      // drop expired
+      for (const k in idx) {
+        if (now - Number(idx[k] || 0) > (HIST_TTL_SECONDS * 1000)) delete idx[k];
+      }
+      await env.LIVE.put(HIST_INDEX_KEY, JSON.stringify(idx));
+    };
 
     try {
       const url = new URL(request.url);
@@ -65,15 +89,11 @@ export default {
         const players = Array.isArray(body.players) ? body.players : null;
 
         if (!jobId) jobId = "studio-" + crypto.randomUUID();
-
         if (!placeId || !players) {
-          return json(
-            { error: "Invalid payload", expected: { placeId: "number", jobId: "string", players: "array" } },
-            400
-          );
+          return json({ error: "Invalid payload", expected: { placeId: "number", jobId: "string", players: "array" } }, 400);
         }
 
-        const now = Date.now();
+        const now = nowMs();
         const serverKey = `srv:${placeId}:${jobId}`;
 
         const snapshot = {
@@ -92,17 +112,14 @@ export default {
 
         const index = safeParseObj(await env.LIVE.get("server_index"));
         index[serverKey] = now;
-
-        for (const k in index) {
-          if (now - Number(index[k] || 0) > 180000) delete index[k];
-        }
-
+        for (const k in index) if (now - Number(index[k] || 0) > 180000) delete index[k];
         await env.LIVE.put("server_index", JSON.stringify(index));
+
         return json({ ok: true });
       }
 
       /* =====================================================
-         WEBSITE -> GET ALL ACTIVE PLAYERS (with placeId)
+         WEBSITE -> GET ALL ACTIVE PLAYERS
          ===================================================== */
       if (url.pathname === "/players" && request.method === "GET") {
         const index = safeParseObj(await env.LIVE.get("server_index"));
@@ -168,7 +185,7 @@ export default {
         }
 
         const id = crypto.randomUUID();
-        const now = Date.now();
+        const now = nowMs();
 
         await env.LIVE.put(
           `cmd:${id}`,
@@ -180,10 +197,14 @@ export default {
         cmdIndex[id] = now;
         await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
 
-        // Shared moderation history (all users)
+        // shared moderation log (what the website shows)
         const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
-        log.unshift({
-          id,
+        log.unshift({ id, createdAt: now, action, userId, reason, by });
+        if (log.length > MAX_LOG) log.length = MAX_LOG;
+        await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
+
+        // history record for verification
+        await putHistory(id, {
           createdAt: now,
           action,
           userId,
@@ -191,37 +212,37 @@ export default {
           by,
           status: "pending"
         });
-        if (log.length > MAX_LOG) log.length = MAX_LOG;
-        await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
 
         return json({ ok: true, id });
       }
 
       /* =====================================================
-         WEBSITE -> CURRENTLY BANNED USERS (ACTIVE ONLY)
+         WEBSITE -> MODERATION LIST (shared)
          ===================================================== */
       if (url.pathname === "/moderated" && request.method === "GET") {
-        const state = safeParseObj(await env.LIVE.get(BAN_STATE_KEY));
-        const items = Object.values(state || {})
-          .filter(Boolean)
-          .map((x) => ({
-            userId: Number(x.userId),
-            reason: String(x.reason || ""),
-            by: String(x.by || ""),
-            bannedAt: Number(x.bannedAt || 0),
-            lastId: String(x.lastId || "")
-          }))
-          .sort((a, b) => Number(b.bannedAt || 0) - Number(a.bannedAt || 0));
-
-        return json({ ok: true, items });
+        const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+        return json({ ok: true, items: log });
       }
 
       /* =====================================================
-         WEBSITE -> FULL MODERATION HISTORY
+         WEBSITE -> HISTORY (verification)
          ===================================================== */
       if (url.pathname === "/history" && request.method === "GET") {
-        const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
-        return json({ ok: true, items: log });
+        const idx = safeParseObj(await env.LIVE.get(HIST_INDEX_KEY));
+        const now = nowMs();
+
+        const ids = Object.keys(idx)
+          .filter((id) => now - Number(idx[id] || 0) <= (HIST_TTL_SECONDS * 1000))
+          .sort((a, b) => Number(idx[b] || 0) - Number(idx[a] || 0))
+          .slice(0, 250);
+
+        const items = [];
+        for (const id of ids) {
+          const raw = await env.LIVE.get(`hist:${id}`);
+          if (!raw) continue;
+          try { items.push(JSON.parse(raw)); } catch {}
+        }
+        return json({ ok: true, items });
       }
 
       /* =====================================================
@@ -232,7 +253,7 @@ export default {
         if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
 
         const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
-        const now = Date.now();
+        const now = nowMs();
         const commands = [];
 
         for (const id in cmdIndex) {
@@ -252,8 +273,7 @@ export default {
       }
 
       /* =====================================================
-         ROBLOX -> ACK COMMAND (CONFIRMATION)
-         Body: { id, action, userId, ok }
+         ROBLOX -> ACK COMMAND (+ verification)
          ===================================================== */
       if (url.pathname === "/ack" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
@@ -263,47 +283,24 @@ export default {
         try { body = await request.json(); } catch { body = {}; }
 
         const id = String(body.id || "");
-        const action = String(body.action || "");
-        const userId = Number(body.userId || 0);
-        const ok = body.ok === true;
-
         if (!id) return json({ error: "Missing id" }, 400);
+
+        const ok = body.ok === true;
+        const message = String(body.message || "").slice(0, 180);
+
+        // mark history
+        await putHistory(id, {
+          ...(safeParseObj(await env.LIVE.get(`hist:${id}`))),
+          status: ok ? "applied" : "failed",
+          appliedAt: nowMs(),
+          message
+        });
 
         await env.LIVE.delete(`cmd:${id}`);
 
         const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
         delete cmdIndex[id];
         await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
-
-        // Update history status for this command id
-        const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
-        const idx = log.findIndex((x) => String(x?.id || "") === id);
-        if (idx >= 0) {
-          log[idx].status = ok ? "applied" : "failed";
-          log[idx].ackedAt = Date.now();
-          await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
-        }
-
-        // Update ACTIVE bans only when Roblox confirms
-        if (ok && userId > 0 && (action === "ban" || action === "unban")) {
-          const state = safeParseObj(await env.LIVE.get(BAN_STATE_KEY));
-
-          if (action === "ban") {
-            state[String(userId)] = {
-              userId,
-              reason: idx >= 0 ? String(log[idx]?.reason || "") : "",
-              by: idx >= 0 ? String(log[idx]?.by || "") : "",
-              bannedAt: Date.now(),
-              lastId: id
-            };
-          }
-
-          if (action === "unban") {
-            delete state[String(userId)];
-          }
-
-          await env.LIVE.put(BAN_STATE_KEY, JSON.stringify(state));
-        }
 
         return json({ ok: true });
       }
