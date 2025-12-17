@@ -55,7 +55,6 @@
       color:var(--text);
       background:var(--bg);
       transition: background .25s ease, color .25s ease;
-
       min-height:100vh;
       display:flex;
       justify-content:center;
@@ -63,7 +62,10 @@
       padding:24px;
     }
 
-    .app{width:min(1200px, 100%);margin:0 auto;}
+    .app{
+      width:min(1200px, 100%);
+      margin:0 auto;
+    }
 
     .top{
       display:flex;
@@ -94,7 +96,10 @@
     }
     [data-theme="dark"] .pillStatus{background:rgba(18,23,34,.6)}
 
-    .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background:var(--muted);
+    }
     .dot.ok{background:var(--ok)}
     .dot.err{background:var(--danger)}
     .dot.load{background:var(--muted); animation:pulse 1.2s ease-in-out infinite}
@@ -119,65 +124,10 @@
       color:var(--muted);
     }
     .seg button:last-child{border-right:0}
-    .seg button[aria-pressed="true"]{background:var(--btnHover);color:var(--text);}
-
-    .grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:24px;
-      margin-top:18px;
+    .seg button[aria-pressed="true"]{
+      background:var(--btnHover);
+      color:var(--text);
     }
-    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
-
-    .col{
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      padding:16px;
-      background:var(--surface);
-      box-shadow: var(--shadow);
-      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
-    }
-
-    .colTitle{
-      font-size:22px;
-      margin:0 0 12px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-    }
-
-    .countPill{
-      font-size:12px;
-      opacity:.9;
-      padding:4px 8px;
-      border:1px solid var(--border);
-      border-radius:999px;
-      color:var(--muted);
-      background:var(--surface2);
-    }
-
-    .scroll{
-      height:420px;
-      overflow:auto;
-      border-top:1px solid var(--border);
-      padding-top:12px;
-      padding-right:6px;
-    }
-
-    .card{
-      border:1px solid var(--border);
-      border-radius:var(--radius2);
-      padding:12px 14px;
-      margin:10px 0;
-      cursor:pointer;
-      user-select:none;
-      background:linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
-      transition: transform .15s ease, border-color .15s ease, background .2s ease;
-      transform: translateZ(0);
-    }
-    .card:hover{border-color:var(--border2);transform:translateY(-1px)}
-    .selected{outline:3px solid var(--ring);outline-offset:0;transform:translateY(-1px) scale(1.01)}
 
     .row{
       display:flex;
@@ -213,13 +163,14 @@
       display:inline-flex;
       align-items:center;
       gap:8px;
+      user-select:none;
+      white-space:nowrap;
     }
     button:hover{background:var(--btnHover)}
     button:active{transform:translateY(1px)}
     button:disabled{opacity:.45;cursor:not-allowed;transform:none}
 
     .btns{display:flex;gap:10px;flex-wrap:wrap}
-    .divider{height:1px;background:var(--border);margin:14px 0}
 
     .meta{
       opacity:.9;
@@ -233,7 +184,76 @@
     .small{font-size:12px;opacity:.88;color:var(--muted)}
     .error{color:var(--danger);opacity:1}
 
-    .label{font-size:12px;opacity:.9;margin-bottom:6px;color:var(--muted)}
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:24px;
+      margin-top:18px;
+    }
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+
+    .col{
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:16px;
+      background:var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .colTitle{
+      font-size:22px;
+      margin:0 0 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .countPill{
+      font-size:12px;
+      opacity:.9;
+      padding:4px 8px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      color:var(--muted);
+      background:var(--surface2);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .spinner{
+      width:10px;height:10px;
+      border:2px solid var(--border2);
+      border-top-color: var(--muted);
+      border-radius:50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .scroll{
+      height:420px;
+      overflow:auto;
+      border-top:1px solid var(--border);
+      padding-top:12px;
+      padding-right:6px;
+    }
+
+    .card{
+      border:1px solid var(--border);
+      border-radius:var(--radius2);
+      padding:12px 14px;
+      margin:10px 0;
+      cursor:pointer;
+      user-select:none;
+      background:linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
+      transition: transform .15s ease, border-color .15s ease, background .2s ease, opacity .2s ease;
+      transform: translateZ(0);
+    }
+    .card:hover{border-color:var(--border2);transform:translateY(-1px)}
+    .selected{outline:3px solid var(--ring);outline-offset:0;transform:translateY(-1px) scale(1.01)}
+    .disabledCard{opacity:.55;cursor:not-allowed}
+    .disabledCard:hover{border-color:var(--border);transform:none}
 
     .pill{
       display:inline-block;
@@ -245,7 +265,6 @@
       color:var(--muted);
       background:var(--surface2);
     }
-
     .staffPill{border-color:var(--border2);opacity:.95}
     .staffCard{opacity:.55;cursor:not-allowed;filter:grayscale(1)}
     .staffCard:hover{border-color:var(--border)}
@@ -313,9 +332,21 @@
       padding:18px;
       animation: toastIn .18s ease-out;
     }
-    .loginTitle{font-size:22px;margin:0 0 8px;}
-    .loginHint{margin:0 0 14px;color:var(--muted);font-size:13px;}
-    .loginRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+    .loginTitle{
+      font-size:22px;
+      margin:0 0 8px;
+    }
+    .loginHint{
+      margin:0 0 14px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .loginRow{
+      display:flex;
+      gap:10px;
+      align-items:flex-end;
+      flex-wrap:wrap;
+    }
     .loginRow .field{flex:1 1 240px; min-width:240px}
     .loginFoot{
       margin-top:10px;
@@ -327,8 +358,20 @@
       flex-wrap:wrap;
       align-items:center;
     }
-    .ghostBtn{border:1px solid var(--border);background:transparent;}
+    .ghostBtn{
+      border:1px solid var(--border);
+      background:transparent;
+    }
     .ghostBtn:hover{background:var(--btnHover)}
+
+    .searchRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+      align-items:flex-end;
+    }
+    .searchRow .field{min-width:260px;flex:1 1 260px}
 
     @media (prefers-reduced-motion: reduce){
       *{transition:none !important;animation:none !important}
@@ -369,46 +412,41 @@
       <div class="btns" style="margin-top:18px">
         <button id="save" type="button">💾 Save</button>
         <button id="refresh" type="button">🔄 Refresh</button>
+        <button id="clearModerated" type="button">🧹 Clear Moderated List</button>
       </div>
     </div>
 
-    <div class="meta" id="meta">Updated: ? | Total Players: ?</div>
+    <div class="searchRow">
+      <div class="field">
+        <div class="label">Search (name or UserId)</div>
+        <input id="searchBox" placeholder="Search active / moderated..." />
+      </div>
+      <div class="btns" style="margin-top:18px">
+        <button id="clearSearch" type="button">✖ Clear Search</button>
+      </div>
+    </div>
+
+    <div class="meta" id="meta">Press Refresh to load players.</div>
 
     <div class="grid">
-      <div class="col" id="activeCol">
+      <div class="col">
         <div class="colTitle">
           <span>Active Users</span>
-          <span class="countPill" id="activeCount">0</span>
+          <span class="countPill" id="activeCountWrap"><span id="activeCount">0</span></span>
         </div>
-
-        <div class="row" style="margin-top:0">
-          <div class="field" style="min-width:0;flex:1 1 auto">
-            <div class="label">Search Active</div>
-            <input id="activeSearch" placeholder="Search name or userId..." />
-          </div>
-        </div>
-
         <div class="scroll" id="activeList"></div>
       </div>
 
-      <div class="col" id="moderatedCol" >
+      <div class="col">
         <div class="colTitle">
           <span>Moderated Users</span>
-          <span class="countPill" id="moderatedCount">0</span>
+          <span class="countPill" id="moderatedCountWrap"><span id="moderatedCount">0</span></span>
         </div>
-
-        <div class="row" style="margin-top:0">
-          <div class="field" style="min-width:0;flex:1 1 auto">
-            <div class="label">Search Moderated</div>
-            <input id="moderatedSearch" placeholder="Search name, userId, or moderator..." />
-          </div>
-        </div>
-
         <div class="scroll" id="moderatedList"></div>
       </div>
     </div>
 
-    <div class="divider"></div>
+    <div style="height:14px"></div>
 
     <div class="btns">
       <button id="kick" type="button">👢 Kick</button>
@@ -416,7 +454,7 @@
       <button id="ban" type="button">⛔ Ban</button>
       <button id="banReason" type="button">🧾 Ban With Reason</button>
       <button id="unban" type="button">✅ Unban</button>
-      <button id="unbanReason" type="button">🗒️ Unban With Note</button>
+      <button id="unbanReason" type="button">🗒️ Unban With Reason</button>
     </div>
   </div>
 
@@ -461,12 +499,9 @@
       adminKey: document.getElementById("adminKey"),
       save: document.getElementById("save"),
       refresh: document.getElementById("refresh"),
-
-      activeCol: document.getElementById("activeCol"),
-      moderatedCol: document.getElementById("moderatedCol"),
-
-      activeSearch: document.getElementById("activeSearch"),
-      moderatedSearch: document.getElementById("moderatedSearch"),
+      clearModerated: document.getElementById("clearModerated"),
+      searchBox: document.getElementById("searchBox"),
+      clearSearch: document.getElementById("clearSearch"),
 
       activeList: document.getElementById("activeList"),
       moderatedList: document.getElementById("moderatedList"),
@@ -480,14 +515,18 @@
 
       activeCount: document.getElementById("activeCount"),
       moderatedCount: document.getElementById("moderatedCount"),
-      toasts: document.getElementById("toasts"),
+      activeCountWrap: document.getElementById("activeCountWrap"),
+      moderatedCountWrap: document.getElementById("moderatedCountWrap"),
 
       themeLight: document.getElementById("themeLight"),
       themeDark: document.getElementById("themeDark"),
       themeAuto: document.getElementById("themeAuto"),
+
+      toasts: document.getElementById("toasts"),
     };
 
     const MOD_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/admin/moderate";
+    const HISTORY_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/history";
     const MODERATED_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/moderated";
 
     function esc(s){
@@ -508,7 +547,7 @@
       `;
       div.querySelector(".x").onclick = () => div.remove();
       els.toasts.appendChild(div);
-      setTimeout(() => { if (div.isConnected) div.remove(); }, 3200);
+      setTimeout(() => { if (div.isConnected) div.remove(); }, 3600);
     }
 
     function setStatus(state, text){
@@ -517,26 +556,35 @@
       els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
     }
 
-    function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
-
-    /* THEME (no cooldown) */
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
       els.themeLight.setAttribute("aria-pressed", mode === "light");
       els.themeDark.setAttribute("aria-pressed", mode === "dark");
       els.themeAuto.setAttribute("aria-pressed", mode === "auto");
-      if (mode === "auto"){ document.documentElement.removeAttribute("data-theme"); return; }
+      if (mode === "auto"){
+        document.documentElement.removeAttribute("data-theme");
+        return;
+      }
       document.documentElement.setAttribute("data-theme", mode);
     }
-    applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
+
+    const savedTheme = localStorage.getItem("panel_theme_mode") || "dark";
+    applyTheme(savedTheme);
+
     els.themeLight.onclick = () => applyTheme("light");
     els.themeDark.onclick = () => applyTheme("dark");
     els.themeAuto.onclick = () => applyTheme("auto");
 
-    /* LOGIN */
+    const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq && mq.addEventListener){
+      mq.addEventListener("change", () => {
+        const mode = localStorage.getItem("panel_theme_mode") || "dark";
+        if (mode === "auto") applyTheme("auto");
+      });
+    }
+
     function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
     function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
-    function getLoggedInUser(){ return String(localStorage.getItem("panel_login_user") || ""); }
     function setLoggedIn(username){
       localStorage.setItem("panel_logged_in", "1");
       localStorage.setItem("panel_login_user", String(username || ""));
@@ -556,342 +604,6 @@
       els.loginOverlay.style.display = "none";
       els.app.style.display = "block";
     }
-
-    /* COOLDOWNS */
-    const baseText = new WeakMap();
-
-    function beginCooldown(btn, seconds, label){
-      if (!btn) return false;
-      if (!baseText.has(btn)) baseText.set(btn, btn.textContent);
-
-      const original = baseText.get(btn);
-      const until = Date.now() + seconds * 1000;
-
-      btn.disabled = true;
-
-      const tick = () => {
-        const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-        if (left > 0){
-          btn.textContent = `⏳ ${label} (${left}s)`;
-          setTimeout(tick, 200);
-        } else {
-          btn.textContent = original;
-          btn.disabled = false;
-          updateButtons();
-        }
-      };
-      tick();
-      return true;
-    }
-
-    /* STATE */
-    let activePlayers = [];
-    let moderatedLog = [];
-    let selectedActiveUserId = null;
-    let selectedModeratedUserId = null;
-
-    function setCounts(){
-      els.activeCount.textContent = String(activePlayers.length || 0);
-      els.moderatedCount.textContent = String(moderatedLog.length || 0);
-    }
-
-    function matchesQuery(obj, q){
-      if (!q) return true;
-      const s = q.toLowerCase();
-      const fields = [obj.displayName,obj.username,obj.userId,obj.by,obj.action,obj.reason].map(v => String(v ?? "").toLowerCase());
-      return fields.some(v => v.includes(s));
-    }
-
-    function setSelectedActive(userId){
-      selectedActiveUserId = Number(userId);
-      selectedModeratedUserId = null;
-      renderActive();
-      renderModerated();
-      updateButtons();
-    }
-
-    function setSelectedModerated(userId){
-      selectedModeratedUserId = Number(userId);
-      selectedActiveUserId = null;
-      renderActive();
-      renderModerated();
-      updateButtons();
-    }
-
-    /* ✅ buttons enable purely from selection + staff */
-    function updateButtons(){
-      const hasActive = Number.isFinite(selectedActiveUserId);
-      const hasMod = Number.isFinite(selectedModeratedUserId);
-      const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
-
-      const canKickBan = hasActive && !activeIsStaff;
-      if (!els.kick.disabled) els.kick.disabled = !canKickBan;
-      if (!els.kickReason.disabled) els.kickReason.disabled = !canKickBan;
-      if (!els.ban.disabled) els.ban.disabled = !canKickBan;
-      if (!els.banReason.disabled) els.banReason.disabled = !canKickBan;
-
-      const canUnban = hasMod;
-      if (!els.unban.disabled) els.unban.disabled = !canUnban;
-      if (!els.unbanReason.disabled) els.unbanReason.disabled = !canUnban;
-
-      setCounts();
-    }
-
-    function makeActiveCardHTML(p){
-      const name = esc(p.displayName || p.username);
-      const handle = esc(p.username || "");
-      const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
-      const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
-
-      const pid = Number(p.placeId || 0);
-      const placePill = `<span class="pill">${pid ? ("Place " + pid) : "Place -"}</span>`;
-
-      return `
-        <div><b>${name}</b> <span class="small">(@${handle})</span> ${team} ${placePill} ${staff}</div>
-        <div class="small">UserId: ${Number(p.userId) || ""}</div>
-      `;
-    }
-
-    function makeModeratedCardHTML(entry){
-      const name = esc(entry.displayName || entry.username || "");
-      const handle = esc(entry.username || "");
-      const action = esc(entry.action || "");
-      const reason = esc(entry.reason || "");
-      const by = esc(entry.by || "Unknown");
-      const when = entry.createdAt ? new Date(Number(entry.createdAt)).toISOString() : (entry.updatedAt || "");
-
-      return `
-        <div><b>${name || "User"}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span></div>
-        <div class="small">UserId: ${Number(entry.userId) || ""}</div>
-        <div class="small">Action: ${action || "-"}</div>
-        <div class="small">By: ${by}</div>
-        ${reason ? `<div class="small">Reason: ${reason}</div>` : ""}
-        ${when ? `<div class="small">At: ${esc(when)}</div>` : ""}
-      `;
-    }
-
-    function renderActive(){
-      els.activeList.innerHTML = "";
-
-      const q = String(els.activeSearch.value || "").trim().toLowerCase();
-      const list = q ? activePlayers.filter(p => matchesQuery(p, q)) : activePlayers;
-
-      if (!list.length){
-        els.activeList.innerHTML = "<div class='small'>No players found.</div>";
-        updateButtons();
-        return;
-      }
-
-      for (const p of list){
-        const staff = isStaff(p.userId);
-        const div = document.createElement("div");
-        div.className =
-          "card" +
-          (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
-          (staff ? " staffCard" : "");
-        div.innerHTML = makeActiveCardHTML(p);
-
-        if (!staff){
-          div.addEventListener("click", () => setSelectedActive(p.userId));
-        }
-
-        els.activeList.appendChild(div);
-      }
-
-      updateButtons();
-    }
-
-    function renderModerated(){
-      els.moderatedList.innerHTML = "";
-
-      const q = String(els.moderatedSearch.value || "").trim().toLowerCase();
-      const list = q ? moderatedLog.filter(m => matchesQuery(m, q)) : moderatedLog;
-
-      if (!list.length){
-        els.moderatedList.innerHTML = "<div class='small'>No moderated users found.</div>";
-        updateButtons();
-        return;
-      }
-
-      for (const m of list){
-        const div = document.createElement("div");
-        div.className = "card" + (Number(m.userId) === Number(selectedModeratedUserId) ? " selected" : "");
-        div.innerHTML = makeModeratedCardHTML(m);
-        div.addEventListener("click", () => setSelectedModerated(m.userId));
-        els.moderatedList.appendChild(div);
-      }
-
-      updateButtons();
-    }
-
-    async function fetchModerated(){
-      try{
-        const res = await fetch(MODERATED_ENDPOINT, { cache: "no-store" });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-        const items = Array.isArray(data.items) ? data.items : [];
-
-        const map = new Map();
-        for (const it of items){
-          const uid = Number(it.userId || 0);
-          if (!uid) continue;
-          const existing = map.get(uid);
-          if (!existing || Number(it.createdAt || 0) > Number(existing.createdAt || 0)){
-            map.set(uid, it);
-          }
-        }
-
-        moderatedLog = Array.from(map.values()).sort((a,b) => Number(b.createdAt||0) - Number(a.createdAt||0));
-
-        if (Number.isFinite(selectedModeratedUserId) && !moderatedLog.some(x => Number(x.userId) === Number(selectedModeratedUserId))){
-          selectedModeratedUserId = null;
-        }
-
-        renderModerated();
-      } catch(e){
-        toast("err", "Moderated list failed", e.message);
-      }
-    }
-
-    async function fetchPlayers(){
-      const url = els.playersApi.value.trim();
-      if (!url) { setStatus("error", "Paste your /players URL."); return; }
-
-      setStatus("loading", "Loading...");
-
-      try{
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-
-        activePlayers = Array.isArray(data.players) ? data.players : [];
-        activePlayers.sort((a,b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
-
-        els.meta.textContent =
-          `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
-
-        if (Number.isFinite(selectedActiveUserId) && !activePlayers.some(p => Number(p.userId) === Number(selectedActiveUserId))){
-          selectedActiveUserId = null;
-        }
-
-        setStatus("ok", "OK");
-        renderActive();
-      } catch(e){
-        setStatus("error", "Failed: " + e.message);
-        toast("err", "Refresh failed", e.message);
-      }
-    }
-
-    async function sendModeration(action, userId, reason){
-      if (isStaff(userId)) {
-        alert("That user is marked as STAFF and cannot be moderated from this panel.");
-        return { ok: false };
-      }
-
-      const adminKey = els.adminKey.value.trim();
-      if (!adminKey) { alert("Enter ADMIN_KEY first."); return { ok: false }; }
-
-      const by = getLoggedInUser() || "";
-      const payload = { action, userId, by };
-      if (reason) payload.reason = reason;
-
-      const res = await fetch(MOD_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
-        body: JSON.stringify(payload)
-      });
-
-      let body = null;
-      try { body = await res.json(); } catch {}
-
-      if (!res.ok) {
-        alert((body && body.error) ? body.error : ("Request failed: HTTP " + res.status));
-        return { ok: false };
-      }
-
-      return { ok: true };
-    }
-
-    function getSelectedActive(){
-      return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null;
-    }
-    function getSelectedModerated(){
-      return moderatedLog.find(p => Number(p.userId) === Number(selectedModeratedUserId)) || null;
-    }
-
-    els.activeSearch.addEventListener("input", () => renderActive());
-    els.moderatedSearch.addEventListener("input", () => renderModerated());
-
-    /* Buttons (3s cooldown) */
-    els.kick.onclick = async () => {
-      const p = getSelectedActive(); if (!p) return;
-      if (!beginCooldown(els.kick, 3, "Kick")) return;
-      const ok = await sendModeration("kick", p.userId, "");
-      if (ok.ok){ toast("ok", "Kick sent", `${p.displayName || p.username}`); await fetchModerated(); }
-    };
-
-    els.kickReason.onclick = async () => {
-      const p = getSelectedActive(); if (!p) return;
-      if (!beginCooldown(els.kickReason, 3, "Kick")) return;
-      const r = prompt("Kick reason?") || "";
-      const ok = await sendModeration("kick", p.userId, r);
-      if (ok.ok){ toast("ok", "Kick sent", r ? `Reason: ${r}` : ""); await fetchModerated(); }
-    };
-
-    els.ban.onclick = async () => {
-      const p = getSelectedActive(); if (!p) return;
-      if (!beginCooldown(els.ban, 3, "Ban")) return;
-      const ok = await sendModeration("ban", p.userId, "");
-      if (ok.ok){ toast("ok", "Ban sent", `${p.displayName || p.username}`); await fetchModerated(); }
-    };
-
-    els.banReason.onclick = async () => {
-      const p = getSelectedActive(); if (!p) return;
-      if (!beginCooldown(els.banReason, 3, "Ban")) return;
-      const r = prompt("Ban reason?") || "";
-      const ok = await sendModeration("ban", p.userId, r);
-      if (ok.ok){ toast("ok", "Ban sent", r ? `Reason: ${r}` : ""); await fetchModerated(); }
-    };
-
-    els.unban.onclick = async () => {
-      const p = getSelectedModerated(); if (!p) return;
-      if (!beginCooldown(els.unban, 3, "Unban")) return;
-      const ok = await sendModeration("unban", p.userId, "");
-      if (ok.ok){ toast("ok", "Unban sent", `UserId: ${p.userId}`); await fetchModerated(); }
-    };
-
-    els.unbanReason.onclick = async () => {
-      const p = getSelectedModerated(); if (!p) return;
-      if (!beginCooldown(els.unbanReason, 3, "Unban")) return;
-      const r = prompt("Unban note?") || "";
-      const ok = await sendModeration("unban", p.userId, r);
-      if (ok.ok){ toast("ok", "Unban sent", r ? `Note: ${r}` : ""); await fetchModerated(); }
-    };
-
-    els.save.onclick = () => {
-      if (!beginCooldown(els.save, 3, "Save")) return;
-      localStorage.setItem("players_api_url", els.playersApi.value.trim());
-      localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
-      setStatus("ok", "Saved");
-      toast("ok", "Saved", "API URL + Admin Key stored in this browser");
-    };
-
-    /* Refresh ONLY on click + 10s cooldown */
-    els.refresh.onclick = async () => {
-      if (els.refresh.disabled) return;
-      beginCooldown(els.refresh, 10, "Refresh");
-      await fetchPlayers();
-      await fetchModerated();
-    };
-
-    els.logout.onclick = () => {
-      if (!beginCooldown(els.logout, 3, "Logout")) return;
-      if (!confirm("Log out?")) return;
-      clearLoggedIn();
-      toast("ok", "Logged out", "");
-      showLogin();
-    };
-
     function attemptLogin(){
       const u = normalizeUser(els.loginUser.value);
       if (!u){
@@ -913,6 +625,413 @@
 
     els.loginBtn.onclick = attemptLogin;
     els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
+    els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
+
+    function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
+    function getLoginUser(){ return localStorage.getItem("panel_login_user") || "unknown"; }
+
+    let activePlayers = [];
+    let moderatedUsers = [];
+    let selectedActiveUserId = null;
+    let selectedModeratedUserId = null;
+
+    let verifying = false;
+    let refreshCooldownUntil = 0;
+    let refreshCooldownTimer = null;
+
+    function setCountSpinner(on){
+      const setWrap = (wrap, on2) => {
+        const n = wrap.querySelector(".spinner");
+        if (on2){
+          if (!n){
+            const sp = document.createElement("span");
+            sp.className = "spinner";
+            wrap.appendChild(sp);
+          }
+        } else {
+          if (n) n.remove();
+        }
+      };
+      setWrap(els.activeCountWrap, on);
+      setWrap(els.moderatedCountWrap, on);
+    }
+
+    function setVerifying(on, label){
+      verifying = on === true;
+      if (verifying){
+        selectedActiveUserId = null;
+        selectedModeratedUserId = null;
+      }
+      updateButtons();
+      renderActive();
+      renderModerated();
+
+      if (verifying){
+        setStatus("loading", label || "Verifying with server...");
+        setCountSpinner(true);
+      } else {
+        setCountSpinner(false);
+        setStatus("ok", "Ready");
+      }
+    }
+
+    function setSelectedActive(userId){
+      if (verifying) return;
+      selectedActiveUserId = Number(userId);
+      selectedModeratedUserId = null;
+      renderActive();
+      renderModerated();
+      updateButtons();
+    }
+
+    function setSelectedModerated(userId){
+      if (verifying) return;
+      selectedModeratedUserId = Number(userId);
+      selectedActiveUserId = null;
+      renderActive();
+      renderModerated();
+      updateButtons();
+    }
+
+    function updateButtons(){
+      const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
+      const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
+
+      const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
+      const disableAll = verifying === true;
+
+      els.kick.disabled = disableAll || !hasActive || activeIsStaff;
+      els.kickReason.disabled = disableAll || !hasActive || activeIsStaff;
+      els.ban.disabled = disableAll || !hasActive || activeIsStaff;
+      els.banReason.disabled = disableAll || !hasActive || activeIsStaff;
+
+      els.unban.disabled = disableAll || !hasMod;
+      els.unbanReason.disabled = disableAll || !hasMod;
+
+      els.save.disabled = disableAll;
+      els.clearModerated.disabled = disableAll;
+      els.clearSearch.disabled = disableAll;
+
+      if (!disableAll) {
+        els.refresh.disabled = Date.now() < refreshCooldownUntil;
+      } else {
+        els.refresh.disabled = true;
+      }
+    }
+
+    function makeCardHTML(p, extra){
+      const name = esc(p.displayName || p.username || "");
+      const handle = esc(p.username || "");
+      const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
+      const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
+      const place = p.placeId ? `<span class="pill">Place ${Number(p.placeId)}</span>` : "";
+      return `
+        <div><b>${name}</b> <span class="small">(@${handle})</span> ${place} ${team} ${staff}</div>
+        <div class="small">UserId: ${Number(p.userId) || ""}${extra ? " · " + extra : ""}</div>
+      `;
+    }
+
+    function setCounts(){
+      els.activeCount.textContent = String(activePlayers.length || 0);
+      els.moderatedCount.textContent = String(moderatedUsers.length || 0);
+    }
+
+    function matchesSearch(p, q){
+      if (!q) return true;
+      const id = String(Number(p.userId || 0));
+      const u = String(p.username || "").toLowerCase();
+      const d = String(p.displayName || "").toLowerCase();
+      const pid = String(Number(p.placeId || 0));
+      return id.includes(q) || u.includes(q) || d.includes(q) || pid.includes(q);
+    }
+
+    function renderActive(){
+      els.activeList.innerHTML = "";
+      setCounts();
+
+      const q = normalizeUser(els.searchBox.value);
+      const list = activePlayers.filter(p => matchesSearch(p, q));
+
+      if (!list.length) {
+        els.activeList.innerHTML = "<div class='small'>No players found.</div>";
+        return;
+      }
+
+      for (const p of list){
+        const staff = isStaff(p.userId);
+        const disabled = verifying || staff;
+        const div = document.createElement("div");
+        div.className =
+          "card" +
+          (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
+          (staff ? " staffCard" : "") +
+          (verifying ? " disabledCard" : "");
+
+        div.innerHTML = makeCardHTML(p, "");
+
+        if (!disabled) div.onclick = () => setSelectedActive(p.userId);
+        els.activeList.appendChild(div);
+      }
+    }
+
+    function renderModerated(){
+      els.moderatedList.innerHTML = "";
+      setCounts();
+
+      const q = normalizeUser(els.searchBox.value);
+      const list = moderatedUsers.filter(p => matchesSearch(p, q));
+
+      if (!list.length) {
+        els.moderatedList.innerHTML = "<div class='small'>No moderated users.</div>";
+        return;
+      }
+
+      for (const p of list){
+        const disabled = verifying === true;
+        const div = document.createElement("div");
+        div.className =
+          "card" +
+          (Number(p.userId) === Number(selectedModeratedUserId) ? " selected" : "") +
+          (disabled ? " disabledCard" : "");
+
+        const extra = `${p.by ? "By: " + esc(p.by) : "By: ?"}${p.bannedAt ? " · " + new Date(p.bannedAt).toLocaleString() : ""}`;
+        div.innerHTML = makeCardHTML(p, extra) + (p.reason ? `<div class="small">Reason: ${esc(p.reason)}</div>` : "");
+
+        if (!disabled) div.onclick = () => setSelectedModerated(p.userId);
+        els.moderatedList.appendChild(div);
+      }
+    }
+
+    async function fetchPlayers(){
+      const url = els.playersApi.value.trim();
+      if (!url) { setStatus("error", "Paste your /players URL."); return; }
+
+      setStatus("loading", "Loading players...");
+      try{
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+
+        els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? (data.players ? data.players.length : 0)}`;
+        activePlayers = Array.isArray(data.players) ? data.players : [];
+        activePlayers.sort((a,b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
+
+        if (selectedActiveUserId && !activePlayers.some(p => Number(p.userId) === Number(selectedActiveUserId))) {
+          selectedActiveUserId = null;
+        }
+
+        setStatus("ok", "OK");
+        renderActive();
+        updateButtons();
+      } catch(e){
+        setStatus("error", "Failed: " + e.message);
+        toast("err", "Refresh failed", e.message);
+      }
+    }
+
+    async function fetchModerated(){
+      try{
+        const res = await fetch(MODERATED_ENDPOINT, { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        moderatedUsers = Array.isArray(data.items) ? data.items : [];
+        renderModerated();
+        updateButtons();
+      } catch(e){
+        toast("err", "Moderated list failed", e.message);
+      }
+    }
+
+    async function fetchHistory(){
+      const res = await fetch(HISTORY_ENDPOINT, { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      return Array.isArray(data.items) ? data.items : [];
+    }
+
+    function startButtonCooldown(btn, seconds, baseText){
+      const until = Date.now() + (seconds * 1000);
+      btn.disabled = true;
+
+      const tick = () => {
+        const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+        if (left > 0) {
+          btn.textContent = `⏳ ${baseText} (${left}s)`;
+          setTimeout(tick, 200);
+        } else {
+          btn.textContent = baseText;
+          btn.disabled = false;
+          updateButtons();
+        }
+      };
+      tick();
+    }
+
+    function startRefreshCooldown(seconds){
+      refreshCooldownUntil = Date.now() + (seconds * 1000);
+      els.refresh.disabled = true;
+
+      const tick = () => {
+        const left = Math.max(0, Math.ceil((refreshCooldownUntil - Date.now()) / 1000));
+        if (left > 0) {
+          els.refresh.textContent = `⏳ Refresh (${left}s)`;
+          refreshCooldownTimer = setTimeout(tick, 200);
+        } else {
+          els.refresh.textContent = "🔄 Refresh";
+          els.refresh.disabled = false;
+          if (refreshCooldownTimer) clearTimeout(refreshCooldownTimer);
+          refreshCooldownTimer = null;
+          updateButtons();
+        }
+      };
+      tick();
+    }
+
+    async function sendModeration(action, userId, reason){
+      if (isStaff(userId)) { toast("err","Blocked","That user is STAFF."); return { ok:false }; }
+
+      const adminKey = els.adminKey.value.trim();
+      if (!adminKey) { toast("err","Missing key","Enter ADMIN_KEY first."); return { ok:false }; }
+
+      const payload = { action, userId, by: getLoginUser() };
+      if (reason) payload.reason = reason;
+
+      const res = await fetch(MOD_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify(payload)
+      });
+
+      let body = null;
+      try { body = await res.json(); } catch {}
+
+      if (!res.ok) {
+        toast("err","Request failed", (body && body.error) ? body.error : ("HTTP " + res.status));
+        return { ok:false };
+      }
+
+      return { ok:true, id: body && body.id ? String(body.id) : "" };
+    }
+
+    async function waitForVerify(id, timeoutMs){
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        try{
+          const items = await fetchHistory();
+          const item = items.find(x => String(x && x.id) === String(id));
+          if (item && item.status) {
+            if (item.status === "applied") return { ok:true, status:"applied" };
+            if (item.status === "failed") return { ok:false, status:"failed" };
+          }
+        } catch {}
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      return { ok:false, status:"timeout" };
+    }
+
+    function getSelectedActive(){
+      return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null;
+    }
+    function getSelectedModerated(){
+      return moderatedUsers.find(p => Number(p.userId) === Number(selectedModeratedUserId)) || null;
+    }
+
+    async function runModerationFlow(action, userId, reason){
+      setVerifying(true, "Verifying with server...");
+      const sent = await sendModeration(action, userId, reason);
+      if (!sent.ok || !sent.id) { setVerifying(false); return; }
+
+      const verified = await waitForVerify(sent.id, 20000);
+      if (!verified.ok) {
+        if (verified.status === "timeout") toast("err","ERROR: TIME OUT","Server did not verify in time.");
+        else toast("err","Verification failed","The server reported failure.");
+        setVerifying(false);
+        return;
+      }
+
+      toast("ok", "Verified", `${action.toUpperCase()} applied`);
+      await fetchModerated();
+      setVerifying(false);
+    }
+
+    els.kick.onclick = async () => {
+      if (els.kick.disabled) return;
+      startButtonCooldown(els.kick, 3, "👢 Kick");
+      const p = getSelectedActive(); if (!p) return;
+      await runModerationFlow("kick", p.userId, "");
+    };
+
+    els.kickReason.onclick = async () => {
+      if (els.kickReason.disabled) return;
+      startButtonCooldown(els.kickReason, 3, "📝 Kick With Reason");
+      const p = getSelectedActive(); if (!p) return;
+      const r = prompt("Kick reason?") || "";
+      await runModerationFlow("kick", p.userId, r);
+    };
+
+    els.ban.onclick = async () => {
+      if (els.ban.disabled) return;
+      startButtonCooldown(els.ban, 3, "⛔ Ban");
+      const p = getSelectedActive(); if (!p) return;
+      await runModerationFlow("ban", p.userId, "");
+    };
+
+    els.banReason.onclick = async () => {
+      if (els.banReason.disabled) return;
+      startButtonCooldown(els.banReason, 3, "🧾 Ban With Reason");
+      const p = getSelectedActive(); if (!p) return;
+      const r = prompt("Ban reason?") || "";
+      await runModerationFlow("ban", p.userId, r);
+    };
+
+    els.unban.onclick = async () => {
+      if (els.unban.disabled) return;
+      startButtonCooldown(els.unban, 3, "✅ Unban");
+      const p = getSelectedModerated(); if (!p) return;
+      await runModerationFlow("unban", p.userId, "");
+    };
+
+    els.unbanReason.onclick = async () => {
+      if (els.unbanReason.disabled) return;
+      startButtonCooldown(els.unbanReason, 3, "🗒️ Unban With Reason");
+      const p = getSelectedModerated(); if (!p) return;
+      const r = prompt("Unban note?") || "";
+      await runModerationFlow("unban", p.userId, r);
+    };
+
+    els.save.onclick = () => {
+      if (els.save.disabled) return;
+      startButtonCooldown(els.save, 3, "💾 Save");
+      localStorage.setItem("players_api_url", els.playersApi.value.trim());
+      localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
+      toast("ok", "Saved", "API URL + Admin Key stored in this browser");
+    };
+
+    els.clearModerated.onclick = () => {
+      if (els.clearModerated.disabled) return;
+      startButtonCooldown(els.clearModerated, 3, "🧹 Clear Moderated List");
+      if (!confirm("Clear moderated list (local only)?")) return;
+      moderatedUsers = [];
+      selectedModeratedUserId = null;
+      renderModerated();
+      updateButtons();
+      toast("ok", "Cleared", "Moderated list cleared (local only)");
+    };
+
+    els.refresh.onclick = async () => {
+      if (els.refresh.disabled) return;
+      startRefreshCooldown(10);
+      await fetchPlayers();
+      await fetchModerated();
+    };
+
+    els.searchBox.addEventListener("input", () => { renderActive(); renderModerated(); updateButtons(); });
+    els.clearSearch.onclick = () => {
+      if (els.clearSearch.disabled) return;
+      startButtonCooldown(els.clearSearch, 3, "✖ Clear Search");
+      els.searchBox.value="";
+      renderActive(); renderModerated(); updateButtons();
+    };
 
     function initPanel(){
       const savedApi = localStorage.getItem("players_api_url");
@@ -920,18 +1039,11 @@
       els.playersApi.value = savedApi || "https://panel.sixteysevenharry.workers.dev/players";
       if (savedAdmin) els.adminKey.value = savedAdmin;
 
-      setStatus("ok", "Ready (press Refresh)");
+      setStatus("ok", "Ready");
+      els.meta.textContent = "Press Refresh to load players.";
+      fetchModerated();
       renderActive();
       renderModerated();
-
-      // start with buttons disabled until selection
-      els.kick.disabled = true;
-      els.kickReason.disabled = true;
-      els.ban.disabled = true;
-      els.banReason.disabled = true;
-      els.unban.disabled = true;
-      els.unbanReason.disabled = true;
-
       updateButtons();
     }
 
@@ -942,165 +1054,5 @@
       showLogin();
     }
   </script>
-
-<script>
-/* === HOTFIX: reliable button enabling === */
-function forceUpdateButtons(){
-  const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
-  const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
-
-  const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
-
-  els.kick.disabled = !hasActive || activeIsStaff;
-  els.kickReason.disabled = !hasActive || activeIsStaff;
-  els.ban.disabled = !hasActive || activeIsStaff;
-  els.banReason.disabled = !hasActive || activeIsStaff;
-
-  els.unban.disabled = !hasMod;
-  els.unbanReason.disabled = !hasMod;
-}
-
-const _setSelectedActive = setSelectedActive;
-setSelectedActive = function(id){
-  _setSelectedActive(id);
-  forceUpdateButtons();
-};
-
-const _setSelectedModerated = setSelectedModerated;
-setSelectedModerated = function(id){
-  _setSelectedModerated(id);
-  forceUpdateButtons();
-};
-</script>
-
-
-<script>
-/* === LIVE MODERATED SYNC + PENDING UNBAN (FIXED) ===
-   - No loadModerated() (this panel uses server-backed moderatedLog)
-   - Polls /moderated every 4s for "live" updates (does NOT auto-refresh players list)
-*/
-const PENDING_KEY = "panel_pending_unbans_v1";
-
-function _loadPending(){
-  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || "[]"); }
-  catch { return []; }
-}
-function _savePending(list){
-  localStorage.setItem(PENDING_KEY, JSON.stringify(list));
-}
-function isPending(userId){
-  return _loadPending().includes(Number(userId));
-}
-function markPending(userId){
-  const id = Number(userId);
-  const p = _loadPending();
-  if (!p.includes(id)) { p.push(id); _savePending(p); }
-}
-function clearPending(userId){
-  const id = Number(userId);
-  _savePending(_loadPending().filter(x => Number(x) !== id));
-}
-
-/* Patch: add a "verifying" line into moderated cards */
-const _makeModeratedCardHTML = makeModeratedCardHTML;
-makeModeratedCardHTML = function(entry){
-  const base = _makeModeratedCardHTML(entry);
-  if (isPending(entry.userId)){
-    return base + `<div class="small">⏳ Verifying unban…</div>`;
-  }
-  return base;
-};
-
-/* Patch: prevent selecting pending entries */
-const _setSelectedModerated2 = setSelectedModerated;
-setSelectedModerated = function(userId){
-  if (isPending(userId)) return;
-  _setSelectedModerated2(userId);
-  if (typeof forceUpdateButtons === "function") forceUpdateButtons();
-};
-
-/* Patch: renderModerated is already server-backed; just re-render to reflect pending */
-function rerenderModeratedSafe(){
-  try { renderModerated(); } catch {}
-  if (typeof forceUpdateButtons === "function") forceUpdateButtons();
-}
-
-/* When moderated list updates from server, clear pending if item is gone */
-const _fetchModerated = fetchModerated;
-fetchModerated = async function(){
-  await _fetchModerated();
-  const pend = _loadPending();
-  if (!pend.length) return;
-
-  const still = [];
-  for (const id of pend){
-    const exists = (Array.isArray(moderatedLog) ? moderatedLog : []).some(x => Number(x.userId) === Number(id));
-    if (exists) still.push(Number(id));
-  }
-  _savePending(still);
-  rerenderModeratedSafe();
-};
-
-/* Live sync just for moderated list (not players) */
-let _moderatedLiveTimer = null;
-function startModeratedLiveSync(){
-  if (_moderatedLiveTimer) clearInterval(_moderatedLiveTimer);
-  _moderatedLiveTimer = setInterval(() => {
-    // only sync if app visible + logged in
-    if (document.hidden) return;
-    try { fetchModerated(); } catch {}
-  }, 4000);
-}
-
-/* Wrap unban buttons: set pending, disable interaction, then wait for server to remove it */
-async function unbanWithVerify(note){
-  const p = getSelectedModerated();
-  if (!p) return;
-  if (isPending(p.userId)) return;
-
-  markPending(p.userId);
-  rerenderModeratedSafe();
-
-  const ok = await sendModeration("unban", p.userId, note || "");
-  if (!ok.ok){
-    clearPending(p.userId);
-    rerenderModeratedSafe();
-    return;
-  }
-
-  // Poll /moderated until server confirms removal (max ~12s)
-  let tries = 0;
-  const poll = async () => {
-    tries++;
-    await fetchModerated();
-    const stillThere = (Array.isArray(moderatedLog) ? moderatedLog : []).some(x => Number(x.userId) === Number(p.userId));
-    if (!stillThere){
-      clearPending(p.userId);
-      selectedModeratedUserId = null;
-      rerenderModeratedSafe();
-      return;
-    }
-    if (tries < 6) setTimeout(poll, 2000);
-  };
-  setTimeout(poll, 1500);
-}
-
-els.unban.onclick = async () => { await unbanWithVerify(""); };
-els.unbanReason.onclick = async () => {
-  const r = prompt("Unban note?") || "";
-  await unbanWithVerify(r);
-};
-
-/* Ensure moderated live sync starts after panel init */
-const _initPanel = initPanel;
-initPanel = function(){
-  _initPanel();
-  // start "live" moderated sync
-  startModeratedLiveSync();
-  // also fetch moderated once so list is up-to-date
-  try { fetchModerated(); } catch {}
-};
-</script>
-
 </body>
 </html>
