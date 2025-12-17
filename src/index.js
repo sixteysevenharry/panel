@@ -33,35 +33,8 @@ export default {
       }
     };
 
-    const MOD_LOG_KEY = "moderation_log_v1";
-    const MAX_LOG = 600;
-
-    const HIST_INDEX_KEY = "history_index_v1";
-    const HIST_TTL_SECONDS = 60 * 30; // 30 min
-    const MAX_HISTORY = 1200;
-
-    const nowMs = () => Date.now();
-
-    const putHistory = async (id, entry) => {
-      const now = nowMs();
-      const key = `hist:${id}`;
-      const payload = { ...entry, id, updatedAt: now };
-      await env.LIVE.put(key, JSON.stringify(payload), { expirationTtl: HIST_TTL_SECONDS });
-
-      const idx = safeParseObj(await env.LIVE.get(HIST_INDEX_KEY));
-      idx[id] = now;
-      // prune
-      const ids = Object.keys(idx);
-      if (ids.length > MAX_HISTORY) {
-        ids.sort((a, b) => Number(idx[b] || 0) - Number(idx[a] || 0));
-        for (let i = MAX_HISTORY; i < ids.length; i++) delete idx[ids[i]];
-      }
-      // drop expired
-      for (const k in idx) {
-        if (now - Number(idx[k] || 0) > (HIST_TTL_SECONDS * 1000)) delete idx[k];
-      }
-      await env.LIVE.put(HIST_INDEX_KEY, JSON.stringify(idx));
-    };
+    const LOG_KEY = "moderation_log_v2"; // verified-only log
+    const MAX_LOG = 900;
 
     try {
       const url = new URL(request.url);
@@ -74,9 +47,6 @@ export default {
         );
       }
 
-      /* =====================================================
-         ROBLOX -> UPDATE SERVER SNAPSHOT
-         ===================================================== */
       if (url.pathname === "/update" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
@@ -87,13 +57,13 @@ export default {
         const placeId = Number(body.placeId || 0);
         let jobId = String(body.jobId || "");
         const players = Array.isArray(body.players) ? body.players : null;
-
         if (!jobId) jobId = "studio-" + crypto.randomUUID();
+
         if (!placeId || !players) {
           return json({ error: "Invalid payload", expected: { placeId: "number", jobId: "string", players: "array" } }, 400);
         }
 
-        const now = nowMs();
+        const now = Date.now();
         const serverKey = `srv:${placeId}:${jobId}`;
 
         const snapshot = {
@@ -118,9 +88,6 @@ export default {
         return json({ ok: true });
       }
 
-      /* =====================================================
-         WEBSITE -> GET ALL ACTIVE PLAYERS
-         ===================================================== */
       if (url.pathname === "/players" && request.method === "GET") {
         const index = safeParseObj(await env.LIVE.get("server_index"));
 
@@ -130,15 +97,12 @@ export default {
         for (const serverKey in index) {
           const raw = await env.LIVE.get(serverKey);
           if (!raw) continue;
-
           try {
             const snap = JSON.parse(raw);
             const pid = Number(snap.placeId || 0);
-
             for (const p of snap.players || []) {
               const id = Number(p.userId);
               if (!id) continue;
-
               const unique = `${id}:${pid}`;
               if (seen.has(unique)) continue;
               seen.add(unique);
@@ -158,16 +122,10 @@ export default {
           String(a.displayName || a.username).localeCompare(String(b.displayName || b.username))
         );
 
-        return json({
-          updatedAt: new Date().toISOString(),
-          totalPlayers: combined.length,
-          players: combined
-        });
+        return json({ updatedAt: new Date().toISOString(), totalPlayers: combined.length, players: combined });
       }
 
-      /* =====================================================
-         PANEL -> CREATE MODERATION COMMAND
-         ===================================================== */
+      // Create command (NO LOG HERE)
       if (url.pathname === "/admin/moderate" && request.method === "POST") {
         const adminKey = request.headers.get("x-admin-key") || "";
         if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) return json({ error: "Unauthorized" }, 401);
@@ -182,93 +140,36 @@ export default {
         const username = String(body.username || "").slice(0, 40);
         const displayName = String(body.displayName || "").slice(0, 60);
 
-        if (!userId || !["kick", "ban", "unban"].includes(action)) {
-          return json({ error: "Invalid command" }, 400);
-        }
+        if (!userId || !["kick", "ban", "unban"].includes(action)) return json({ error: "Invalid command" }, 400);
 
         const id = crypto.randomUUID();
-        const now = nowMs();
+        const now = Date.now();
 
-        await env.LIVE.put(
-          `cmd:${id}`,
-          JSON.stringify({ id, createdAt: now, action, userId, reason, by, username, displayName }),
-          { expirationTtl: 600 }
-        );
+        const cmd = { id, createdAt: now, action, userId, reason, by, username, displayName };
+
+        await env.LIVE.put(`cmd:${id}`, JSON.stringify(cmd), { expirationTtl: 600 });
 
         const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
         cmdIndex[id] = now;
         await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
 
-        // shared moderation log (what the website shows)
-        const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
-        log.unshift({ id, createdAt: now, action, userId, reason, by, username, displayName });
-        if (log.length > MAX_LOG) log.length = MAX_LOG;
-        await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
-
-        // history record for verification
-        await putHistory(id, {
-          createdAt: now,
-          action,
-          userId,
-          reason,
-          by,
-          username,
-          displayName,
-          status: "pending"
-        });
+        await env.LIVE.put(`hist:${id}`, JSON.stringify({ ...cmd, status: "pending", ok: null, message: "", appliedAt: null }), { expirationTtl: 3600 });
 
         return json({ ok: true, id });
       }
 
-      /* =====================================================
-         WEBSITE -> MODERATION LIST (shared)
-         ===================================================== */
-      if (url.pathname === "/moderated" && request.method === "GET") {
-        const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
-        return json({ ok: true, items: log });
-      }
-
-      /* =====================================================
-         WEBSITE -> HISTORY (verification)
-         ===================================================== */
-      if (url.pathname === "/history" && request.method === "GET") {
-        const idx = safeParseObj(await env.LIVE.get(HIST_INDEX_KEY));
-        const now = nowMs();
-
-        const ids = Object.keys(idx)
-          .filter((id) => now - Number(idx[id] || 0) <= (HIST_TTL_SECONDS * 1000))
-          .sort((a, b) => Number(idx[b] || 0) - Number(idx[a] || 0))
-          .slice(0, 250);
-
-        const items = [];
-        for (const id of ids) {
-          const raw = await env.LIVE.get(`hist:${id}`);
-          if (!raw) continue;
-          try { items.push(JSON.parse(raw)); } catch {}
-        }
-        return json({ ok: true, items });
-      }
-
-      /* =====================================================
-         ROBLOX -> GET MODERATION COMMANDS
-         ===================================================== */
       if (url.pathname === "/commands" && request.method === "GET") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
 
         const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
-        const now = nowMs();
+        const now = Date.now();
         const commands = [];
 
         for (const id in cmdIndex) {
-          if (now - Number(cmdIndex[id] || 0) > 600000) {
-            delete cmdIndex[id];
-            continue;
-          }
-
+          if (now - Number(cmdIndex[id] || 0) > 600000) { delete cmdIndex[id]; continue; }
           const raw = await env.LIVE.get(`cmd:${id}`);
           if (!raw) continue;
-
           try { commands.push(JSON.parse(raw)); } catch {}
         }
 
@@ -276,9 +177,6 @@ export default {
         return json({ ok: true, commands });
       }
 
-      /* =====================================================
-         ROBLOX -> ACK COMMAND (+ verification)
-         ===================================================== */
       if (url.pathname === "/ack" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
@@ -289,17 +187,6 @@ export default {
         const id = String(body.id || "");
         if (!id) return json({ error: "Missing id" }, 400);
 
-        const ok = body.ok === true;
-        const message = String(body.message || "").slice(0, 180);
-
-        // mark history
-        await putHistory(id, {
-          ...(safeParseObj(await env.LIVE.get(`hist:${id}`))),
-          status: ok ? "applied" : "failed",
-          appliedAt: nowMs(),
-          message
-        });
-
         await env.LIVE.delete(`cmd:${id}`);
 
         const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
@@ -309,7 +196,67 @@ export default {
         return json({ ok: true });
       }
 
+      // Roblox posts result here AFTER enforcement. Only then we add to shared log.
+      if (url.pathname === "/apply" && request.method === "POST") {
+        const key = request.headers.get("x-api-key") || "";
+        if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
+
+        let body;
+        try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+
+        const id = String(body.id || "");
+        const ok = body.ok === true;
+        const message = String(body.message || "").slice(0, 180);
+        if (!id) return json({ error: "Missing id" }, 400);
+
+        const raw = await env.LIVE.get(`hist:${id}`);
+        if (!raw) return json({ error: "Unknown id" }, 404);
+
+        let hist = null;
+        try { hist = JSON.parse(raw); } catch { hist = null; }
+        if (!hist) return json({ error: "Bad history" }, 500);
+
+        hist.status = "applied";
+        hist.ok = ok;
+        hist.message = message || "";
+        hist.appliedAt = Date.now();
+        await env.LIVE.put(`hist:${id}`, JSON.stringify(hist), { expirationTtl: 3600 });
+
+        if (ok) {
+          const log = safeParseArr(await env.LIVE.get(LOG_KEY));
+          log.unshift({
+            id: hist.id,
+            createdAt: hist.createdAt,
+            appliedAt: hist.appliedAt,
+            action: hist.action,
+            userId: hist.userId,
+            reason: hist.reason,
+            by: hist.by,
+            username: hist.username,
+            displayName: hist.displayName
+          });
+          if (log.length > MAX_LOG) log.length = MAX_LOG;
+          await env.LIVE.put(LOG_KEY, JSON.stringify(log));
+        }
+
+        return json({ ok: true });
+      }
+
+      if (url.pathname === "/moderated" && request.method === "GET") {
+        const log = safeParseArr(await env.LIVE.get(LOG_KEY));
+        return json({ ok: true, items: log });
+      }
+
+      if (url.pathname === "/history" && request.method === "GET") {
+        const id = url.searchParams.get("id") || "";
+        if (!id) return json({ error: "Missing id" }, 400);
+        const raw = await env.LIVE.get(`hist:${id}`);
+        const item = raw ? safeParseObj(raw) : null;
+        return json({ ok: true, item: item && Object.keys(item).length ? item : null });
+      }
+
       return new Response("Not found", { status: 404, headers: cors });
+
     } catch (e) {
       return json({ error: "Worker exception", message: String(e?.message || e) }, 500);
     }
