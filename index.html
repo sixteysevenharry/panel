@@ -242,6 +242,56 @@
     const ALLOWED_USERNAMES = new Set(["eagla","nebula","specimen","arrow","damage","caprie"]);
     const STAFF_IDS = new Set([8007453710,4976035348,154251360,9930928180,485280430]);
 
+
+    // ===== Name cache (so Enforcement Logs show names even if older entries lacked them) =====
+    const NAME_CACHE_KEY = "panel_name_cache_v1";
+
+    function loadNameCache(){
+      try{
+        const raw = localStorage.getItem(NAME_CACHE_KEY);
+        const obj = raw ? JSON.parse(raw) : {};
+        return (obj && typeof obj === "object") ? obj : {};
+      } catch { return {}; }
+    }
+
+    function saveNameCache(cache){
+      try{ localStorage.setItem(NAME_CACHE_KEY, JSON.stringify(cache)); } catch {}
+    }
+
+    function cacheNameFrom(user){
+      if (!user) return;
+      const id = Number(user.userId || 0);
+      if (!id) return;
+      const username = String(user.username || "");
+      const displayName = String(user.displayName || "");
+      if (!username && !displayName) return;
+
+      const cache = loadNameCache();
+      cache[String(id)] = { username, displayName, at: Date.now() };
+      saveNameCache(cache);
+    }
+
+    function resolveName(userId, username, displayName){
+      const u = String(username || "");
+      const d = String(displayName || "");
+      if (u || d) return { username: u, displayName: d };
+
+      // Try active list
+      const found = activePlayers && activePlayers.find(p => Number(p.userId) === Number(userId));
+      if (found && (found.username || found.displayName)){
+        cacheNameFrom(found);
+        return { username: String(found.username || ""), displayName: String(found.displayName || "") };
+      }
+
+      // Try cache
+      const cache = loadNameCache();
+      const hit = cache[String(Number(userId))];
+      if (hit && (hit.username || hit.displayName)){
+        return { username: String(hit.username || ""), displayName: String(hit.displayName || "") };
+      }
+
+      return { username: "", displayName: "" };
+    }
     const els = {
       app: document.getElementById("app"),
       loginOverlay: document.getElementById("loginOverlay"),
@@ -438,8 +488,9 @@
     }
 
     function makeLogCardHTML(e){
-      const name = esc(e.displayName || e.username || ("User " + e.userId));
-      const handle = esc(e.username || "");
+      const resolved = resolveName(e.userId, e.username, e.displayName);
+      const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
+      const handle = esc(resolved.username || "");
       const action = esc(String(e.action || "").toUpperCase());
       const by = esc(e.by || "");
       const reason = esc(e.reason || "");
@@ -513,8 +564,9 @@
       els.ban.disabled = !activeOk;
       els.banReason.disabled = !activeOk;
 
-      els.unban.disabled = !logSel;
-      els.unbanReason.disabled = !logSel;
+      const canUnban = !!logSel && String(logSel.action || "").toLowerCase() === "ban" && !isStaff(logSel.userId);
+      els.unban.disabled = !canUnban;
+      els.unbanReason.disabled = !canUnban;
     }
 
     async function fetchPlayers(){
@@ -524,6 +576,7 @@
       if (!res.ok) throw new Error("Players HTTP " + res.status);
       const data = await res.json();
       activePlayers = Array.isArray(data.players) ? data.players : [];
+      try{ for (const p of activePlayers) cacheNameFrom(p); } catch {}
       els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
       renderActive();
       updateButtons();
@@ -589,6 +642,8 @@
 
       const adminKey = els.adminKey.value.trim();
       if (!adminKey) { toast("err","Missing key","Enter ADMIN_KEY first."); return { ok:false }; }
+
+      try{ cacheNameFrom(user); } catch {}
 
       const payload = {
         action,
