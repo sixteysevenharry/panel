@@ -455,11 +455,6 @@
   <div class="toastWrap" id="toasts"></div>
 
   <script>
-    /* IMPORTANT NOTE:
-       This is a UI gate only (client-side). If someone can view the HTML/JS, they can bypass it.
-       For real protection, enforce auth server-side (Cloudflare Access / Basic Auth / token check at your Worker).
-    */
-
     const ALLOWED_USERNAMES = new Set([
       "eagla",
       "nebula",
@@ -553,7 +548,6 @@
       document.documentElement.setAttribute("data-theme", mode);
     }
 
-    // Default dark if nothing saved
     const savedTheme = localStorage.getItem("panel_theme_mode") || "dark";
     applyTheme(savedTheme);
 
@@ -620,7 +614,6 @@
       els.loginStatus.className = "small";
       toast("ok", "Logged in", "Welcome");
       showApp();
-      // start panel after login
       initPanel();
     }
 
@@ -636,7 +629,6 @@
       showLogin();
     };
 
-    /* Panel logic (unchanged functionality) */
     function isStaff(userId){
       return STAFF_IDS.has(Number(userId));
     }
@@ -679,7 +671,30 @@
     let activePlayers = [];
     let selectedActiveUserId = null;
     let selectedModeratedUserId = null;
-    let pollTimer = null;
+
+    // Refresh cooldown (10s)
+    let refreshCooldownUntil = 0;
+    let refreshCooldownTimer = null;
+
+    function startRefreshCooldown(seconds){
+      refreshCooldownUntil = Date.now() + (seconds * 1000);
+      els.refresh.disabled = true;
+
+      const tick = () => {
+        const left = Math.max(0, Math.ceil((refreshCooldownUntil - Date.now()) / 1000));
+        if (left > 0) {
+          els.refresh.textContent = `⏳ Refresh (${left}s)`;
+          refreshCooldownTimer = setTimeout(tick, 250);
+        } else {
+          els.refresh.textContent = "🔄 Refresh";
+          els.refresh.disabled = false;
+          if (refreshCooldownTimer) clearTimeout(refreshCooldownTimer);
+          refreshCooldownTimer = null;
+        }
+      };
+
+      tick();
+    }
 
     function setSelectedActive(userId){
       selectedActiveUserId = Number(userId);
@@ -863,7 +878,7 @@
       const ok = await sendModeration("kick", p.userId, "");
       if (ok.ok) {
         toast("ok", "Kick sent", `${p.displayName || p.username} (${p.userId})`);
-        await fetchPlayers();
+        // don't auto-refresh here; user can press refresh (cooldown applies)
       }
     };
 
@@ -874,7 +889,6 @@
       const ok = await sendModeration("kick", p.userId, r);
       if (ok.ok) {
         toast("ok", "Kick sent", r ? `Reason: ${r}` : `${p.displayName || p.username} (${p.userId})`);
-        await fetchPlayers();
       }
     };
 
@@ -886,7 +900,6 @@
         upsertModerated(p, "");
         toast("ok", "Ban sent", `${p.displayName || p.username} (${p.userId})`);
         renderModerated();
-        await fetchPlayers();
       }
     };
 
@@ -899,7 +912,6 @@
         upsertModerated(p, r);
         toast("ok", "Ban sent", r ? `Reason: ${r}` : `${p.displayName || p.username} (${p.userId})`);
         renderModerated();
-        await fetchPlayers();
       }
     };
 
@@ -937,7 +949,12 @@
       toast("ok", "Saved", "API URL + Admin Key stored in this browser");
     };
 
-    els.refresh.onclick = () => fetchPlayers();
+    // Refresh ONLY on click + 10s cooldown
+    els.refresh.onclick = async () => {
+      if (els.refresh.disabled) return;
+      startRefreshCooldown(10);
+      await fetchPlayers();
+    };
 
     els.clearModerated.onclick = () => {
       if (!confirm("Clear moderated list (local only)?")) return;
@@ -959,13 +976,10 @@
       renderModerated();
       updateButtons();
 
-      fetchPlayers();
-
-      if (pollTimer) clearInterval(pollTimer);
-      pollTimer = setInterval(fetchPlayers, 5000);
+      // No auto-fetch. User must press Refresh.
+      setStatus("ok", "Ready (press Refresh)");
     }
 
-    // Boot
     if (isLoggedIn()){
       showApp();
       initPanel();
