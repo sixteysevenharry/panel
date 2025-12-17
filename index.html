@@ -138,14 +138,6 @@
       transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
     }
 
-    .col.dropHot{
-      border-color: var(--danger);
-      box-shadow: 0 0 0 4px rgba(176,0,32,.12), var(--shadow);
-    }
-    [data-theme="dark"] .col.dropHot{
-      box-shadow: 0 0 0 4px rgba(255,77,109,.14), var(--shadow);
-    }
-
     .colTitle{
       font-size:22px;
       margin:0 0 12px;
@@ -186,7 +178,6 @@
     }
     .card:hover{border-color:var(--border2);transform:translateY(-1px)}
     .selected{outline:3px solid var(--ring);outline-offset:0;transform:translateY(-1px) scale(1.01)}
-    .dragging{opacity:.6;transform:none}
 
     .row{
       display:flex;
@@ -400,7 +391,7 @@
         <div class="scroll" id="activeList"></div>
       </div>
 
-      <div class="col" id="moderatedCol" title="Drop active players anywhere in this column to instantly BAN them (no reason)">
+      <div class="col" id="moderatedCol" >
         <div class="colTitle">
           <span>Moderated Users</span>
           <span class="countPill" id="moderatedCount">0</span>
@@ -627,21 +618,21 @@
       updateButtons();
     }
 
-    /* ✅ FIX: buttons enable purely from selection + staff */
+    /* ✅ buttons enable purely from selection + staff */
     function updateButtons(){
       const hasActive = Number.isFinite(selectedActiveUserId);
       const hasMod = Number.isFinite(selectedModeratedUserId);
       const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
 
       const canKickBan = hasActive && !activeIsStaff;
-      els.kick.disabled = !canKickBan || els.kick.disabled;
-      els.kickReason.disabled = !canKickBan || els.kickReason.disabled;
-      els.ban.disabled = !canKickBan || els.ban.disabled;
-      els.banReason.disabled = !canKickBan || els.banReason.disabled;
+      if (!els.kick.disabled) els.kick.disabled = !canKickBan;
+      if (!els.kickReason.disabled) els.kickReason.disabled = !canKickBan;
+      if (!els.ban.disabled) els.ban.disabled = !canKickBan;
+      if (!els.banReason.disabled) els.banReason.disabled = !canKickBan;
 
       const canUnban = hasMod;
-      els.unban.disabled = !canUnban || els.unban.disabled;
-      els.unbanReason.disabled = !canUnban || els.unbanReason.disabled;
+      if (!els.unban.disabled) els.unban.disabled = !canUnban;
+      if (!els.unbanReason.disabled) els.unbanReason.disabled = !canUnban;
 
       setCounts();
     }
@@ -702,21 +693,6 @@
 
         if (!staff){
           div.addEventListener("click", () => setSelectedActive(p.userId));
-          div.draggable = true;
-
-          div.addEventListener("dragstart", (e) => {
-            div.classList.add("dragging");
-            e.dataTransfer.setData("text/plain", JSON.stringify({
-              userId: Number(p.userId),
-              username: p.username || "",
-              displayName: p.displayName || "",
-              team: p.team || "",
-              placeId: Number(p.placeId || 0)
-            }));
-            e.dataTransfer.effectAllowed = "move";
-          });
-
-          div.addEventListener("dragend", () => div.classList.remove("dragging"));
         }
 
         els.activeList.appendChild(div);
@@ -845,32 +821,6 @@
 
     els.activeSearch.addEventListener("input", () => renderActive());
     els.moderatedSearch.addEventListener("input", () => renderModerated());
-
-    /* Drag drop ban */
-    els.moderatedCol.addEventListener("dragover", (e) => { e.preventDefault(); els.moderatedCol.classList.add("dropHot"); });
-    els.moderatedCol.addEventListener("dragleave", () => els.moderatedCol.classList.remove("dropHot"));
-    els.moderatedCol.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      els.moderatedCol.classList.remove("dropHot");
-
-      let data;
-      try { data = JSON.parse(e.dataTransfer.getData("text/plain") || "{}"); } catch { data = {}; }
-      const uid = Number(data.userId || 0);
-      if (!uid) return;
-
-      if (isStaff(uid)){
-        toast("err", "Blocked", "You cannot drag STAFF into moderated list.");
-        return;
-      }
-
-      if (!beginCooldown(els.ban, 3, "Ban")) return;
-
-      const ok = await sendModeration("ban", uid, "");
-      if (ok.ok){
-        toast("ok", "Banned", `UserId: ${uid}`);
-        await fetchModerated();
-      }
-    });
 
     /* Buttons (3s cooldown) */
     els.kick.onclick = async () => {
