@@ -953,7 +953,7 @@ const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId 
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
         body: JSON.stringify(payload)
-      }
+      })
     async function enforceAndVerify(action, user, reason){
       const resp = await sendModeration(action, Number(user.userId), reason || "", user);
       if (!resp.ok) return { ok: false };
