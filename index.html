@@ -6,293 +6,110 @@
   <title>Roblox Panel</title>
   <style>
     :root{
-      --bg:#f7f7fb;
-      --surface:#ffffff;
-      --surface2:#fbfbfd;
-      --text:#111318;
-      --muted:#5c6370;
-      --border:#e6e8ee;
-      --border2:#d9dde6;
-      --ring:#111318;
-      --btn:#ffffff;
-      --btnText:#111318;
-      --btnBorder:#d9dde6;
-      --btnHover:#f3f4f7;
-      --danger:#b00020;
-      --ok:#0b7a3b;
-
-      --radius:16px;
-      --radius2:14px;
+      --bg:#f7f7fb; --surface:#ffffff; --surface2:#fbfbfd;
+      --text:#111318; --muted:#5c6370;
+      --border:#e6e8ee; --border2:#d9dde6; --ring:#111318;
+      --btn:#ffffff; --btnText:#111318; --btnBorder:#d9dde6; --btnHover:#f3f4f7;
+      --danger:#b00020; --ok:#0b7a3b;
+      --radius:16px; --radius2:14px;
       --shadow: 0 10px 30px rgba(17,19,24,.08);
       --focus: 0 0 0 4px rgba(17,19,24,.12);
     }
-
     [data-theme="dark"]{
-      --bg:#0c0f14;
-      --surface:#121722;
-      --surface2:#0f1420;
-      --text:#e9edf6;
-      --muted:#a9b2c3;
-      --border:#202a3a;
-      --border2:#2a3750;
-      --ring:#e9edf6;
-      --btn:#141b29;
-      --btnText:#e9edf6;
-      --btnBorder:#2a3750;
-      --btnHover:#1a2436;
-      --danger:#ff4d6d;
-      --ok:#3ddc84;
-
+      --bg:#0c0f14; --surface:#121722; --surface2:#0f1420;
+      --text:#e9edf6; --muted:#a9b2c3;
+      --border:#202a3a; --border2:#2a3750; --ring:#e9edf6;
+      --btn:#141b29; --btnText:#e9edf6; --btnBorder:#2a3750; --btnHover:#1a2436;
+      --danger:#ff4d6d; --ok:#3ddc84;
       --shadow: 0 14px 40px rgba(0,0,0,.45);
       --focus: 0 0 0 4px rgba(233,237,246,.16);
     }
-
     *{box-sizing:border-box}
-
     body{
-      font-family:system-ui,Arial;
-      margin:0;
-      color:var(--text);
-      background:var(--bg);
+      font-family:system-ui,Arial; margin:0; color:var(--text); background:var(--bg);
       transition: background .25s ease, color .25s ease;
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      padding:24px;
+      min-height:100vh; display:flex; justify-content:center; align-items:center; padding:24px;
     }
-
-    .app{
-      width:min(1200px, 100%);
-      margin:0 auto;
-    }
-
-    .top{
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-
-    h1{
-      margin:0;
-      font-size:34px;
-      letter-spacing:-.5px;
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-
+    .app{width:min(1200px, 100%); margin:0 auto;}
+    .top{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+    h1{margin:0; font-size:34px; letter-spacing:-.5px; display:flex; align-items:center; gap:10px;}
     .pillStatus{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border:1px solid var(--border);
-      border-radius:999px;
-      background:rgba(255,255,255,.6);
-      backdrop-filter: blur(8px);
+      display:inline-flex; align-items:center; gap:8px; padding:6px 10px;
+      border:1px solid var(--border); border-radius:999px;
+      background:rgba(255,255,255,.6); backdrop-filter: blur(8px);
     }
     [data-theme="dark"] .pillStatus{background:rgba(18,23,34,.6)}
-
-    .dot{
-      width:8px;height:8px;border-radius:50%;
-      background:var(--muted);
-    }
+    .dot{width:8px;height:8px;border-radius:50%; background:var(--muted);}
     .dot.ok{background:var(--ok)}
     .dot.err{background:var(--danger)}
     .dot.load{background:var(--muted); animation:pulse 1.2s ease-in-out infinite}
     @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
-
     .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-
     .seg{
-      display:flex;
-      border:1px solid var(--border);
-      border-radius:999px;
-      overflow:hidden;
-      background:var(--surface);
-      box-shadow: var(--shadow);
+      display:flex; border:1px solid var(--border); border-radius:999px; overflow:hidden;
+      background:var(--surface); box-shadow: var(--shadow);
     }
-    .seg button{
-      border:0;
-      border-right:1px solid var(--border);
-      border-radius:0;
-      padding:8px 10px;
-      background:transparent;
-      color:var(--muted);
-    }
+    .seg button{border:0;border-right:1px solid var(--border);border-radius:0;padding:8px 10px;background:transparent;color:var(--muted)}
     .seg button:last-child{border-right:0}
-    .seg button[aria-pressed="true"]{
-      background:var(--btnHover);
-      color:var(--text);
-    }
-
-    .row{
-      display:flex;
-      align-items:flex-end;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:18px;
-    }
-
-    .field{min-width:280px;flex:1 1 280px}
-
-    input{
-      width:100%;
-      padding:11px 12px;
-      border:1px solid var(--border2);
-      border-radius:12px;
-      background:var(--surface);
-      color:var(--text);
-      transition: border-color .15s ease, box-shadow .15s ease, background .2s ease;
-      outline:none;
-    }
-    input:focus{box-shadow:var(--focus);border-color:var(--border2)}
-
-    button{
-      padding:10px 12px;
-      border:1px solid var(--btnBorder);
-      border-radius:12px;
-      background:var(--btn);
-      color:var(--btnText);
-      cursor:pointer;
-      transition: transform .12s ease, background .15s ease, border-color .15s ease, opacity .15s ease;
-      outline:none;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      user-select:none;
-      white-space:nowrap;
-    }
-    button:hover{background:var(--btnHover)}
-    button:active{transform:translateY(1px)}
-    button:disabled{opacity:.45;cursor:not-allowed;transform:none}
-
-    .btns{display:flex;gap:10px;flex-wrap:wrap}
-
-    .meta{
-      opacity:.9;
-      margin-top:10px;
-      color:var(--muted);
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .small{font-size:12px;opacity:.88;color:var(--muted)}
-    .error{color:var(--danger);opacity:1}
-
-    .grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:24px;
-      margin-top:18px;
-    }
+    .seg button[aria-pressed="true"]{background:var(--btnHover);color:var(--text)}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:18px;}
     @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
-
     .col{
-      border:1px solid var(--border);
-      border-radius:var(--radius);
-      padding:16px;
-      background:var(--surface);
-      box-shadow: var(--shadow);
+      border:1px solid var(--border); border-radius:var(--radius); padding:16px;
+      background:var(--surface); box-shadow: var(--shadow);
     }
-
-    .colTitle{
-      font-size:22px;
-      margin:0 0 12px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-    }
-
-    .countPill{
-      font-size:12px;
-      opacity:.9;
-      padding:4px 8px;
-      border:1px solid var(--border);
-      border-radius:999px;
-      color:var(--muted);
-      background:var(--surface2);
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-    }
-
-    .spinner{
-      width:10px;height:10px;
-      border:2px solid var(--border2);
-      border-top-color: var(--muted);
-      border-radius:50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    .scroll{
-      height:420px;
-      overflow:auto;
-      border-top:1px solid var(--border);
-      padding-top:12px;
-      padding-right:6px;
-    }
-
+    .colTitle{font-size:22px; margin:0 0 12px; display:flex; align-items:center; justify-content:space-between; gap:12px;}
+    .countPill{font-size:12px;opacity:.9;padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--muted);background:var(--surface2)}
+    .scroll{height:420px; overflow:auto; border-top:1px solid var(--border); padding-top:12px; padding-right:6px;}
     .card{
-      border:1px solid var(--border);
-      border-radius:var(--radius2);
-      padding:12px 14px;
-      margin:10px 0;
-      cursor:pointer;
-      user-select:none;
+      border:1px solid var(--border); border-radius:var(--radius2);
+      padding:12px 14px; margin:10px 0; cursor:pointer; user-select:none;
       background:linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
-      transition: transform .15s ease, border-color .15s ease, background .2s ease, opacity .2s ease;
+      transition: transform .15s ease, border-color .15s ease, background .2s ease;
       transform: translateZ(0);
     }
     .card:hover{border-color:var(--border2);transform:translateY(-1px)}
     .selected{outline:3px solid var(--ring);outline-offset:0;transform:translateY(-1px) scale(1.01)}
-    .disabledCard{opacity:.55;cursor:not-allowed}
-    .disabledCard:hover{border-color:var(--border);transform:none}
-
+    .row{display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin-top:18px;}
+    .field{min-width:220px; flex:1 1 220px;}
+    input{
+      width:100%; padding:11px 12px; border:1px solid var(--border2); border-radius:12px;
+      background:var(--surface); color:var(--text);
+      transition:border-color .15s ease, box-shadow .15s ease, background .2s ease;
+      outline:none;
+    }
+    input:focus{box-shadow:var(--focus);border-color:var(--border2)}
+    button{
+      padding:10px 12px; border:1px solid var(--btnBorder); border-radius:12px;
+      background:var(--btn); color:var(--btnText); cursor:pointer;
+      transition: transform .12s ease, background .15s ease, border-color .15s ease, opacity .15s ease;
+      outline:none; display:inline-flex; align-items:center; gap:8px;
+    }
+    button:hover{background:var(--btnHover)}
+    button:active{transform:translateY(1px)}
+    button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .btns{display:flex;gap:10px;flex-wrap:wrap}
+    .divider{height:1px;background:var(--border);margin:14px 0}
+    .meta{opacity:.9;margin-top:10px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .small{font-size:12px;opacity:.88;color:var(--muted)}
+    .error{color:var(--danger);opacity:1}
+    .label{font-size:12px;opacity:.9;margin-bottom:6px;color:var(--muted)}
     .pill{
-      display:inline-block;
-      padding:3px 8px;
-      border:1px solid var(--border);
-      border-radius:999px;
-      margin-left:8px;
-      font-size:12px;
-      color:var(--muted);
-      background:var(--surface2);
+      display:inline-block; padding:3px 8px; border:1px solid var(--border);
+      border-radius:999px; margin-left:8px; font-size:12px; color:var(--muted); background:var(--surface2);
     }
     .staffPill{border-color:var(--border2);opacity:.95}
     .staffCard{opacity:.55;cursor:not-allowed;filter:grayscale(1)}
-    .staffCard:hover{border-color:var(--border)}
-
     .toastWrap{
-      position:fixed;
-      bottom:18px;
-      left:50%;
-      transform:translateX(-50%);
-      z-index:9999;
-      pointer-events:none;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
+      position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+      z-index:9999; pointer-events:none; display:flex; flex-direction:column; gap:8px;
       width:min(560px, calc(100% - 24px));
     }
     .toast{
-      pointer-events:auto;
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.72);
-      backdrop-filter: blur(10px);
-      box-shadow: var(--shadow);
-      border-radius:14px;
-      padding:10px 12px;
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
+      pointer-events:auto; border:1px solid var(--border);
+      background:rgba(255,255,255,.72); backdrop-filter: blur(10px);
+      box-shadow: var(--shadow); border-radius:14px; padding:10px 12px;
+      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
       animation: toastIn .18s ease-out;
     }
     [data-theme="dark"] .toast{background:rgba(18,23,34,.72)}
@@ -305,80 +122,28 @@
     .toast.err{border-color:rgba(176,0,32,.35)}
     [data-theme="dark"] .toast.ok{border-color:rgba(61,220,132,.35)}
     [data-theme="dark"] .toast.err{border-color:rgba(255,77,109,.35)}
-
     .overlay{
-      position:fixed;
-      inset:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:24px;
-      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.08), transparent 55%),
-                  rgba(0,0,0,.22);
-      backdrop-filter: blur(8px);
-      z-index:9998;
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:24px;
+      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.08), transparent 55%), rgba(0,0,0,.22);
+      backdrop-filter: blur(8px); z-index:9998;
     }
     [data-theme="dark"] .overlay{
-      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.10), transparent 55%),
-                  rgba(0,0,0,.55);
+      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.10), transparent 55%), rgba(0,0,0,.55);
     }
-
     .loginCard{
-      width:min(520px, 100%);
-      border:1px solid var(--border);
-      border-radius:18px;
-      background:var(--surface);
-      box-shadow: var(--shadow);
-      padding:18px;
-      animation: toastIn .18s ease-out;
+      width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
+      background:var(--surface); box-shadow: var(--shadow); padding:18px; animation: toastIn .18s ease-out;
     }
-    .loginTitle{
-      font-size:22px;
-      margin:0 0 8px;
-    }
-    .loginHint{
-      margin:0 0 14px;
-      color:var(--muted);
-      font-size:13px;
-    }
-    .loginRow{
-      display:flex;
-      gap:10px;
-      align-items:flex-end;
-      flex-wrap:wrap;
-    }
+    .loginTitle{font-size:22px;margin:0 0 8px}
+    .loginHint{margin:0 0 14px;color:var(--muted);font-size:13px}
+    .loginRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
     .loginRow .field{flex:1 1 240px; min-width:240px}
-    .loginFoot{
-      margin-top:10px;
-      font-size:12px;
-      color:var(--muted);
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .ghostBtn{
-      border:1px solid var(--border);
-      background:transparent;
-    }
+    .loginFoot{margin-top:10px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+    .ghostBtn{border:1px solid var(--border);background:transparent}
     .ghostBtn:hover{background:var(--btnHover)}
-
-    .searchRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:12px;
-      align-items:flex-end;
-    }
-    .searchRow .field{min-width:260px;flex:1 1 260px}
-
-    @media (prefers-reduced-motion: reduce){
-      *{transition:none !important;animation:none !important}
-    }
+    @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
   </style>
 </head>
-
 <body>
   <div class="app" id="app" style="display:none">
     <div class="top">
@@ -402,37 +167,30 @@
 
     <div class="row">
       <div class="field">
-        <div class="label">Players API URL</div>
-        <input id="playersApi" placeholder="https://panel.sixteysevenharry.workers.dev/players" />
+        <div class="label">Worker Base URL</div>
+        <input id="workerBase" placeholder="https://panel.example.workers.dev" />
       </div>
       <div class="field">
         <div class="label">Admin Key</div>
         <input id="adminKey" placeholder="ADMIN_KEY (stored in your browser)" />
       </div>
+      <div class="field">
+        <div class="label">Search</div>
+        <input id="search" placeholder="Search name / display / id" />
+      </div>
       <div class="btns" style="margin-top:18px">
         <button id="save" type="button">💾 Save</button>
         <button id="refresh" type="button">🔄 Refresh</button>
-        <button id="clearModerated" type="button">🧹 Clear Moderated List</button>
       </div>
     </div>
 
-    <div class="searchRow">
-      <div class="field">
-        <div class="label">Search (name or UserId)</div>
-        <input id="searchBox" placeholder="Search active / moderated..." />
-      </div>
-      <div class="btns" style="margin-top:18px">
-        <button id="clearSearch" type="button">✖ Clear Search</button>
-      </div>
-    </div>
-
-    <div class="meta" id="meta">Press Refresh to load players.</div>
+    <div class="meta" id="meta">Updated: ?</div>
 
     <div class="grid">
       <div class="col">
         <div class="colTitle">
           <span>Active Users</span>
-          <span class="countPill" id="activeCountWrap"><span id="activeCount">0</span></span>
+          <span class="countPill" id="activeCount">0</span>
         </div>
         <div class="scroll" id="activeList"></div>
       </div>
@@ -440,13 +198,13 @@
       <div class="col">
         <div class="colTitle">
           <span>Enforcement Logs</span>
-          <span class="countPill" id="moderatedCountWrap"><span id="moderatedCount">0</span></span>
+          <span class="countPill" id="logCount">0</span>
         </div>
-        <div class="scroll" id="moderatedList"></div>
+        <div class="scroll" id="logList"></div>
       </div>
     </div>
 
-    <div style="height:14px"></div>
+    <div class="divider"></div>
 
     <div class="btns">
       <button id="kick" type="button">👢 Kick</button>
@@ -454,7 +212,7 @@
       <button id="ban" type="button">⛔ Ban</button>
       <button id="banReason" type="button">🧾 Ban With Reason</button>
       <button id="unban" type="button">✅ Unban</button>
-      <button id="unbanReason" type="button">🗒️ Unban With Reason</button>
+      <button id="unbanReason" type="button">🗒️ Unban With Note</button>
     </div>
   </div>
 
@@ -495,16 +253,18 @@
       status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
       meta: document.getElementById("meta"),
-      playersApi: document.getElementById("playersApi"),
+
+      workerBase: document.getElementById("workerBase"),
       adminKey: document.getElementById("adminKey"),
+      search: document.getElementById("search"),
       save: document.getElementById("save"),
       refresh: document.getElementById("refresh"),
-      clearModerated: document.getElementById("clearModerated"),
-      searchBox: document.getElementById("searchBox"),
-      clearSearch: document.getElementById("clearSearch"),
 
       activeList: document.getElementById("activeList"),
-      moderatedList: document.getElementById("moderatedList"),
+      logList: document.getElementById("logList"),
+      activeCount: document.getElementById("activeCount"),
+      logCount: document.getElementById("logCount"),
+      toasts: document.getElementById("toasts"),
 
       kick: document.getElementById("kick"),
       kickReason: document.getElementById("kickReason"),
@@ -513,26 +273,13 @@
       unban: document.getElementById("unban"),
       unbanReason: document.getElementById("unbanReason"),
 
-      activeCount: document.getElementById("activeCount"),
-      moderatedCount: document.getElementById("moderatedCount"),
-      activeCountWrap: document.getElementById("activeCountWrap"),
-      moderatedCountWrap: document.getElementById("moderatedCountWrap"),
-
       themeLight: document.getElementById("themeLight"),
       themeDark: document.getElementById("themeDark"),
       themeAuto: document.getElementById("themeAuto"),
-
-      toasts: document.getElementById("toasts"),
     };
 
-    const MOD_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/admin/moderate";
-    const HISTORY_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/history";
-    const MODERATED_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/moderated";
-
     function esc(s){
-      return String(s ?? "").replace(/[&<>"']/g, c => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-      }[c]));
+      return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
     }
 
     function toast(kind, title, body){
@@ -547,7 +294,7 @@
       `;
       div.querySelector(".x").onclick = () => div.remove();
       els.toasts.appendChild(div);
-      setTimeout(() => { if (div.isConnected) div.remove(); }, 3600);
+      setTimeout(() => { if (div.isConnected) div.remove(); }, 3200);
     }
 
     function setStatus(state, text){
@@ -561,27 +308,13 @@
       els.themeLight.setAttribute("aria-pressed", mode === "light");
       els.themeDark.setAttribute("aria-pressed", mode === "dark");
       els.themeAuto.setAttribute("aria-pressed", mode === "auto");
-      if (mode === "auto"){
-        document.documentElement.removeAttribute("data-theme");
-        return;
-      }
+      if (mode === "auto"){ document.documentElement.removeAttribute("data-theme"); return; }
       document.documentElement.setAttribute("data-theme", mode);
     }
-
-    const savedTheme = localStorage.getItem("panel_theme_mode") || "dark";
-    applyTheme(savedTheme);
-
+    applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
     els.themeLight.onclick = () => applyTheme("light");
     els.themeDark.onclick = () => applyTheme("dark");
     els.themeAuto.onclick = () => applyTheme("auto");
-
-    const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
-    if (mq && mq.addEventListener){
-      mq.addEventListener("change", () => {
-        const mode = localStorage.getItem("panel_theme_mode") || "dark";
-        if (mode === "auto") applyTheme("auto");
-      });
-    }
 
     function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
     function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
@@ -593,6 +326,8 @@
       localStorage.removeItem("panel_logged_in");
       localStorage.removeItem("panel_login_user");
     }
+    function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
+
     function showLogin(){
       els.app.style.display = "none";
       els.loginOverlay.style.display = "flex";
@@ -604,21 +339,18 @@
       els.loginOverlay.style.display = "none";
       els.app.style.display = "block";
     }
+
     function attemptLogin(){
       const u = normalizeUser(els.loginUser.value);
-      if (!u){
-        els.loginStatus.textContent = "Enter a username.";
-        els.loginStatus.className = "small error";
-        return;
-      }
+      if (!u){ els.loginStatus.textContent = "Enter a username."; els.loginStatus.className = "small error"; return; }
       if (!ALLOWED_USERNAMES.has(u)){
         els.loginStatus.textContent = "Invalid username.";
         els.loginStatus.className = "small error";
-        toast("err", "Login denied", "That username is not allowed");
+        toast("err","Login denied","That username is not allowed");
         return;
       }
       setLoggedIn(u);
-      toast("ok", "Logged in", "Welcome");
+      toast("ok","Logged in","Welcome");
       showApp();
       initPanel();
     }
@@ -628,333 +360,235 @@
     els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
 
     function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
-    function getLoginUser(){ return localStorage.getItem("panel_login_user") || "unknown"; }
+
+    function baseUrl(){
+      const raw = (els.workerBase.value || "").trim().replace(/\/+$/,"");
+      return raw;
+    }
+    function endpoint(path){ return baseUrl() + path; }
 
     let activePlayers = [];
-    let moderatedUsers = [];
+    let logs = [];
     let selectedActiveUserId = null;
-    let selectedModeratedUserId = null;
+    let selectedLogId = null;
     let uiLocked = false;
+
+    let refreshCooldownUntil = 0;
+    let refreshCooldownTimer = null;
+
+    function startCooldown(btn, seconds, label){
+      const until = Date.now() + seconds * 1000;
+      btn.disabled = true;
+      const orig = btn.textContent;
+      const tick = () => {
+        const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+        if (left > 0){
+          btn.textContent = `⏳ ${label} (${left}s)`;
+          refreshCooldownTimer = setTimeout(tick, 250);
+        } else {
+          btn.textContent = orig;
+          btn.disabled = false;
+          if (refreshCooldownTimer) clearTimeout(refreshCooldownTimer);
+          refreshCooldownTimer = null;
+        }
+      };
+      tick();
+    }
 
     function beginVerifyLock(){
       uiLocked = true;
       selectedActiveUserId = null;
-      selectedModeratedUserId = null;
+      selectedLogId = null;
       renderActive();
-      renderModerated();
+      renderLogs();
       updateButtons();
-      setStatus("loading", "Verifying...");
+      setStatus("loading","Verifying...");
     }
-
     function endVerifyLock(){
       uiLocked = false;
       updateButtons();
-      setStatus("ok", "Ready");
-    }
-
-
-    let verifying = false;
-    let refreshCooldownUntil = 0;
-    let refreshCooldownTimer = null;
-
-    function setCountSpinner(on){
-      const setWrap = (wrap, on2) => {
-        const n = wrap.querySelector(".spinner");
-        if (on2){
-          if (!n){
-            const sp = document.createElement("span");
-            sp.className = "spinner";
-            wrap.appendChild(sp);
-          }
-        } else {
-          if (n) n.remove();
-        }
-      };
-      setWrap(els.activeCountWrap, on);
-      setWrap(els.moderatedCountWrap, on);
-    }
-
-    function setVerifying(on, label){
-      verifying = on === true;
-      if (verifying){
-        selectedActiveUserId = null;
-        selectedModeratedUserId = null;
-      }
-      updateButtons();
-      renderActive();
-      renderModerated();
-
-      if (verifying){
-        setStatus("loading", label || "Verifying with server...");
-        setCountSpinner(true);
-      } else {
-        setCountSpinner(false);
-        setStatus("ok", "Ready");
-      }
-    }
-
-    function setSelectedActive(userId){
-      if (uiLocked) return;
-if (verifying) return;
-      selectedActiveUserId = Number(userId);
-      selectedModeratedUserId = null;
-      renderActive();
-      renderModerated();
-      updateButtons();
-    }
-
-    function setSelectedModerated(userId){
-      if (uiLocked) return;
-if (verifying) return;
-      selectedModeratedUserId = Number(userId);
-      selectedActiveUserId = null;
-      renderActive();
-      renderModerated();
-      updateButtons();
-    }
-
-    function updateButtons(){
-      if (uiLocked){
-        els.kick.disabled = true;
-        els.kickReason.disabled = true;
-        els.ban.disabled = true;
-        els.banReason.disabled = true;
-        els.unban.disabled = true;
-        els.unbanReason.disabled = true;
-        return;
-      }
-const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
-      const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
-
-      const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
-      const disableAll = verifying === true;
-
-      els.kick.disabled = disableAll || !hasActive || activeIsStaff;
-      els.kickReason.disabled = disableAll || !hasActive || activeIsStaff;
-      els.ban.disabled = disableAll || !hasActive || activeIsStaff;
-      els.banReason.disabled = disableAll || !hasActive || activeIsStaff;
-
-      els.unban.disabled = disableAll || !hasMod;
-      els.unbanReason.disabled = disableAll || !hasMod;
-
-      els.save.disabled = disableAll;
-      els.clearModerated.disabled = disableAll;
-      els.clearSearch.disabled = disableAll;
-
-      if (!disableAll) {
-        els.refresh.disabled = Date.now() < refreshCooldownUntil;
-      } else {
-        els.refresh.disabled = true;
-      }
-    }
-
-    function makeCardHTML(p, extra){
-      const name = esc(p.displayName || p.username || "");
-      const handle = esc(p.username || "");
-      const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
-      const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
-      const place = p.placeId ? `<span class="pill">Place ${Number(p.placeId)}</span>` : "";
-      return `
-        <div><b>${name}</b> <span class="small">(@${handle})</span> ${place} ${team} ${staff}</div>
-        <div class="small">UserId: ${Number(p.userId) || ""}${extra ? " · " + extra : ""}</div>
-      `;
+      setStatus("ok","Ready");
     }
 
     function setCounts(){
       els.activeCount.textContent = String(activePlayers.length || 0);
-      els.moderatedCount.textContent = String(moderatedUsers.length || 0);
+      els.logCount.textContent = String(logs.length || 0);
     }
 
-    function matchesSearch(p, q){
+    function matchSearch(p){
+      const q = normalizeUser(els.search.value);
       if (!q) return true;
-      const id = String(Number(p.userId || 0));
-      const u = String(p.username || "").toLowerCase();
-      const d = String(p.displayName || "").toLowerCase();
-      const pid = String(Number(p.placeId || 0));
-      return id.includes(q) || u.includes(q) || d.includes(q) || pid.includes(q);
+      const id = String(p.userId || "");
+      const u = normalizeUser(p.username || "");
+      const d = normalizeUser(p.displayName || "");
+      const by = normalizeUser(p.by || "");
+      return id.includes(q) || u.includes(q) || d.includes(q) || by.includes(q);
+    }
+
+    function makePlayerCardHTML(p){
+      const name = esc(p.displayName || p.username || ("User " + p.userId));
+      const handle = esc(p.username || "");
+      const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
+      const place = p.placeId ? `<span class="pill">Place ${esc(p.placeId)}</span>` : "";
+      const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
+      return `
+        <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${team} ${place} ${staff}</div>
+        <div class="small">UserId: ${Number(p.userId) || ""}</div>
+      `;
+    }
+
+    function makeLogCardHTML(e){
+      const name = esc(e.displayName || e.username || ("User " + e.userId));
+      const handle = esc(e.username || "");
+      const action = esc(String(e.action || "").toUpperCase());
+      const by = esc(e.by || "");
+      const reason = esc(e.reason || "");
+      const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
+      const pills = [
+        action ? `<span class="pill">${action}</span>` : "",
+        by ? `<span class="pill">By: ${by}</span>` : "",
+        when ? `<span class="pill">${esc(when)}</span>` : ""
+      ].join(" ");
+      return `
+        <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${pills}</div>
+        <div class="small">UserId: ${Number(e.userId) || ""}</div>
+        ${reason ? `<div class="small">Reason: ${reason}</div>` : ""}
+      `;
     }
 
     function renderActive(){
       els.activeList.innerHTML = "";
       setCounts();
 
-      const q = normalizeUser(els.searchBox.value);
-      const list = activePlayers.filter(p => matchesSearch(p, q));
-
-      if (!list.length) {
-        els.activeList.innerHTML = "<div class='small'>No players found.</div>";
+      const list = activePlayers.filter(matchSearch);
+      if (!list.length){
+        els.activeList.innerHTML = "<div class='small'>No players match.</div>";
         return;
       }
 
       for (const p of list){
         const staff = isStaff(p.userId);
-        const disabled = verifying || staff;
         const div = document.createElement("div");
         div.className =
           "card" +
           (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
-          (staff ? " staffCard" : "") +
-          (verifying ? " disabledCard" : "");
-
-        div.innerHTML = makeCardHTML(p, "");
-
-        if (!disabled) div.onclick = () => setSelectedActive(p.userId);
+          (staff ? " staffCard" : "");
+        div.innerHTML = makePlayerCardHTML(p);
+        if (!staff && !uiLocked) div.onclick = () => { selectedActiveUserId = Number(p.userId); selectedLogId = null; renderActive(); renderLogs(); updateButtons(); };
         els.activeList.appendChild(div);
       }
     }
 
-    function renderModerated(){
-      els.moderatedList.innerHTML = "";
+    function renderLogs(){
+      els.logList.innerHTML = "";
       setCounts();
 
-      const q = normalizeUser(els.searchBox.value);
-      const list = moderatedUsers.filter(p => matchesSearch(p, q));
-
-      if (!list.length) {
-        els.moderatedList.innerHTML = "<div class='small'>No moderated users.</div>";
+      const list = logs.filter(matchSearch);
+      if (!list.length){
+        els.logList.innerHTML = "<div class='small'>No enforcement logs.</div>";
         return;
       }
 
-      for (const p of list){
-        const disabled = verifying === true;
+      for (const e of list){
         const div = document.createElement("div");
-        div.className =
-          "card" +
-          (Number(p.userId) === Number(selectedModeratedUserId) ? " selected" : "") +
-          (disabled ? " disabledCard" : "");
-
-        const extra = `${p.by ? "By: " + esc(p.by) : "By: ?"}${p.bannedAt ? " · " + new Date(p.bannedAt).toLocaleString() : ""}`;
-        div.innerHTML = makeCardHTML(p, extra) + (p.reason ? `<div class="small">Reason: ${esc(p.reason)}</div>` : "");
-
-        if (!disabled) div.onclick = () => setSelectedModerated(p.userId);
-        els.moderatedList.appendChild(div);
+        div.className = "card" + (String(e.id) === String(selectedLogId) ? " selected" : "");
+        div.innerHTML = makeLogCardHTML(e);
+        if (!uiLocked) div.onclick = () => { selectedLogId = String(e.id); selectedActiveUserId = null; renderActive(); renderLogs(); updateButtons(); };
+        els.logList.appendChild(div);
       }
     }
 
+    function updateButtons(){
+      if (uiLocked){
+        els.kick.disabled = true; els.kickReason.disabled = true; els.ban.disabled = true; els.banReason.disabled = true;
+        els.unban.disabled = true; els.unbanReason.disabled = true;
+        return;
+      }
+      const active = activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null;
+      const logSel = logs.find(e => String(e.id) === String(selectedLogId)) || null;
+
+      const activeOk = !!active && !isStaff(active.userId);
+      els.kick.disabled = !activeOk;
+      els.kickReason.disabled = !activeOk;
+      els.ban.disabled = !activeOk;
+      els.banReason.disabled = !activeOk;
+
+      els.unban.disabled = !logSel;
+      els.unbanReason.disabled = !logSel;
+    }
+
     async function fetchPlayers(){
-      const url = els.playersApi.value.trim();
-      if (!url) { setStatus("error", "Paste your /players URL."); return; }
-
-      setStatus("loading", "Loading players...");
-      try{
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-
-        els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? (data.players ? data.players.length : 0)}`;
-        activePlayers = Array.isArray(data.players) ? data.players : [];
-        activePlayers.sort((a,b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
-
-        if (selectedActiveUserId && !activePlayers.some(p => Number(p.userId) === Number(selectedActiveUserId))) {
-          selectedActiveUserId = null;
-        }
-    async function fetchPlayersOnce(){
-      const url = els.playersApi.value.trim();
-      if (!url) throw new Error("Players API URL missing");
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) throw new Error("HTTP " + res.status);
+      const url = endpoint("/players");
+      setStatus("loading","Loading players...");
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error("Players HTTP " + res.status);
       const data = await res.json();
-      const players = Array.isArray(data.players) ? data.players : [];
-      return { data, players };
+      activePlayers = Array.isArray(data.players) ? data.players : [];
+      els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
+      renderActive();
+      updateButtons();
+      setStatus("ok","OK");
+      return activePlayers;
+    }
+
+    async function fetchLogs(){
+      const url = endpoint("/moderated");
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error("Logs HTTP " + res.status);
+      const data = await res.json();
+      logs = Array.isArray(data.items) ? data.items : [];
+      renderLogs();
+      updateButtons();
+      return logs;
+    }
+
+    async function fetchPlayersOnce(){
+      const url = endpoint("/players");
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error("Players HTTP " + res.status);
+      const data = await res.json();
+      return Array.isArray(data.players) ? data.players : [];
     }
 
     async function verifyByPresence(userId, timeoutMs){
       const start = Date.now();
       while (Date.now() - start < timeoutMs){
         try{
-          const { players } = await fetchPlayersOnce();
+          const players = await fetchPlayersOnce();
           const stillHere = players.some(p => Number(p.userId) === Number(userId));
-          if (!stillHere) return { ok: true };
-        } catch(e){
-        }
+          if (!stillHere) return { ok:true };
+        } catch {}
         await new Promise(r => setTimeout(r, 1000));
       }
-      return { ok: false, message: "TIME OUT" };
+      return { ok:false, timeout:true };
     }
 
-
-        setStatus("ok", "OK");
-        renderActive();
-        updateButtons();
-      } catch(e){
-        setStatus("error", "Failed: " + e.message);
-        toast("err", "Refresh failed", e.message);
-      }
-    }
-
-    async function fetchModerated(){
+    async function tryHistory(id){
       try{
-        const res = await fetch(MODERATED_ENDPOINT, { cache: "no-store" });
-        if (!res.ok) throw new Error("HTTP " + res.status);
+        const res = await fetch(endpoint("/history?id=" + encodeURIComponent(id)), { cache:"no-store" });
+        if (!res.ok) return null;
         const data = await res.json();
-        moderatedUsers = Array.isArray(data.items) ? data.items : [];
-        renderModerated();
-        updateButtons();
-      } catch(e){
-        toast("err", "Moderated list failed", e.message);
+        return data && data.item ? data.item : null;
+      } catch { return null; }
+    }
+
+    async function waitHistoryOk(id, timeoutMs){
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs){
+        const item = await tryHistory(id);
+        if (item && item.status === "applied" && item.ok === true) return { ok:true };
+        if (item && item.status === "applied" && item.ok === false) return { ok:false, message: item.message || "failed" };
+        await new Promise(r => setTimeout(r, 1000));
       }
-    }
-
-    async function fetchHistory(){
-      const res = await fetch(HISTORY_ENDPOINT, { cache: "no-store" });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const data = await res.json();
-      return Array.isArray(data.items) ? data.items : [];
-    }
-
-    function startButtonCooldown(btn, seconds, baseText){
-      const until = Date.now() + (seconds * 1000);
-      btn.disabled = true;
-
-      const tick = () => {
-        const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-        if (left > 0) {
-          btn.textContent = `⏳ ${baseText} (${left}s)`;
-          setTimeout(tick, 200);
-        } else {
-          btn.textContent = baseText;
-          btn.disabled = false;
-          updateButtons();
-        }
-      };
-      tick();
-    }
-
-    function startRefreshCooldown(seconds){
-      refreshCooldownUntil = Date.now() + (seconds * 1000);
-      els.refresh.disabled = true;
-
-      const tick = () => {
-        const left = Math.max(0, Math.ceil((refreshCooldownUntil - Date.now()) / 1000));
-        if (left > 0) {
-          els.refresh.textContent = `⏳ Refresh (${left}s)`;
-          refreshCooldownTimer = setTimeout(tick, 200);
-        } else {
-          els.refresh.textContent = "🔄 Refresh";
-          els.refresh.disabled = false;
-          if (refreshCooldownTimer) clearTimeout(refreshCooldownTimer);
-          refreshCooldownTimer = null;
-          updateButtons();
-        }
-      };
-      tick();
+      return { ok:false, timeout:true };
     }
 
     async function sendModeration(action, user, reason){
-      if (!user || typeof user !== "object") return { ok: false };
+      if (!user || typeof user !== "object") return { ok:false };
+      if (isStaff(user.userId)) { toast("err","Blocked","That user is STAFF."); return { ok:false }; }
 
-      try{
-        if (typeof isStaff === "function" && isStaff(user.userId)) {
-          alert("That user is marked as STAFF and cannot be moderated from this panel.");
-          return { ok: false };
-        }
-      } catch {}
-
-      const adminKey = els.adminKey ? els.adminKey.value.trim() : (localStorage.getItem("admin_key_v1") || "").trim();
-      if (!adminKey) {
-        alert("Enter ADMIN_KEY first.");
-        return { ok: false };
-      }
+      const adminKey = els.adminKey.value.trim();
+      if (!adminKey) { toast("err","Missing key","Enter ADMIN_KEY first."); return { ok:false }; }
 
       const payload = {
         action,
@@ -962,264 +596,135 @@ const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId 
         reason: reason || "",
         username: user.username || "",
         displayName: user.displayName || "",
-        by: (localStorage.getItem("panel_login_user") || "").toString()
+        by: getLoginUser()
       };
 
-      const res = await fetch(MOD_ENDPOINT, {
+      const res = await fetch(endpoint("/admin/moderate"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-key": adminKey
-        },
+        headers: { "Content-Type":"application/json", "x-admin-key": adminKey },
         body: JSON.stringify(payload)
       });
 
       let body = null;
       try { body = await res.json(); } catch {}
 
-      if (!res.ok) {
-        alert((body && body.error) ? body.error : ("Request failed: HTTP " + res.status));
-        return { ok: false };
+      if (!res.ok){
+        toast("err","Request failed",(body && body.error) ? body.error : ("HTTP " + res.status));
+        return { ok:false };
       }
-
-      return { ok: true, id: body && body.id ? body.id : null };
+      return { ok:true, id: body && body.id ? body.id : null };
     }
 
     async function enforceAndVerify(action, user, reason){
-      const resp = await sendModeration(action, user, reason || "");
-      if (!resp.ok) return { ok: false };
+      const sent = await sendModeration(action, user, reason || "");
+      if (!sent.ok) return { ok:false };
 
       if (action === "kick" || action === "ban"){
         const v = await verifyByPresence(Number(user.userId), 12000);
-        return v.ok ? { ok: true } : { ok: false, timeout: true };
-      }
-      return { ok: true };
-    }
-);
-
-      let body = null;
-      try { body = await res.json(); } catch {}
-
-      if (!res.ok) {
-        toast("err","Request failed", (body && body.error) ? body.error : ("HTTP " + res.status));
-        return { ok:false };
+        return v.ok ? { ok:true } : { ok:false, timeout:true };
       }
 
-      return { ok:true, id: body && body.id ? String(body.id) : "" };
+      if (sent.id){
+        const v = await waitHistoryOk(sent.id, 20000);
+        return v.ok ? { ok:true } : v;
+      }
+
+      return { ok:true };
     }
 
-    async function waitForVerify(id, timeoutMs){
-      const started = Date.now();
-      while (Date.now() - started < timeoutMs) {
-        try{
-          const items = await fetchHistory();
-          const item = items.find(x => String(x && x.id) === String(id));
-          if (item && item.status) {
-            if (item.status === "applied") return { ok:true, status:"applied" };
-            if (item.status === "failed") return { ok:false, status:"failed" };
-          }
-        } catch {}
-        await new Promise(r => setTimeout(r, 1000));
-      }
-      return { ok:false, status:"timeout" };
+    function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
+    function getSelectedLog(){ return logs.find(e => String(e.id) === String(selectedLogId)) || null; }
+
+    async function refreshAll(){
+      await fetchPlayers();
+      await fetchLogs();
     }
 
-    function getSelectedActive(){
-      return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null;
-    }
-    function getSelectedModerated(){
-      return moderatedUsers.find(p => Number(p.userId) === Number(selectedModeratedUserId)) || null;
-    }
-
-    async function runModerationFlow(action, userId, reason){
-      setVerifying(true, "Verifying with server...");
-      const sent = await sendModeration(action, userId, reason);
-      if (!sent.ok || !sent.id) { setVerifying(false); return; }
-
-      const verified = await waitForVerify(sent.id, 20000);
-      if (!verified.ok) {
-        if (verified.status === "timeout") toast("err","ERROR: TIME OUT","Server did not verify in time.");
-        else toast("err","Verification failed","The server reported failure.");
-        setVerifying(false);
-        return;
-      }
-
-      toast("ok", "Verified", `${action.toUpperCase()} applied`);
-      await fetchModerated();
-      setVerifying(false);
-    }
-
-    els.kick.onclick = async () => {
-      const p = getSelectedActive();
-      if (!p) return;
-
-      beginVerifyLock();
-      try {
-        const v = await enforceAndVerify("kick", p, "");
-        if (v.ok) {
-          toast("ok", "Enforcement action approved", "");
-          if ("kick" === "ban") { upsertModerated(p, ""); renderModerated(); }
-          if ("kick" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
-        } else {
-          toast("err", "ERROR: TIME OUT", "");
-        }
-      } finally {
-        endVerifyLock();
-      }
-    };
-
-    els.kickReason.onclick = async () => {
-      const p = getSelectedActive();
-      if (!p) return;
-
-      const r = prompt("Kick reason?") || "";
-      beginVerifyLock();
-      try {
-        const v = await enforceAndVerify("kick", p, r);
-        if (v.ok) {
-          toast("ok", "Enforcement action approved", "");
-          if ("kick" === "ban") { upsertModerated(p, r); renderModerated(); }
-          if ("kick" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
-        } else {
-          toast("err", "ERROR: TIME OUT", "");
-        }
-      } finally {
-        endVerifyLock();
-      }
-    };
-
-    els.ban.onclick = async () => {
-      const p = getSelectedActive();
-      if (!p) return;
-
-      beginVerifyLock();
-      try {
-        const v = await enforceAndVerify("ban", p, "");
-        if (v.ok) {
-          toast("ok", "Enforcement action approved", "");
-          if ("ban" === "ban") { upsertModerated(p, ""); renderModerated(); }
-          if ("ban" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
-        } else {
-          toast("err", "ERROR: TIME OUT", "");
-        }
-      } finally {
-        endVerifyLock();
-      }
-    };
-
-    els.banReason.onclick = async () => {
-      const p = getSelectedActive();
-      if (!p) return;
-
-      const r = prompt("Ban reason?") || "";
-      beginVerifyLock();
-      try {
-        const v = await enforceAndVerify("ban", p, r);
-        if (v.ok) {
-          toast("ok", "Enforcement action approved", "");
-          if ("ban" === "ban") { upsertModerated(p, r); renderModerated(); }
-          if ("ban" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
-        } else {
-          toast("err", "ERROR: TIME OUT", "");
-        }
-      } finally {
-        endVerifyLock();
-      }
-    };
-
-    els.unban.onclick = async () => {
-      const p = getSelectedModerated();
-      if (!p) return;
-
-      beginVerifyLock();
-      try {
-        const v = await enforceAndVerify("unban", p, "");
-        if (v.ok) {
-          toast("ok", "Enforcement action approved", "");
-          if ("unban" === "ban") { upsertModerated(p, ""); renderModerated(); }
-          if ("unban" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
-        } else {
-          toast("err", "ERROR: TIME OUT", "");
-        }
-      } finally {
-        endVerifyLock();
-      }
-    };
-
-    els.unbanReason.onclick = async () => {
-      const p = getSelectedModerated();
-      if (!p) return;
-
-      const r = prompt("Unban note?") || "";
-      beginVerifyLock();
-      try {
-        const v = await enforceAndVerify("unban", p, r);
-        if (v.ok) {
-          toast("ok", "Enforcement action approved", "");
-          if ("unban" === "ban") { upsertModerated(p, r); renderModerated(); }
-          if ("unban" === "unban") { removeModerated(p.userId); selectedModeratedUserId = null; renderModerated(); }
-        } else {
-          toast("err", "ERROR: TIME OUT", "");
-        }
-      } finally {
-        endVerifyLock();
-      }
-    };
+    els.search.addEventListener("input", () => { renderActive(); renderLogs(); updateButtons(); });
 
     els.save.onclick = () => {
-      if (els.save.disabled) return;
-      startButtonCooldown(els.save, 3, "💾 Save");
-      localStorage.setItem("players_api_url", els.playersApi.value.trim());
+      localStorage.setItem("worker_base_v1", baseUrl());
       localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
-      toast("ok", "Saved", "API URL + Admin Key stored in this browser");
-    };
-
-    els.clearModerated.onclick = () => {
-      if (els.clearModerated.disabled) return;
-      startButtonCooldown(els.clearModerated, 3, "🧹 Clear Moderated List");
-      if (!confirm("Clear moderated list (local only)?")) return;
-      moderatedUsers = [];
-      selectedModeratedUserId = null;
-      renderModerated();
-      updateButtons();
-      toast("ok", "Cleared", "Moderated list cleared (local only)");
+      toast("ok","Saved","Worker Base + Admin Key stored in this browser");
+      setStatus("ok","Saved");
     };
 
     els.refresh.onclick = async () => {
       if (els.refresh.disabled) return;
-      startRefreshCooldown(10);
-      await fetchPlayers();
-      await fetchModerated();
+      startCooldown(els.refresh, 10, "Refresh");
+      try{
+        await refreshAll();
+      } catch(e){
+        setStatus("error", "Refresh failed: " + e.message);
+        toast("err","Refresh failed", e.message);
+      }
     };
 
-    els.searchBox.addEventListener("input", () => { renderActive(); renderModerated(); updateButtons(); });
-    els.clearSearch.onclick = () => {
-      if (els.clearSearch.disabled) return;
-      startButtonCooldown(els.clearSearch, 3, "✖ Clear Search");
-      els.searchBox.value="";
-      renderActive(); renderModerated(); updateButtons();
+    async function runAction(action, user, reason, onSuccess){
+      beginVerifyLock();
+      try{
+        const v = await enforceAndVerify(action, user, reason || "");
+        if (v.ok){
+          toast("ok","Enforcement action approved","");
+          if (typeof onSuccess === "function") onSuccess();
+          await fetchLogs();
+          await fetchPlayers();
+        } else {
+          toast("err", v.timeout ? "ERROR: TIME OUT" : "Failed", v.message || "");
+        }
+      } finally {
+        endVerifyLock();
+      }
+    }
+
+    els.kick.onclick = async () => {
+      const p = getSelectedActive(); if (!p) return;
+      await runAction("kick", p, "", null);
+    };
+
+    els.kickReason.onclick = async () => {
+      const p = getSelectedActive(); if (!p) return;
+      const r = prompt("Kick reason?") || "";
+      await runAction("kick", p, r, null);
+    };
+
+    els.ban.onclick = async () => {
+      const p = getSelectedActive(); if (!p) return;
+      await runAction("ban", p, "", null);
+    };
+
+    els.banReason.onclick = async () => {
+      const p = getSelectedActive(); if (!p) return;
+      const r = prompt("Ban reason?") || "";
+      await runAction("ban", p, r, null);
+    };
+
+    els.unban.onclick = async () => {
+      const e = getSelectedLog(); if (!e) return;
+      const user = { userId: e.userId, username: e.username || "", displayName: e.displayName || "" };
+      await runAction("unban", user, "", () => { selectedLogId = null; });
+    };
+
+    els.unbanReason.onclick = async () => {
+      const e = getSelectedLog(); if (!e) return;
+      const r = prompt("Unban note?") || "";
+      const user = { userId: e.userId, username: e.username || "", displayName: e.displayName || "" };
+      await runAction("unban", user, r, () => { selectedLogId = null; });
     };
 
     function initPanel(){
-      const savedApi = localStorage.getItem("players_api_url");
-      const savedAdmin = localStorage.getItem("admin_key_v1");
-      els.playersApi.value = savedApi || "https://panel.sixteysevenharry.workers.dev/players";
-      if (savedAdmin) els.adminKey.value = savedAdmin;
-
-      setStatus("ok", "Ready");
-      els.meta.textContent = "Press Refresh to load players.";
-      fetchModerated();
+      const savedBase = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
+      const savedAdmin = localStorage.getItem("admin_key_v1") || "";
+      els.workerBase.value = savedBase;
+      els.adminKey.value = savedAdmin;
+      setStatus("ok","Ready (press Refresh)");
       renderActive();
-      renderModerated();
+      renderLogs();
       updateButtons();
     }
 
-    if (isLoggedIn()){
-      showApp();
-      initPanel();
-    } else {
-      showLogin();
-    }
+    if (isLoggedIn()){ showApp(); initPanel(); }
+    else { showLogin(); }
   </script>
 </body>
 </html>
