@@ -178,6 +178,17 @@
     }
     .card:hover{border-color:var(--border2);transform:translateY(-1px)}
     .selected{outline:3px solid var(--ring);outline-offset:0;transform:translateY(-1px) scale(1.01)}
+    .dragging{opacity:.6;transform:none}
+    .dropZone{
+      border:2px dashed var(--border2);
+      border-radius:12px;
+      padding:10px 12px;
+      margin:6px 0 12px;
+      color:var(--muted);
+      background:rgba(0,0,0,.02);
+    }
+    [data-theme="dark"] .dropZone{background:rgba(255,255,255,.04)}
+    .dropZone.hot{border-color:var(--danger); color:var(--danger)}
 
     .row{
       display:flex;
@@ -370,11 +381,10 @@
       <div class="btns" style="margin-top:18px">
         <button id="save" type="button">💾 Save</button>
         <button id="refresh" type="button">🔄 Refresh</button>
-        <button id="clearModerated" type="button">🧹 Clear Moderated List</button>
       </div>
     </div>
 
-    <div class="meta" id="meta">Updated: ? | PlaceId: - | Server: -</div>
+    <div class="meta" id="meta">Updated: ? | Total Players: ?</div>
 
     <div class="grid">
       <div class="col">
@@ -382,14 +392,32 @@
           <span>Active Users</span>
           <span class="countPill" id="activeCount">0</span>
         </div>
+
+        <div class="row" style="margin-top:0">
+          <div class="field" style="min-width:0;flex:1 1 auto">
+            <div class="label">Search Active</div>
+            <input id="activeSearch" placeholder="Search name or userId..." />
+          </div>
+        </div>
+
         <div class="scroll" id="activeList"></div>
       </div>
 
-      <div class="col">
+      <div class="col" id="moderatedCol">
         <div class="colTitle">
           <span>Moderated Users</span>
           <span class="countPill" id="moderatedCount">0</span>
         </div>
+
+        <div class="dropZone" id="dropZone">Drag a player here to instantly BAN (no reason)</div>
+
+        <div class="row" style="margin-top:0">
+          <div class="field" style="min-width:0;flex:1 1 auto">
+            <div class="label">Search Moderated</div>
+            <input id="moderatedSearch" placeholder="Search name, userId, or moderator..." />
+          </div>
+        </div>
+
         <div class="scroll" id="moderatedList"></div>
       </div>
     </div>
@@ -402,7 +430,7 @@
       <button id="ban" type="button">⛔ Ban</button>
       <button id="banReason" type="button">🧾 Ban With Reason</button>
       <button id="unban" type="button">✅ Unban</button>
-      <button id="unbanReason" type="button">🗒️ Unban With Reason</button>
+      <button id="unbanReason" type="button">🗒️ Unban With Note</button>
     </div>
   </div>
 
@@ -430,7 +458,6 @@
 
   <script>
     const ALLOWED_USERNAMES = new Set(["eagla","nebula","specimen","arrow","damage","caprie"]);
-
     const STAFF_IDS = new Set([8007453710,4976035348,154251360,9930928180,485280430]);
 
     const els = {
@@ -448,15 +475,22 @@
       adminKey: document.getElementById("adminKey"),
       save: document.getElementById("save"),
       refresh: document.getElementById("refresh"),
+
+      activeSearch: document.getElementById("activeSearch"),
+      moderatedSearch: document.getElementById("moderatedSearch"),
+
       activeList: document.getElementById("activeList"),
       moderatedList: document.getElementById("moderatedList"),
-      clearModerated: document.getElementById("clearModerated"),
+      moderatedCol: document.getElementById("moderatedCol"),
+      dropZone: document.getElementById("dropZone"),
+
       kick: document.getElementById("kick"),
       kickReason: document.getElementById("kickReason"),
       ban: document.getElementById("ban"),
       banReason: document.getElementById("banReason"),
       unban: document.getElementById("unban"),
       unbanReason: document.getElementById("unbanReason"),
+
       activeCount: document.getElementById("activeCount"),
       moderatedCount: document.getElementById("moderatedCount"),
       toasts: document.getElementById("toasts"),
@@ -467,6 +501,7 @@
     };
 
     const MOD_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/admin/moderate";
+    const MODERATED_ENDPOINT = "https://panel.sixteysevenharry.workers.dev/moderated";
 
     function esc(s){
       return String(s ?? "").replace(/[&<>"']/g, c => ({
@@ -509,18 +544,9 @@
     els.themeDark.onclick = () => applyTheme("dark");
     els.themeAuto.onclick = () => applyTheme("auto");
 
-    const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
-    if (mq && mq.addEventListener){
-      mq.addEventListener("change", () => {
-        const mode = localStorage.getItem("panel_theme_mode") || "dark";
-        if (mode === "auto") applyTheme("auto");
-      });
-    }
-
     function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
     function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
     function getLoggedInUser(){ return String(localStorage.getItem("panel_login_user") || ""); }
-
     function setLoggedIn(username){
       localStorage.setItem("panel_logged_in", "1");
       localStorage.setItem("panel_login_user", String(username || ""));
@@ -529,6 +555,7 @@
       localStorage.removeItem("panel_logged_in");
       localStorage.removeItem("panel_login_user");
     }
+
     function showLogin(){
       els.app.style.display = "none";
       els.loginOverlay.style.display = "flex";
@@ -543,34 +570,8 @@
 
     function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
-    function loadModerated(){
-      try {
-        const raw = localStorage.getItem("moderated_users_v1");
-        const list = raw ? JSON.parse(raw) : [];
-        return Array.isArray(list) ? list : [];
-      } catch { return []; }
-    }
-    function saveModerated(list){ localStorage.setItem("moderated_users_v1", JSON.stringify(list)); }
-
-    function upsertModerated(user, action, reason, by){
-      const list = loadModerated();
-      const idx = list.findIndex(x => Number(x.userId) === Number(user.userId));
-      const entry = {
-        userId: Number(user.userId),
-        username: user.username || "",
-        displayName: user.displayName || "",
-        team: user.team || null,
-        action: String(action || ""),
-        reason: reason || "",
-        by: String(by || ""),
-        updatedAt: new Date().toISOString()
-      };
-      if (idx >= 0) list[idx] = entry;
-      else list.unshift(entry);
-      saveModerated(list);
-    }
-
     let activePlayers = [];
+    let moderatedLog = [];
     let selectedActiveUserId = null;
     let selectedModeratedUserId = null;
 
@@ -641,8 +642,8 @@
     function updateButtons(){
       const hasActive = Number.isFinite(selectedActiveUserId) && selectedActiveUserId !== null;
       const hasMod = Number.isFinite(selectedModeratedUserId) && selectedModeratedUserId !== null;
-
       const activeIsStaff = hasActive && isStaff(selectedActiveUserId);
+
       if (!els.kick.disabled) els.kick.disabled = !hasActive || activeIsStaff;
       if (!els.kickReason.disabled) els.kickReason.disabled = !hasActive || activeIsStaff;
       if (!els.ban.disabled) els.ban.disabled = !hasActive || activeIsStaff;
@@ -652,45 +653,117 @@
       if (!els.unbanReason.disabled) els.unbanReason.disabled = !hasMod;
     }
 
-    function makeCardHTML(p, showPlace){
-      const name = esc(p.displayName || p.username);
-      const handle = esc(p.username || "");
-      const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
-      const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
-      const place = showPlace
-        ? `<span class="pill">Place ${esc(p.placeId ?? "-")}</span>`
-        : "";
-      return `
-        <div><b>${name}</b> <span class="small">(@${handle})</span> ${team} ${place} ${staff}</div>
-        <div class="small">UserId: ${Number(p.userId) || ""}</div>
-      `;
+    const placeNameCache = new Map();
+
+    async function resolvePlaceNames(placeIds){
+      const ids = Array.from(new Set(placeIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
+      const missing = ids.filter(id => !placeNameCache.has(id));
+      if (!missing.length) return;
+
+      try{
+        const url = "https://games.roblox.com/v1/games/multiget-place-details?placeIds=" + missing.join(",");
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!Array.isArray(data)) return;
+
+        for (const item of data){
+          const pid = Number(item.placeId || 0);
+          const name = String(item.name || "");
+          if (pid) placeNameCache.set(pid, name || ("Place " + pid));
+        }
+      } catch {}
     }
 
     function setCounts(){
       els.activeCount.textContent = String(activePlayers.length || 0);
-      els.moderatedCount.textContent = String(loadModerated().length || 0);
+      els.moderatedCount.textContent = String(moderatedLog.length || 0);
+    }
+
+    function makeActiveCardHTML(p){
+      const name = esc(p.displayName || p.username);
+      const handle = esc(p.username || "");
+      const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
+      const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
+
+      const pid = Number(p.placeId || 0);
+      const pname = pid ? (placeNameCache.get(pid) || ("Place " + pid)) : "Place -";
+      const placePill = `<span class="pill">${esc(pname)}</span>`;
+
+      return `
+        <div><b>${name}</b> <span class="small">(@${handle})</span> ${team} ${placePill} ${staff}</div>
+        <div class="small">UserId: ${Number(p.userId) || ""}</div>
+      `;
+    }
+
+    function makeModeratedCardHTML(entry){
+      const name = esc(entry.displayName || entry.username || "");
+      const handle = esc(entry.username || "");
+      const action = esc(entry.action || "");
+      const reason = esc(entry.reason || "");
+      const by = esc(entry.by || "Unknown");
+      const when = entry.createdAt ? new Date(Number(entry.createdAt)).toISOString() : (entry.updatedAt || "");
+
+      return `
+        <div><b>${name || "User"}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span></div>
+        <div class="small">UserId: ${Number(entry.userId) || ""}</div>
+        <div class="small">Action: ${action || "-"}</div>
+        <div class="small">By: ${by}</div>
+        ${reason ? `<div class="small">Reason: ${reason}</div>` : ""}
+        ${when ? `<div class="small">At: ${esc(when)}</div>` : ""}
+      `;
+    }
+
+    function matchesQuery(obj, q){
+      if (!q) return true;
+      const s = q.toLowerCase();
+      const fields = [
+        obj.displayName, obj.username, obj.userId,
+        obj.by, obj.action, obj.reason
+      ].map(v => String(v ?? "").toLowerCase());
+      return fields.some(v => v.includes(s));
     }
 
     function renderActive(){
       els.activeList.innerHTML = "";
       setCounts();
 
-      if (!activePlayers.length) {
-        els.activeList.innerHTML = "<div class='small'>No players online.</div>";
+      const q = String(els.activeSearch.value || "").trim().toLowerCase();
+      const list = q ? activePlayers.filter(p => matchesQuery(p, q)) : activePlayers;
+
+      if (!list.length){
+        els.activeList.innerHTML = "<div class='small'>No players found.</div>";
         return;
       }
 
-      for (const p of activePlayers){
+      for (const p of list){
         const staff = isStaff(p.userId);
+
         const div = document.createElement("div");
         div.className =
           "card" +
           (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
           (staff ? " staffCard" : "");
 
-        div.innerHTML = makeCardHTML(p, true);
+        div.innerHTML = makeActiveCardHTML(p);
 
-        if (!staff) div.onclick = () => setSelectedActive(p.userId);
+        if (!staff) {
+          div.onclick = () => setSelectedActive(p.userId);
+
+          div.draggable = true;
+          div.addEventListener("dragstart", (e) => {
+            div.classList.add("dragging");
+            e.dataTransfer.setData("text/plain", JSON.stringify({
+              userId: Number(p.userId),
+              username: p.username || "",
+              displayName: p.displayName || "",
+              team: p.team || "",
+              placeId: Number(p.placeId || 0)
+            }));
+            e.dataTransfer.effectAllowed = "move";
+          });
+          div.addEventListener("dragend", () => div.classList.remove("dragging"));
+        }
 
         els.activeList.appendChild(div);
       }
@@ -700,30 +773,49 @@
       els.moderatedList.innerHTML = "";
       setCounts();
 
-      const list = loadModerated();
-      if (!list.length) {
-        els.moderatedList.innerHTML = "<div class='small'>No moderated users.</div>";
+      const q = String(els.moderatedSearch.value || "").trim().toLowerCase();
+      const list = q ? moderatedLog.filter(m => matchesQuery(m, q)) : moderatedLog;
+
+      if (!list.length){
+        els.moderatedList.innerHTML = "<div class='small'>No moderated users found.</div>";
         return;
       }
 
-      for (const p of list){
-        const staff = isStaff(p.userId);
+      for (const m of list){
         const div = document.createElement("div");
-        div.className =
-          "card" +
-          (Number(p.userId) === Number(selectedModeratedUserId) ? " selected" : "") +
-          (staff ? " staffCard" : "");
-
-        const actionLine = p.action ? `<div class="small">Action: ${esc(p.action)}</div>` : "";
-        const reasonLine = p.reason ? `<div class="small">Reason: ${esc(p.reason)}</div>` : "";
-        const byLine = `<div class="small">By: ${esc(p.by || "Unknown")}</div>`;
-        const timeLine = p.updatedAt ? `<div class="small">At: ${esc(p.updatedAt)}</div>` : "";
-
-        div.innerHTML = makeCardHTML(p, false) + actionLine + reasonLine + byLine + timeLine;
-
-        if (!staff) div.onclick = () => setSelectedModerated(p.userId);
-
+        div.className = "card" + (Number(m.userId) === Number(selectedModeratedUserId) ? " selected" : "");
+        div.innerHTML = makeModeratedCardHTML(m);
+        div.onclick = () => setSelectedModerated(m.userId);
         els.moderatedList.appendChild(div);
+      }
+    }
+
+    async function fetchModerated(){
+      try{
+        const res = await fetch(MODERATED_ENDPOINT, { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+
+        const map = new Map();
+        for (const it of items){
+          const uid = Number(it.userId || 0);
+          if (!uid) continue;
+
+          const existing = map.get(uid);
+          if (!existing || Number(it.createdAt || 0) > Number(existing.createdAt || 0)){
+            map.set(uid, it);
+          }
+        }
+
+        moderatedLog = Array.from(map.values()).sort((a,b) => Number(b.createdAt||0) - Number(a.createdAt||0));
+        if (selectedModeratedUserId && !moderatedLog.some(x => Number(x.userId) === Number(selectedModeratedUserId))){
+          selectedModeratedUserId = null;
+        }
+        renderModerated();
+        updateButtons();
+      } catch(e){
+        toast("err", "Moderated list failed", e.message);
       }
     }
 
@@ -744,13 +836,14 @@
         activePlayers = Array.isArray(data.players) ? data.players : [];
         activePlayers.sort((a,b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
 
+        await resolvePlaceNames(activePlayers.map(p => Number(p.placeId || 0)));
+
         if (selectedActiveUserId && !activePlayers.some(p => Number(p.userId) === Number(selectedActiveUserId))) {
           selectedActiveUserId = null;
         }
 
         setStatus("ok", "OK");
         renderActive();
-        renderModerated();
         updateButtons();
       } catch(e){
         setStatus("error", "Failed: " + e.message);
@@ -785,60 +878,53 @@
         return { ok: false };
       }
 
-      return { ok: true, by };
+      return { ok: true };
     }
 
     function getSelectedActive(){
       return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null;
     }
     function getSelectedModerated(){
-      return loadModerated().find(p => Number(p.userId) === Number(selectedModeratedUserId)) || null;
+      return moderatedLog.find(p => Number(p.userId) === Number(selectedModeratedUserId)) || null;
     }
 
-    function attemptLogin(){
-      if (!startBtnCooldown(els.loginBtn, 3)) return;
+    els.activeSearch.addEventListener("input", () => renderActive());
+    els.moderatedSearch.addEventListener("input", () => renderModerated());
 
-      const raw = els.loginUser.value;
-      const u = normalizeUser(raw);
-      if (!u){
-        els.loginStatus.textContent = "Enter a username.";
-        els.loginStatus.className = "small error";
+    els.dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      els.dropZone.classList.add("hot");
+    });
+    els.dropZone.addEventListener("dragleave", () => els.dropZone.classList.remove("hot"));
+
+    els.dropZone.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      els.dropZone.classList.remove("hot");
+
+      let data;
+      try { data = JSON.parse(e.dataTransfer.getData("text/plain") || "{}"); } catch { data = {}; }
+      const uid = Number(data.userId || 0);
+      if (!uid) return;
+
+      if (isStaff(uid)){
+        toast("err", "Blocked", "You cannot drag STAFF into moderated list.");
         return;
       }
-      if (!ALLOWED_USERNAMES.has(u)){
-        els.loginStatus.textContent = "Invalid username.";
-        els.loginStatus.className = "small error";
-        toast("err", "Login denied", "That username is not allowed");
-        return;
+
+      if (!startBtnCooldown(els.ban, 3)) return;
+
+      const ok = await sendModeration("ban", uid, "");
+      if (ok.ok){
+        toast("ok", "Banned", `UserId: ${uid}`);
+        await fetchModerated();
       }
-      setLoggedIn(u);
-      els.loginStatus.textContent = "Logged in.";
-      els.loginStatus.className = "small";
-      toast("ok", "Logged in", "Welcome");
-      showApp();
-      initPanel();
-    }
-
-    els.loginBtn.onclick = attemptLogin;
-    els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
-
-    els.logout.onclick = () => {
-      if (!startBtnCooldown(els.logout, 3)) return;
-      if (!confirm("Log out?")) return;
-      clearLoggedIn();
-      toast("ok", "Logged out", "");
-      showLogin();
-    };
+    });
 
     els.kick.onclick = async () => {
       if (!startBtnCooldown(els.kick, 3)) return;
       const p = getSelectedActive(); if (!p) return;
       const ok = await sendModeration("kick", p.userId, "");
-      if (ok.ok) {
-        upsertModerated(p, "kick", "", ok.by);
-        toast("ok", "Kick sent", `By: ${ok.by || "Unknown"}`);
-        renderModerated();
-      }
+      if (ok.ok){ toast("ok", "Kick sent", `${p.displayName || p.username}`); await fetchModerated(); }
     };
 
     els.kickReason.onclick = async () => {
@@ -846,22 +932,14 @@
       const p = getSelectedActive(); if (!p) return;
       const r = prompt("Kick reason?") || "";
       const ok = await sendModeration("kick", p.userId, r);
-      if (ok.ok) {
-        upsertModerated(p, "kick", r, ok.by);
-        toast("ok", "Kick sent", `By: ${ok.by || "Unknown"}${r ? " • Reason: " + r : ""}`);
-        renderModerated();
-      }
+      if (ok.ok){ toast("ok", "Kick sent", r ? `Reason: ${r}` : ""); await fetchModerated(); }
     };
 
     els.ban.onclick = async () => {
       if (!startBtnCooldown(els.ban, 3)) return;
       const p = getSelectedActive(); if (!p) return;
       const ok = await sendModeration("ban", p.userId, "");
-      if (ok.ok) {
-        upsertModerated(p, "ban", "", ok.by);
-        toast("ok", "Ban sent", `By: ${ok.by || "Unknown"}`);
-        renderModerated();
-      }
+      if (ok.ok){ toast("ok", "Ban sent", `${p.displayName || p.username}`); await fetchModerated(); }
     };
 
     els.banReason.onclick = async () => {
@@ -869,22 +947,14 @@
       const p = getSelectedActive(); if (!p) return;
       const r = prompt("Ban reason?") || "";
       const ok = await sendModeration("ban", p.userId, r);
-      if (ok.ok) {
-        upsertModerated(p, "ban", r, ok.by);
-        toast("ok", "Ban sent", `By: ${ok.by || "Unknown"}${r ? " • Reason: " + r : ""}`);
-        renderModerated();
-      }
+      if (ok.ok){ toast("ok", "Ban sent", r ? `Reason: ${r}` : ""); await fetchModerated(); }
     };
 
     els.unban.onclick = async () => {
       if (!startBtnCooldown(els.unban, 3)) return;
       const p = getSelectedModerated(); if (!p) return;
       const ok = await sendModeration("unban", p.userId, "");
-      if (ok.ok) {
-        upsertModerated(p, "unban", "", ok.by);
-        toast("ok", "Unban sent", `By: ${ok.by || "Unknown"}`);
-        renderModerated();
-      }
+      if (ok.ok){ toast("ok", "Unban sent", `UserId: ${p.userId}`); await fetchModerated(); }
     };
 
     els.unbanReason.onclick = async () => {
@@ -892,30 +962,8 @@
       const p = getSelectedModerated(); if (!p) return;
       const r = prompt("Unban note?") || "";
       const ok = await sendModeration("unban", p.userId, r);
-      if (ok.ok) {
-        upsertModerated(p, "unban", r, ok.by);
-        toast("ok", "Unban sent", `By: ${ok.by || "Unknown"}${r ? " • Note: " + r : ""}`);
-        renderModerated();
-      }
+      if (ok.ok){ toast("ok", "Unban sent", r ? `Note: ${r}` : ""); await fetchModerated(); }
     };
-
-    function upsertModerated(user, action, reason, by){
-      const list = loadModerated();
-      const idx = list.findIndex(x => Number(x.userId) === Number(user.userId));
-      const entry = {
-        userId: Number(user.userId),
-        username: user.username || "",
-        displayName: user.displayName || "",
-        team: user.team || null,
-        action: String(action || ""),
-        reason: reason || "",
-        by: String(by || ""),
-        updatedAt: new Date().toISOString()
-      };
-      if (idx >= 0) list[idx] = entry;
-      else list.unshift(entry);
-      saveModerated(list);
-    }
 
     els.save.onclick = () => {
       if (!startBtnCooldown(els.save, 3)) return;
@@ -929,30 +977,58 @@
       if (els.refresh.disabled) return;
       startRefreshCooldown(10);
       await fetchPlayers();
+      await fetchModerated();
     };
 
-    els.clearModerated.onclick = () => {
-      if (!startBtnCooldown(els.clearModerated, 3)) return;
-      if (!confirm("Clear moderated list (local only)?")) return;
-      saveModerated([]);
-      selectedModeratedUserId = null;
-      renderModerated();
-      updateButtons();
-      toast("ok", "Cleared", "Moderated list cleared (local)");
+    els.logout.onclick = () => {
+      if (!startBtnCooldown(els.logout, 3)) return;
+      if (!confirm("Log out?")) return;
+      clearLoggedIn();
+      toast("ok", "Logged out", "");
+      showLogin();
     };
+
+    function attemptLogin(){
+      if (!startBtnCooldown(els.loginBtn, 3)) return;
+      const u = normalizeUser(els.loginUser.value);
+      if (!u){
+        els.loginStatus.textContent = "Enter a username.";
+        els.loginStatus.className = "small error";
+        return;
+      }
+      if (!ALLOWED_USERNAMES.has(u)){
+        els.loginStatus.textContent = "Invalid username.";
+        els.loginStatus.className = "small error";
+        toast("err", "Login denied", "That username is not allowed");
+        return;
+      }
+      setLoggedIn(u);
+      toast("ok", "Logged in", "Welcome");
+      showApp();
+      initPanel();
+    }
+
+    els.loginBtn.onclick = attemptLogin;
+    els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
 
     function initPanel(){
       const savedApi = localStorage.getItem("players_api_url");
       const savedAdmin = localStorage.getItem("admin_key_v1");
       els.playersApi.value = savedApi || "https://panel.sixteysevenharry.workers.dev/players";
       if (savedAdmin) els.adminKey.value = savedAdmin;
+
+      setStatus("ok", "Ready (press Refresh)");
       renderActive();
       renderModerated();
       updateButtons();
-      setStatus("ok", "Ready (press Refresh)");
     }
 
-    if (isLoggedIn()){ showApp(); initPanel(); } else { showLogin(); }
+    if (isLoggedIn()){
+      showApp();
+      initPanel();
+    } else {
+      showLogin();
+    }
   </script>
 </body>
 </html>
