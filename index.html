@@ -585,7 +585,7 @@
     }
 
     async function fetchLogs(){
-      const url = endpoint("/moderated");
+      const url = endpoint("/history");
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Logs HTTP " + res.status);
       const data = await res.json();
@@ -595,7 +595,7 @@
       return logs;
     }
 
-    async function fetchPlayersOnce(){
+    async function fetchPlayersOnce(){async function fetchPlayersOnce(){
       const url = endpoint("/players");
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Players HTTP " + res.status);
@@ -618,10 +618,11 @@
 
     async function tryHistory(id){
       try{
-        const res = await fetch(endpoint("/history?id=" + encodeURIComponent(id)), { cache:"no-store" });
+        const res = await fetch(endpoint("/history"), { cache:"no-store" });
         if (!res.ok) return null;
         const data = await res.json();
-        return data && data.item ? data.item : null;
+        const items = Array.isArray(data.items) ? data.items : [];
+        return items.find(x => String(x && x.id) === String(id)) || null;
       } catch { return null; }
     }
 
@@ -629,13 +630,14 @@
       const start = Date.now();
       while (Date.now() - start < timeoutMs){
         const item = await tryHistory(id);
-        if (item && item.status === "applied" && item.ok === true) return { ok:true };
-        if (item && item.status === "applied" && item.ok === false) return { ok:false, message: item.message || "failed" };
+        if (item && item.status === "applied") return { ok:true };
+        if (item && item.status === "failed") return { ok:false, message: "failed" };
         await new Promise(r => setTimeout(r, 1000));
       }
       return { ok:false, timeout:true };
     }
-async function sendModeration(action, user, reason){
+
+    async function sendModeration(action, user, reason){async function sendModeration(action, user, reason){
   if (!user) return { ok:false };
   const userId = Number(user.userId || 0);
 
@@ -664,7 +666,7 @@ async function sendModeration(action, user, reason){
 
   let res, body = null;
   try{
-    res = await fetch(endpoint("/moderate"), {
+    res = await fetch(endpoint("/admin/moderate"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
