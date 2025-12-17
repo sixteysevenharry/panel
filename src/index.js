@@ -179,6 +179,8 @@ export default {
         const userId = Number(body.userId || 0);
         const reason = String(body.reason || "").slice(0, 180);
         const by = String(body.by || "").slice(0, 60);
+        const username = String(body.username || "").slice(0, 40);
+        const displayName = String(body.displayName || "").slice(0, 60);
 
         if (!userId || !["kick", "ban", "unban"].includes(action)) {
           return json({ error: "Invalid command" }, 400);
@@ -189,7 +191,7 @@ export default {
 
         await env.LIVE.put(
           `cmd:${id}`,
-          JSON.stringify({ id, createdAt: now, action, userId, reason, by }),
+          JSON.stringify({ id, createdAt: now, action, userId, reason, by, username, displayName }),
           { expirationTtl: 600 }
         );
 
@@ -199,7 +201,7 @@ export default {
 
         // shared moderation log (what the website shows)
         const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
-        log.unshift({ id, createdAt: now, action, userId, reason, by });
+        log.unshift({ id, createdAt: now, action, userId, reason, by, username, displayName });
         if (log.length > MAX_LOG) log.length = MAX_LOG;
         await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
 
@@ -210,6 +212,8 @@ export default {
           userId,
           reason,
           by,
+          username,
+          displayName,
           status: "pending"
         });
 
