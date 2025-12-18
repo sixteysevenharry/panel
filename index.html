@@ -142,47 +142,44 @@
     .ghostBtn{border:1px solid var(--border);background:transparent}
     .ghostBtn:hover{background:var(--btnHover)}
     @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
-    .modOverlay{
-      position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px;
-      background: rgba(0,0,0,.22);
-      backdrop-filter: blur(10px);
-      z-index:10000;
-    }
-    [data-theme="dark"] .modOverlay{ background: rgba(0,0,0,.55); }
-    .modCard{
-      width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
-      background:var(--surface); box-shadow: var(--shadow); padding:18px;
-      animation: toastIn .18s ease-out;
-    }
-    .modTitle{font-size:20px;margin:0 0 6px}
-    .modHint{margin:0;color:var(--muted);font-size:13px}
-    .spinRow{display:flex;align-items:center;gap:12px;margin-top:14px}
-    .spinner{
-      width:34px;height:34px;border-radius:50%;
-      border:3px solid rgba(128,128,128,.25);
-      border-top-color: var(--ring);
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin{
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .logOk{
-      border-color: rgba(11,122,59,.35) !important;
-      background: linear-gradient(180deg, rgba(11,122,59,.10) 0%, var(--surface2) 100%) !important;
-    }
-    .logFail{
-      border-color: rgba(176,0,32,.35) !important;
-      background: linear-gradient(180deg, rgba(176,0,32,.10) 0%, var(--surface2) 100%) !important;
-    }
-    [data-theme="dark"] .logOk{
-      border-color: rgba(61,220,132,.35) !important;
-      background: linear-gradient(180deg, rgba(61,220,132,.10) 0%, rgba(18,23,34,.6) 100%) !important;
-    }
-    [data-theme="dark"] .logFail{
-      border-color: rgba(255,77,109,.35) !important;
-      background: linear-gradient(180deg, rgba(255,77,109,.10) 0%, rgba(18,23,34,.6) 100%) !important;
-    }
+  .modOverlay{
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px;
+  background: rgba(0,0,0,.22);
+  backdrop-filter: blur(10px);
+  z-index:10000;
+}
+[data-theme="dark"] .modOverlay{ background: rgba(0,0,0,.55); }
+.modCard{
+  width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
+  background:var(--surface); box-shadow: var(--shadow); padding:18px;
+  animation: toastIn .18s ease-out;
+}
+.modTitle{font-size:20px;margin:0 0 6px}
+.modHint{margin:0;color:var(--muted);font-size:13px}
+.spinRow{display:flex;align-items:center;gap:12px;margin-top:14px}
+.spinner{
+  width:34px;height:34px;border-radius:50%;
+  border:3px solid rgba(128,128,128,.25);
+  border-top-color: var(--ring);
+  animation: spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+  .logOk{
+  border-color: rgba(11,122,59,.35) !important;
+  background: linear-gradient(180deg, rgba(11,122,59,.10) 0%, var(--surface2) 100%) !important;
+}
+.logFail{
+  border-color: rgba(176,0,32,.35) !important;
+  background: linear-gradient(180deg, rgba(176,0,32,.10) 0%, var(--surface2) 100%) !important;
+}
+[data-theme="dark"] .logOk{
+  border-color: rgba(61,220,132,.35) !important;
+  background: linear-gradient(180deg, rgba(61,220,132,.10) 0%, rgba(18,23,34,.6) 100%) !important;
+}
+[data-theme="dark"] .logFail{
+  border-color: rgba(255,77,109,.35) !important;
+  background: linear-gradient(180deg, rgba(255,77,109,.10) 0%, rgba(18,23,34,.6) 100%) !important;
+}
   </style>
 </head>
 <body>
@@ -294,6 +291,8 @@
     const ALLOWED_USERNAMES = new Set(["eagla","nebula","specimen","arrow","damage","caprie"]);
     const STAFF_IDS = new Set([8007453710,4976035348,154251360,9930928180,485280430]);
 
+
+    // ===== Name cache (so Enforcement Logs show names even if older entries lacked them) =====
     const NAME_CACHE_KEY = "panel_name_cache_v1";
 
     function loadNameCache(){
@@ -326,12 +325,14 @@
       const d = String(displayName || "");
       if (u || d) return { username: u, displayName: d };
 
+      // Try active list
       const found = activePlayers && activePlayers.find(p => Number(p.userId) === Number(userId));
       if (found && (found.username || found.displayName)){
         cacheNameFrom(found);
         return { username: String(found.username || ""), displayName: String(found.displayName || "") };
       }
 
+      // Try cache
       const cache = loadNameCache();
       const hit = cache[String(Number(userId))];
       if (hit && (hit.username || hit.displayName)){
@@ -340,7 +341,6 @@
 
       return { username: "", displayName: "" };
     }
-
     const els = {
       app: document.getElementById("app"),
       loginOverlay: document.getElementById("loginOverlay"),
@@ -348,14 +348,17 @@
       loginBtn: document.getElementById("loginBtn"),
       loginStatus: document.getElementById("loginStatus"),
       logout: document.getElementById("logout"),
+
       status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
       meta: document.getElementById("meta"),
+
       workerBase: document.getElementById("workerBase"),
       adminKey: document.getElementById("adminKey"),
       search: document.getElementById("search"),
       save: document.getElementById("save"),
       refresh: document.getElementById("refresh"),
+
       activeList: document.getElementById("activeList"),
       logList: document.getElementById("logList"),
       activeCount: document.getElementById("activeCount"),
@@ -363,12 +366,14 @@
       toasts: document.getElementById("toasts"),
       modOverlay: document.getElementById("modOverlay"),
       modOverlaySub: document.getElementById("modOverlaySub"),
+
       kick: document.getElementById("kick"),
       kickReason: document.getElementById("kickReason"),
       ban: document.getElementById("ban"),
       banReason: document.getElementById("banReason"),
       unban: document.getElementById("unban"),
       unbanReason: document.getElementById("unbanReason"),
+
       themeLight: document.getElementById("themeLight"),
       themeDark: document.getElementById("themeDark"),
       themeAuto: document.getElementById("themeAuto"),
@@ -399,15 +404,16 @@
       els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
     }
 
-    function showModerationOverlay(show, subText){
-      if (!els.modOverlay) return;
-      if (show){
-        if (els.modOverlaySub) els.modOverlaySub.textContent = subText || "Applying action…";
-        els.modOverlay.style.display = "flex";
-      } else {
-        els.modOverlay.style.display = "none";
-      }
-    }
+function showModerationOverlay(show, subText){
+  if (!els.modOverlay) return;
+  if (show){
+    if (els.modOverlaySub) els.modOverlaySub.textContent = subText || "Applying action…";
+    els.modOverlay.style.display = "flex";
+  } else {
+    els.modOverlay.style.display = "none";
+  }
+}
+
 
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
@@ -546,48 +552,55 @@
     }
 
     function makeLogCardHTML(e){
-      const resolved = resolveName(e.userId, e.username, e.displayName);
-      const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
-      const handle = esc(resolved.username || "");
-      const action = esc(String(e.action || "").toUpperCase());
-      const by = esc(e.by || "");
-      const reason = esc(e.reason || "");
-      const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
-      const st = String(e.status || "").toLowerCase();
-      const statusText =
-        st === "applied" ? "SUCCESS" :
-        st === "failed"  ? "NOT SUCCESSFUL" :
-        st === "pending" ? "PENDING" :
-        (st ? st.toUpperCase() : "");
+  const resolved = resolveName(e.userId, e.username, e.displayName);
+  const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
+  const handle = esc(resolved.username || "");
+  const action = esc(String(e.action || "").toUpperCase());
+  const by = esc(e.by || "");
+  const reason = esc(e.reason || "");
+  const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
 
-      const statusPill = statusText ? `<span class="pill">${esc(statusText)}</span>` : "";
-      const pills = [
-        action ? `<span class="pill">${action}</span>` : "",
-        statusPill,
-        by ? `<span class="pill">By: ${by}</span>` : "",
-        when ? `<span class="pill">${esc(when)}</span>` : ""
-      ].filter(Boolean).join(" ");
+  const st = String(e.status || "").toLowerCase();
+  const statusText =
+    st === "applied" ? "SUCCESS" :
+    st === "failed"  ? "NOT SUCCESSFUL" :
+    st === "pending" ? "PENDING" :
+    (st ? st.toUpperCase() : "");
 
-      return `
-        <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${pills}</div>
-        <div class="small">UserId: ${Number(e.userId) || ""}</div>
-        ${reason ? `<div class="small">Reason: ${reason}</div>` : ""}
-      `;
-    }
+  const statusPill = statusText ? `<span class="pill">${esc(statusText)}</span>` : "";
+
+  const pills = [
+    action ? `<span class="pill">${action}</span>` : "",
+    statusPill,
+    by ? `<span class="pill">By: ${by}</span>` : "",
+    when ? `<span class="pill">${esc(when)}</span>` : ""
+  ].filter(Boolean).join(" ");
+
+  return `
+    <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${pills}</div>
+    <div class="small">UserId: ${Number(e.userId) || ""}</div>
+    ${reason ? `<div class="small">Reason: ${reason}</div>` : ""}
+  `;
+}
 
     function renderActive(){
       els.activeList.innerHTML = "";
       setCounts();
+
       const list = activePlayers.filter(matchSearch);
       if (!list.length){
         els.activeList.innerHTML = "<div class='small'>No players match.</div>";
         return;
       }
+
       for (const p of list){
         if (pendingHidden.has(Number(p.userId))) continue;
         const staff = isStaff(p.userId);
         const div = document.createElement("div");
-        div.className = "card" + (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") + (staff ? " staffCard" : "");
+        div.className =
+          "card" +
+          (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
+          (staff ? " staffCard" : "");
         div.innerHTML = makePlayerCardHTML(p);
         if (!staff && !uiLocked) div.onclick = () => { selectedActiveUserId = Number(p.userId); selectedLogId = null; renderActive(); renderLogs(); updateButtons(); };
         els.activeList.appendChild(div);
@@ -595,23 +608,28 @@
     }
 
     function renderLogs(){
-      els.logList.innerHTML = "";
-      setCounts();
-      const list = logs.filter(matchSearch);
-      if (!list.length){
-        els.logList.innerHTML = "<div class='small'>No enforcement logs.</div>";
-        return;
-      }
-      for (const e of list){
-        const st = String(e.status || "").toLowerCase();
-        const extra = st === "applied" ? " logOk" : st === "failed"  ? " logFail" : "";
-        const div = document.createElement("div");
-        div.className = "card" + extra + (String(e.id) === String(selectedLogId) ? " selected" : "");
-        div.innerHTML = makeLogCardHTML(e);
-        if (!uiLocked) div.onclick = () => { selectedLogId = String(e.id); selectedActiveUserId = null; renderActive(); renderLogs(); updateButtons(); };
-        els.logList.appendChild(div);
-      }
-    }
+  els.logList.innerHTML = "";
+  setCounts();
+
+  const list = logs.filter(matchSearch);
+  if (!list.length){
+    els.logList.innerHTML = "<div class='small'>No enforcement logs.</div>";
+    return;
+  }
+
+  for (const e of list){
+    const st = String(e.status || "").toLowerCase();
+    const extra =
+      st === "applied" ? " logOk" :
+      st === "failed"  ? " logFail" : "";
+
+    const div = document.createElement("div");
+    div.className = "card" + extra + (String(e.id) === String(selectedLogId) ? " selected" : "");
+    div.innerHTML = makeLogCardHTML(e);
+    if (!uiLocked) div.onclick = () => { selectedLogId = String(e.id); selectedActiveUserId = null; renderActive(); renderLogs(); updateButtons(); };
+    els.logList.appendChild(div);
+  }
+}
 
     function updateButtons(){
       if (uiLocked){
@@ -621,11 +639,13 @@
       }
       const active = activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null;
       const logSel = logs.find(e => String(e.id) === String(selectedLogId)) || null;
+
       const activeOk = !!active && !isStaff(active.userId);
       els.kick.disabled = !activeOk;
       els.kickReason.disabled = !activeOk;
       els.ban.disabled = !activeOk;
       els.banReason.disabled = !activeOk;
+
       const canUnban = !!logSel && String(logSel.action || "").toLowerCase() === "ban" && !isStaff(logSel.userId);
       els.unban.disabled = !canUnban;
       els.unbanReason.disabled = !canUnban;
@@ -665,92 +685,169 @@
       return Array.isArray(data.players) ? data.players : [];
     }
 
-    async function sendModeration(action, user, reason){
-      if (!user) return { ok:false };
-      const userId = Number(user.userId || 0);
-      if (isStaff(userId)) {
-        toast("err", "Blocked", "That user is STAFF and cannot be moderated.");
-        return { ok:false };
+    async function verifyByPresence(userId, timeoutMs){
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs){
+        try{
+          const players = await fetchPlayersOnce();
+          const stillHere = players.some(p => Number(p.userId) === Number(userId));
+          if (!stillHere) return { ok:true };
+        } catch {}
+        await new Promise(r => setTimeout(r, 1000));
       }
-      const adminKey = els.adminKey.value.trim();
-      if (!adminKey) {
-        toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
-        return { ok:false };
-      }
-      try{ cacheNameFrom(user); } catch {}
-      const payload = {
-        action,
-        userId,
-        reason: String(reason || ""),
-        by: String(getLoginUser() || ""),
-        username: String(user.username || ""),
-        displayName: String(user.displayName || "")
-      };
-      let res, body = null;
-      try{
-        res = await fetch(endpoint("/admin/moderate"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-key": adminKey
-          },
-          body: JSON.stringify(payload)
-        });
-        try { body = await res.json(); } catch { body = null; }
-      } catch(e){
-        toast("err", "Request failed", e.message);
-        return { ok:false };
-      }
-      if (!res || !res.ok) {
-        toast("err", "Request rejected", (body && body.error) ? body.error : ("HTTP " + (res ? res.status : "?")));
-        return { ok:false };
-      }
-      return { ok:true, id: body && body.id ? String(body.id) : "" };
+      return { ok:false, timeout:true };
     }
 
-    async function enforceAndVerify(action, user, reason){
-      const act = String(action || "").toLowerCase();
-      const userId = Number(user && user.userId || 0);
+    async function tryHistory(id){
+      try{
+        const res = await fetch(endpoint("/history"), { cache:"no-store" });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+        return items.find(x => String(x && x.id) === String(id)) || null;
+      } catch { return null; }
+    }
 
-      if (act === "unban"){
-        const sent = await sendModeration("unban", user, reason || "");
-        return (sent && sent.ok) ? { ok:true, id: sent.id || "" } : { ok:false, message: "unban failed" };
+    async function waitHistoryOk(id, timeoutMs){
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs){
+        const item = await tryHistory(id);
+        if (item && item.status === "applied") return { ok:true };
+        if (item && item.status === "failed") return { ok:false, message: "failed" };
+        await new Promise(r => setTimeout(r, 1000));
       }
+      return { ok:false, timeout:true };
+    }
 
-      if (!userId) return { ok:false, message: "missing userId" };
+    async function sendModeration(action, user, reason){
+  if (!user) return { ok:false };
+  const userId = Number(user.userId || 0);
 
-      // SEND ACTION ONCE
-      const firstResponse = await sendModeration(act, user, reason || "");
-      if (!firstResponse || !firstResponse.ok) return { ok:false, message: "Action failed to send" };
+  if (isStaff(userId)) {
+    toast("err", "Blocked", "That user is STAFF and cannot be moderated.");
+    return { ok:false };
+  }
 
-      const lastId = firstResponse.id;
-      const started = Date.now();
-      const hardTimeoutMs = 60000;
-      const checkEveryMs  = 800;
+  const adminKey = els.adminKey.value.trim();
+  if (!adminKey) {
+    toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
+    return { ok:false };
+  }
 
-      pendingHidden.add(userId);
-      renderActive();
-      updateButtons();
+  // cache for nicer logs
+  try{ cacheNameFrom(user); } catch {}
 
-      // POLL FOR REMOVAL
-      while (Date.now() - started < hardTimeoutMs){
-        try {
-          const players = await fetchPlayersOnce();
-          const stillHere = players.some(p => Number(p.userId) === userId);
+  const payload = {
+    action,
+    userId,
+    reason: String(reason || ""),
+    by: String(getLoginUser() || ""),
+    username: String(user.username || ""),
+    displayName: String(user.displayName || "")
+  };
 
-          // Approval as soon as they are gone
-          if (!stillHere) {
-            pendingHidden.delete(userId);
-            return { ok:true, id: lastId };
-          }
-        } catch(e) {}
-        await new Promise(r => setTimeout(r, checkEveryMs));
-      }
+  let res, body = null;
+  try{
+    res = await fetch(endpoint("/admin/moderate"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-key": adminKey
+      },
+      body: JSON.stringify(payload)
+    });
+    try { body = await res.json(); } catch { body = null; }
+  } catch(e){
+    toast("err", "Request failed", e.message);
+    return { ok:false };
+  }
 
+  if (!res || !res.ok) {
+    toast("err", "Request rejected", (body && body.error) ? body.error : ("HTTP " + (res ? res.status : "?")));
+    return { ok:false };
+  }
+
+  return { ok:true, id: body && body.id ? String(body.id) : "" };
+}
+
+
+async function enforceAndVerify(action, user, reason){
+  const act = String(action || "").toLowerCase();
+  const userId = Number(user && user.userId || 0);
+
+  if (act === "unban"){
+    const sent = await sendModeration("unban", user, reason || "");
+    return (sent && sent.ok) ? { ok:true, id: sent.id || "" } : { ok:false, message: "unban failed" };
+  }
+
+  if (!userId) return { ok:false, message: "missing userId" };
+
+  const started = Date.now();
+  const hardTimeoutMs = 120000;
+  const resendEveryMs = 1200;
+  const checkEveryMs  = 700;
+  const refreshUiEveryMs = 1200;
+
+  let lastSendAt = 0;
+  let lastUiAt = 0;
+  let lastId = "";
+
+  async function refreshUi(){
+    try{
+      await fetchPlayers();
+      await fetchLogs();
+    } catch {}
+  }
+
+  async function isStillHere(){
+    try{
+      const players = await fetchPlayersOnce();
+      return players.some(p => Number(p.userId) === userId);
+    } catch {
+      return true;
+    }
+  }
+
+  pendingHidden.add(userId);
+  renderActive();
+  updateButtons();
+
+  if (!(await isStillHere())){
+    pendingHidden.delete(userId);
+    renderActive();
+    updateButtons();
+    return { ok:true, id: "" };
+  }
+
+  while (Date.now() - started < hardTimeoutMs){
+    const now = Date.now();
+
+    if (now - lastSendAt >= resendEveryMs){
+      const sent = await sendModeration(act, user, reason || "");
+      lastSendAt = now;
+      if (sent && sent.ok && sent.id) lastId = String(sent.id);
+    }
+
+    if (now - lastUiAt >= refreshUiEveryMs){
+      lastUiAt = now;
+      await refreshUi();
+    }
+
+    await new Promise(r => setTimeout(r, checkEveryMs));
+    const still = await isStillHere();
+    if (!still){
       pendingHidden.delete(userId);
       renderActive();
-      return { ok:false, timeout:true, message: "Action sent, but user still detected in-game." };
+      updateButtons();
+      return { ok:true, id: lastId };
     }
+  }
+
+  pendingHidden.delete(userId);
+  renderActive();
+  updateButtons();
+  return { ok:false, timeout:true, message: "Timed out (kept retrying)." };
+}
 
     function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
     function getSelectedLog(){ return logs.find(e => String(e.id) === String(selectedLogId)) || null; }
@@ -761,6 +858,7 @@
     }
 
     els.search.addEventListener("input", () => { renderActive(); renderLogs(); updateButtons(); });
+
     els.save.onclick = () => {
       localStorage.setItem("worker_base_v1", baseUrl());
       localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
@@ -771,41 +869,77 @@
     els.refresh.onclick = async () => {
       if (els.refresh.disabled) return;
       startCooldown(els.refresh, 10, "Refresh");
-      try{ await refreshAll(); } catch(e){
+      try{
+        await refreshAll();
+      } catch(e){
         setStatus("error", "Refresh failed: " + e.message);
         toast("err","Refresh failed", e.message);
       }
     };
 
     async function runAction(action, user, reason, onSuccess){
-      const act = String(action || "").toLowerCase();
-      if (act === "kick" || act === "ban") showModerationOverlay(true, "Moderating user…");
-      beginVerifyLock();
-      try{
-        const v = await enforceAndVerify(action, user, reason || "");
-        if (v.ok){
-          toast("ok","Enforcement action approved","");
-          if (typeof onSuccess === "function") onSuccess();
-          await refreshAll();
-        } else {
-          toast("err", v.timeout ? "TIME OUT" : "Failed", v.message || "");
-        }
-      } finally {
-        endVerifyLock();
-        showModerationOverlay(false, "");
-      }
-    }
+  const act = String(action || "").toLowerCase();
+  if (act === "kick" || act === "ban"){
+    showModerationOverlay(true, "Moderating user… this may take some time.");
+  }
 
-    els.kick.onclick = async () => { const p = getSelectedActive(); if (p) await runAction("kick", p, "", null); };
-    els.kickReason.onclick = async () => { const p = getSelectedActive(); if (p) await runAction("kick", p, prompt("Kick reason?") || "", null); };
-    els.ban.onclick = async () => { const p = getSelectedActive(); if (p) await runAction("ban", p, "", null); };
-    els.banReason.onclick = async () => { const p = getSelectedActive(); if (p) await runAction("ban", p, prompt("Ban reason?") || "", null); };
-    els.unban.onclick = async () => { const e = getSelectedLog(); if (e) await runAction("unban", { userId: e.userId, username: e.username || "", displayName: e.displayName || "" }, "", () => { selectedLogId = null; }); };
-    els.unbanReason.onclick = async () => { const e = getSelectedLog(); if (e) await runAction("unban", { userId: e.userId, username: e.username || "", displayName: e.displayName || "" }, prompt("Unban note?") || "", () => { selectedLogId = null; }); };
+  beginVerifyLock();
+  try{
+    const v = await enforceAndVerify(action, user, reason || "");
+    if (v.ok){
+      toast("ok","Enforcement action approved","");
+      if (typeof onSuccess === "function") onSuccess();
+      await fetchLogs();
+      await fetchPlayers();
+    } else {
+      toast("err", v.timeout ? "ERROR: TIME OUT" : "Failed", v.message || "");
+    }
+  } finally {
+    endVerifyLock();
+    showModerationOverlay(false, "");
+  }
+}
+
+    els.kick.onclick = async () => {
+      const p = getSelectedActive(); if (!p) return;
+      await runAction("kick", p, "", null);
+    };
+
+    els.kickReason.onclick = async () => {
+      const p = getSelectedActive(); if (!p) return;
+      const r = prompt("Kick reason?") || "";
+      await runAction("kick", p, r, null);
+    };
+
+    els.ban.onclick = async () => {
+      const p = getSelectedActive(); if (!p) return;
+      await runAction("ban", p, "", null);
+    };
+
+    els.banReason.onclick = async () => {
+      const p = getSelectedActive(); if (!p) return;
+      const r = prompt("Ban reason?") || "";
+      await runAction("ban", p, r, null);
+    };
+
+    els.unban.onclick = async () => {
+      const e = getSelectedLog(); if (!e) return;
+      const user = { userId: e.userId, username: e.username || "", displayName: e.displayName || "" };
+      await runAction("unban", user, "", () => { selectedLogId = null; });
+    };
+
+    els.unbanReason.onclick = async () => {
+      const e = getSelectedLog(); if (!e) return;
+      const r = prompt("Unban note?") || "";
+      const user = { userId: e.userId, username: e.username || "", displayName: e.displayName || "" };
+      await runAction("unban", user, r, () => { selectedLogId = null; });
+    };
 
     function initPanel(){
-      els.workerBase.value = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
-      els.adminKey.value = localStorage.getItem("admin_key_v1") || "";
+      const savedBase = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
+      const savedAdmin = localStorage.getItem("admin_key_v1") || "";
+      els.workerBase.value = savedBase;
+      els.adminKey.value = savedAdmin;
       setStatus("ok","Ready (press Refresh)");
       renderActive();
       renderLogs();
@@ -813,7 +947,7 @@
     }
 
     if (isLoggedIn()){ showApp(); initPanel(); }
-    else showLogin();
+    else { showLogin(); }
   </script>
 </body>
 </html>
