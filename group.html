@@ -363,7 +363,10 @@ body{ padding-bottom: 74px; }
       img.decoding = "async";
       img.referrerPolicy = "no-referrer";
       img.dataset.userid = String(userId || "");
-      row.appendChild(img);
+            if (userId) {
+        img.src = "https://www.roblox.com/headshot-thumbnail/image?userId=" + encodeURIComponent(String(userId)) + "&width=150&height=150&format=png";
+      }
+row.appendChild(img);
 
       const t = document.createElement("div");
       t.className = "mText";
@@ -384,40 +387,9 @@ body{ padding-bottom: 74px; }
       t.appendChild(un);
       t.appendChild(id);
 
-      row.appendChild(t);
-      els.list.appendChild(row);
-    }
-
-    
-    async function fetchThumbs(ids){
-      if (!ids || !ids.length) return {};
-      // thumbnails endpoint supports comma-separated userIds
-      const url = "https://thumbnails.roblox.com/v1/users/avatar-headshot"
-        + "?userIds=" + encodeURIComponent(ids.join(","))
-        + "&size=150x150&format=Png&isCircular=true";
-      const r = await fetch(url, { cache: "no-store" });
-      const j = await r.json().catch(()=>null);
-      const out = {};
-      if (j && Array.isArray(j.data)){
-        for (const it of j.data){
-          if (it && it.targetId && it.imageUrl){
-            out[String(it.targetId)] = String(it.imageUrl);
-          }
-        }
-      }
-      return out;
-    }
-
-    function applyThumbs(map){
-      if (!map) return;
-      const imgs = els.list.querySelectorAll("img.avatar[data-userid]");
-      for (const im of imgs){
-        const id = im.dataset.userid || "";
-        if (!id) continue;
-        const url = map[id];
-        if (url && im.src !== url) im.src = url;
-      }
-    }
+  row.appendChild(t);
+  els.list.appendChild(row);
+}
 
 async function refresh(){
       const base = getWorkerBase();
