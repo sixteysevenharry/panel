@@ -410,7 +410,7 @@ await env.LIVE.delete(MOD_LOG_KEY);
         try { body = JSON.parse(bodyText); } catch { body = {}; }
 
         // short cache to reduce 429s
-        await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 30 });
+        await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 60 });
 
         return json(body);
       }
@@ -456,7 +456,7 @@ await env.LIVE.delete(MOD_LOG_KEY);
         try { body = JSON.parse(bodyText); } catch { body = {}; }
 
         // short cache to reduce 429s
-        await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 10 });
+        await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 60 });
 
         return json(body);
       }
