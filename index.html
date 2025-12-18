@@ -127,10 +127,98 @@
       background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.08), transparent 55%), rgba(0,0,0,.22);
       backdrop-filter: blur(8px); z-index:9998;
     }
-    [data-theme="dark"] .overlay{
+    
+    .uiModalCard{
+      width:min(520px, calc(100vw - 28px));
+      background: linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px 14px 12px 14px;
+    }
+    .uiModalHead{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; margin-bottom:10px;
+    }
+    .uiModalTitle{
+      font-size:18px; margin:0; letter-spacing:.2px;
+    }
+    .uiModalX{
+      width:34px; height:34px; border-radius: 12px;
+      border:1px solid var(--border2);
+      background: var(--btn);
+      color: var(--text);
+      cursor:pointer;
+    }
+    .uiModalX:hover{ background: var(--btnHover); }
+    .uiModalBody{ display:flex; flex-direction:column; gap:12px; }
+    .uiModalMsg{ margin:0; color: var(--muted); line-height:1.35; white-space:pre-wrap; }
+    .uiModalInput{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border:1px solid var(--border2);
+      background: #fff;
+      color: var(--text);
+      outline:none;
+    }
+    .uiModalInput:focus{
+      box-shadow: 0 0 0 2px rgba(17,19,24,.12);
+      border-color: var(--border2);
+    }
+    .uiModalActions{
+      display:flex; justify-content:flex-end; gap:10px; margin-top:12px;
+      flex-wrap:wrap;
+    }
+
+[data-theme="dark"] .overlay{
       background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.10), transparent 55%), rgba(0,0,0,.55);
     }
-    .loginCard{
+    
+    .uiModalCard{
+      width:min(520px, calc(100vw - 28px));
+      background: linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px 14px 12px 14px;
+    }
+    .uiModalHead{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; margin-bottom:10px;
+    }
+    .uiModalTitle{
+      font-size:18px; margin:0; letter-spacing:.2px;
+    }
+    .uiModalX{
+      width:34px; height:34px; border-radius: 12px;
+      border:1px solid var(--border2);
+      background: var(--btn);
+      color: var(--text);
+      cursor:pointer;
+    }
+    .uiModalX:hover{ background: var(--btnHover); }
+    .uiModalBody{ display:flex; flex-direction:column; gap:12px; }
+    .uiModalMsg{ margin:0; color: var(--muted); line-height:1.35; white-space:pre-wrap; }
+    .uiModalInput{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border:1px solid var(--border2);
+      background: #fff;
+      color: var(--text);
+      outline:none;
+    }
+    .uiModalInput:focus{
+      box-shadow: 0 0 0 2px rgba(17,19,24,.12);
+      border-color: var(--border2);
+    }
+    .uiModalActions{
+      display:flex; justify-content:flex-end; gap:10px; margin-top:12px;
+      flex-wrap:wrap;
+    }
+
+.loginCard{
       width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
       background:var(--surface); box-shadow: var(--shadow); padding:18px; animation: toastIn .18s ease-out;
     }
@@ -322,6 +410,21 @@
   </div>
 </div>
 
+  
+<div class="overlay" id="uiModal" style="display:none" aria-hidden="true">
+  <div class="uiModalCard" role="dialog" aria-modal="true" aria-labelledby="uiModalTitle">
+    <div class="uiModalHead">
+      <h2 class="uiModalTitle" id="uiModalTitle">Notice</h2>
+      <button class="uiModalX" id="uiModalX" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="uiModalBody">
+      <p class="uiModalMsg" id="uiModalMsg"></p>
+      <input class="uiModalInput" id="uiModalInput" type="text" autocomplete="off" spellcheck="false" style="display:none" />
+    </div>
+    <div class="uiModalActions" id="uiModalActions"></div>
+  </div>
+</div>
+
   <div class="toastWrap" id="toasts"></div>
 
   <script>
@@ -423,7 +526,123 @@
       return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
     }
 
-    function toast(kind, title, body){
+    
+    // --- Unified HTML modal for alerts/confirms/prompts (no browser popups) ---
+    const ui = (() => {
+      const overlay = document.getElementById("uiModal");
+      const titleEl = document.getElementById("uiModalTitle");
+      const msgEl = document.getElementById("uiModalMsg");
+      const inputEl = document.getElementById("uiModalInput");
+      const actionsEl = document.getElementById("uiModalActions");
+      const closeBtn = document.getElementById("uiModalX");
+
+      let resolver = null;
+      let escHandler = null;
+
+      function setOpen(open){
+        if (!overlay) return;
+        overlay.style.display = open ? "flex" : "none";
+        overlay.setAttribute("aria-hidden", open ? "false" : "true");
+        document.body.style.overflow = open ? "hidden" : "";
+      }
+
+      function cleanup(){
+        if (escHandler) document.removeEventListener("keydown", escHandler);
+        escHandler = null;
+        resolver = null;
+        actionsEl.innerHTML = "";
+        inputEl.style.display = "none";
+        inputEl.value = "";
+      }
+
+      function finish(val){
+        const r = resolver;
+        cleanup();
+        setOpen(false);
+        if (r) r(val);
+      }
+
+      function button(label, kind){
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn " + (kind || "");
+        b.textContent = label;
+        return b;
+      }
+
+      function show({ title="Notice", message="", mode="alert", okText="OK", cancelText="Cancel", defaultValue="", placeholder="" }){
+        return new Promise((resolve) => {
+          resolver = resolve;
+          titleEl.textContent = String(title || "Notice");
+          msgEl.textContent = String(message || "");
+
+          overlay.onclick = (e) => {
+            if (e.target === overlay){
+              if (mode === "alert") finish(true);
+              else finish(null);
+            }
+          };
+
+          closeBtn.onclick = () => {
+            if (mode === "alert") finish(true);
+            else finish(null);
+          };
+
+          actionsEl.innerHTML = "";
+
+          if (mode === "prompt"){
+            inputEl.style.display = "block";
+            inputEl.value = defaultValue ?? "";
+            inputEl.placeholder = placeholder || "";
+          } else {
+            inputEl.style.display = "none";
+            inputEl.value = "";
+          }
+
+          if (mode === "confirm" || mode === "prompt"){
+            const cancel = button(cancelText || "Cancel", "");
+            cancel.onclick = () => finish(null);
+            actionsEl.appendChild(cancel);
+          }
+
+          const ok = button(okText || "OK", "primary");
+          ok.onclick = () => finish(mode === "prompt" ? inputEl.value : true);
+          actionsEl.appendChild(ok);
+
+          escHandler = (e) => {
+            if (e.key === "Escape"){
+              if (mode === "alert") finish(true);
+              else finish(null);
+            }
+            if (mode === "prompt" && e.key === "Enter"){
+              finish(inputEl.value);
+            }
+          };
+          document.addEventListener("keydown", escHandler);
+
+          setOpen(true);
+
+          requestAnimationFrame(() => {
+            if (mode === "prompt") inputEl.focus();
+            else ok.focus();
+          });
+        });
+      }
+
+      return {
+        alert: (message, title) => show({ mode:"alert", title, message }),
+        confirm: async (message, title, okText="OK", cancelText="Cancel") => {
+          const r = await show({ mode:"confirm", title, message, okText, cancelText });
+          return r === true;
+        },
+        prompt: async (message, defaultValue="", title, placeholder="") => {
+          const r = await show({ mode:"prompt", title, message, defaultValue, placeholder, okText:"OK", cancelText:"Cancel" });
+          return (r === null) ? null : String(r);
+        }
+      };
+    })();
+
+function toast(kind, title, body){
       const div = document.createElement("div");
       div.className = "toast " + (kind || "");
       div.innerHTML = `
@@ -519,7 +738,7 @@ function showModerationOverlay(show, subText){
 
     els.loginBtn.onclick = attemptLogin;
     els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
-    els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
+    els.logout.onclick = async () => { if (!(await ui.confirm("Log out?","Confirm"))) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
 
     function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
@@ -1023,7 +1242,7 @@ async function enforceAndVerify(action, user, reason){
 
     els.kickReason.onclick = async () => {
       const p = getSelectedActive(); if (!p) return;
-      const r = prompt("Kick reason?") || "";
+      const r = (await ui.prompt("Kick reason?","", "Kick")) || "";
       await runAction("kick", p, r, null);
     };
 
@@ -1034,7 +1253,7 @@ async function enforceAndVerify(action, user, reason){
 
     els.banReason.onclick = async () => {
       const p = getSelectedActive(); if (!p) return;
-      const r = prompt("Ban reason?") || "";
+      const r = (await ui.prompt("Ban reason?","", "Ban")) || "";
       await runAction("ban", p, r, null);
     };
 
@@ -1046,7 +1265,7 @@ async function enforceAndVerify(action, user, reason){
 
     els.unbanReason.onclick = async () => {
       const e = getSelectedLog(); if (!e) return;
-      const r = prompt("Unban note?") || "";
+      const r = (await ui.prompt("Unban note?","", "Unban")) || "";
       const user = { userId: e.userId, username: e.username || "", displayName: e.displayName || "" };
       await runAction("unban", user, r, () => { selectedLogId = null; });
     };
