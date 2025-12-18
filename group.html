@@ -437,13 +437,7 @@ async function refresh(){
             const user = entry && entry.user ? entry.user : {};
             const role = entry && entry.role ? entry.role : {};
             const userId = Number(user.userId || user.id || 0);
-            addRow(
-              String(user.displayName || ""),
-              String(user.username || ""),
-              String(role.name || ""),
-              (role.rank != null ? Number(role.rank) : null),
-              userId
-            );
+            addRow(String(user.displayName || ""), String(user.username || ""), userId);
             total += 1;
           }
 
