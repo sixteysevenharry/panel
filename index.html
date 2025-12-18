@@ -251,10 +251,10 @@
         <input id="search" placeholder="Search name / display / id" />
       </div>
       <div class="btns" style="margin-top:18px">
-        <button id="save" type="button">💾 Save</button>
+        <button id="save" type="button" title="Save settings (Worker URL + Admin key) to your browser">💾 Save</button>
         <button id="lockBtn" type="button" class="ghostBtn" title="Lock / Unlock">🔒</button>
         <span class="small" id="lockMeta" style="opacity:.85"></span>
-        <button id="refresh" type="button">🔄 Refresh</button>
+        <button id="refresh" type="button" title="Refresh players + logs from the Worker">🔄 Refresh</button>
       </div>
     </div>
 
@@ -783,7 +783,17 @@ function showModerationOverlay(show, subText){
       const locked = !!lockState.locked;
       if (els.lockBtn){
         els.lockBtn.textContent = locked ? "🔓" : "🔒";
+      
+      if (els.lockBtn){
+        const who = (lockState.by || "").trim();
+        const when = lockState.at ? fmtWhen(lockState.at) : "";
+        const stateText = locked ? "LOCKED" : "UNLOCKED";
+        const byText = who ? (" by " + who) : "";
+        const atText = when ? (" • " + when) : "";
+        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+        els.lockBtn.title = stateText + byText + atText + " — " + actionHint;
       }
+}
       if (els.lockMeta){
         if (lockState.by && lockState.at){
           els.lockMeta.textContent = (locked ? "Locked" : "Unlocked") + " by " + lockState.by + " • " + fmtWhen(lockState.at);
