@@ -334,6 +334,7 @@
       <div class="btns" style="margin-top:18px">
         <button id="save" type="button">💾 Save</button>
         <button id="refresh" type="button">🔄 Refresh</button>
+        <button id="clearAllLogs" type="button" style="display:none">🧹 Clear All Logs</button>
       </div>
     </div>
 
@@ -498,6 +499,7 @@
       search: document.getElementById("search"),
       save: document.getElementById("save"),
       refresh: document.getElementById("refresh"),
+      clearAllLogs: document.getElementById("clearAllLogs"),
 
       activeList: document.getElementById("activeList"),
       logList: document.getElementById("logList"),
@@ -702,12 +704,21 @@ function showModerationOverlay(show, subText){
     function setLoggedIn(username){
       localStorage.setItem("panel_logged_in", "1");
       localStorage.setItem("panel_login_user", String(username || ""));
+    
+      updateSpecimenControls();
     }
     function clearLoggedIn(){
       localStorage.removeItem("panel_logged_in");
       localStorage.removeItem("panel_login_user");
+    
+      updateSpecimenControls();
     }
     function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
+
+    function updateSpecimenControls(){
+      const u = String(getLoginUser() || "").trim().toLowerCase();
+      if (els.clearAllLogs) els.clearAllLogs.style.display = (u === "specimen") ? "inline-flex" : "none";
+    }
 
     function showLogin(){
       els.app.style.display = "none";
@@ -717,6 +728,7 @@ function showModerationOverlay(show, subText){
       els.loginUser.focus();
     }
     function showApp(){
+      updateSpecimenControls();
       els.loginOverlay.style.display = "none";
       els.app.style.display = "block";
     }
@@ -838,6 +850,8 @@ function showModerationOverlay(show, subText){
     }
     function endVerifyLock(){
       uiLocked = false;
+      renderActive();
+      renderLogs();
       updateButtons();
       setStatus("ok","Ready");
     }
@@ -989,12 +1003,15 @@ function showModerationOverlay(show, subText){
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Logs HTTP " + res.status);
       const data = await res.json();
-      logs = mergeLogs(Array.isArray(data.items) ? data.items : []);
-      
+
+      const rawItems = Array.isArray(data.items) ? data.items : [];
+      const filtered = rawItems.filter(e => String(e.action || "").toLowerCase() !== "unban");
+      logs = mergeLogs(filtered);
+
       if (selectedLogId && !logs.some(e => String(e.id) === String(selectedLogId))){
         selectedLogId = null;
       }
-renderLogs();
+      renderLogs();
       updateButtons();
       return logs;
     }
@@ -1209,6 +1226,53 @@ async function enforceAndVerify(action, user, reason){
       } catch(e){
         setStatus("error", "Refresh failed: " + e.message);
         toast("err","Refresh failed", e.message);
+      }
+    };
+
+    els.clearAllLogs.onclick = async () => {
+      const u = String(getLoginUser() || "").trim().toLowerCase();
+      if (u !== "specimen") return;
+      if (uiLocked) {
+        toast("err","Busy","Wait until the current action finishes.");
+        return;
+      }
+
+      const ok = await ui.confirm("This will permanently clear ALL moderation logs for everyone. Continue?", "Clear moderation logs");
+      if (!ok) return;
+
+      const adminKey = els.adminKey.value.trim();
+      if (!adminKey) {
+        toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
+        return;
+      }
+
+      try{
+        setStatus("loading","Clearing logs…");
+        const res = await fetch(endpoint("/admin/clearLogs"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": adminKey
+          },
+          body: JSON.stringify({ by: String(getLoginUser() || "") })
+        });
+        let body = null;
+        try { body = await res.json(); } catch { body = null; }
+
+        if (!res.ok){
+          toast("err","Clear failed", (body && body.error) ? body.error : ("HTTP " + res.status));
+          setStatus("error","Clear failed");
+          return;
+        }
+
+        logs = [];
+        selectedLogId = null;
+        renderLogs();
+        toast("ok","Logs cleared","All moderation logs were cleared.");
+        setStatus("ok","Ready");
+      } catch(e){
+        toast("err","Clear failed", e.message);
+        setStatus("error","Clear failed");
       }
     };
 
