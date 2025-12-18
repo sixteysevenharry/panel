@@ -141,7 +141,7 @@
     .loginFoot{margin-top:10px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
     .ghostBtn{border:1px solid var(--border);background:transparent}
     .ghostBtn:hover{background:var(--btnHover)}
-    @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
+    @media (prefers-reduced-motion: reduce){ *{transition:none !important} .dot.load{animation:none !important} .spinner{animation: spin 1s linear infinite !important} }
   .modOverlay{
   position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px;
   background: rgba(0,0,0,.22);
@@ -164,6 +164,33 @@
   animation: spin 1s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
+.modProgress{
+  margin-top: 14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.modProgressTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.progressBar{
+  width:100%;
+  height:10px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:rgba(128,128,128,.10);
+  overflow:hidden;
+}
+.progressFill{
+  height:100%;
+  width:0%;
+  border-radius:999px;
+  background: var(--ring);
+  transition: width .2s ease;
+}
   .logOk{
   border-color: rgba(11,122,59,.35) !important;
   background: linear-gradient(180deg, rgba(11,122,59,.10) 0%, var(--surface2) 100%) !important;
@@ -282,6 +309,16 @@
       <div class="spinner" aria-hidden="true"></div>
       <div class="small" id="modOverlaySub">Applying action…</div>
     </div>
+
+<div class="modProgress" aria-label="Moderation progress">
+  <div class="modProgressTop">
+    <span class="small" id="modStep">Starting…</span>
+    <span class="small" id="modPct">0%</span>
+  </div>
+  <div class="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="progressFill" id="modFill"></div>
+  </div>
+</div>
   </div>
 </div>
 
@@ -366,6 +403,9 @@
       toasts: document.getElementById("toasts"),
       modOverlay: document.getElementById("modOverlay"),
       modOverlaySub: document.getElementById("modOverlaySub"),
+      modFill: document.getElementById("modFill"),
+      modPct: document.getElementById("modPct"),
+      modStep: document.getElementById("modStep"),
 
       kick: document.getElementById("kick"),
       kickReason: document.getElementById("kickReason"),
@@ -404,10 +444,20 @@
       els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
     }
 
+function setModerationProgress(pct, stepText){
+  const p = Math.max(0, Math.min(100, Math.floor(Number(pct) || 0)));
+  if (els.modFill) els.modFill.style.width = p + "%";
+  if (els.modPct) els.modPct.textContent = p + "%";
+  if (els.modStep) els.modStep.textContent = stepText || "";
+  const bar = els.modOverlay ? els.modOverlay.querySelector(".progressBar") : null;
+  if (bar) bar.setAttribute("aria-valuenow", String(p));
+}
+
 function showModerationOverlay(show, subText){
   if (!els.modOverlay) return;
   if (show){
     if (els.modOverlaySub) els.modOverlaySub.textContent = subText || "Applying action…";
+    setModerationProgress(0, "Starting…");
     els.modOverlay.style.display = "flex";
   } else {
     els.modOverlay.style.display = "none";
@@ -841,6 +891,12 @@ async function enforceAndVerify(action, user, reason){
   const checkEveryMs  = 700;
   const refreshUiEveryMs = 1200;
 
+  function updateOverlay(step){
+    const pct = Math.min(99, Math.floor(((Date.now() - started) / hardTimeoutMs) * 100));
+    setModerationProgress(pct, step || "Working…");
+    if (els.modOverlaySub) els.modOverlaySub.textContent = step || "Working…";
+  }
+
   let lastSendAt = 0;
   let lastUiAt = 0;
   let lastId = "";
@@ -864,8 +920,10 @@ async function enforceAndVerify(action, user, reason){
   pendingHidden.add(userId);
   renderActive();
   updateButtons();
+  updateOverlay("Preparing…");
 
   if (!(await isStillHere())){
+    setModerationProgress(100, "Already gone");
     pendingHidden.delete(userId);
     renderActive();
     updateButtons();
@@ -876,6 +934,7 @@ async function enforceAndVerify(action, user, reason){
     const now = Date.now();
 
     if (now - lastSendAt >= resendEveryMs){
+      updateOverlay("Sending request to server…");
       const sent = await sendModeration(act, user, reason || "");
       lastSendAt = now;
       if (sent && sent.ok && sent.id) lastId = String(sent.id);
@@ -883,12 +942,15 @@ async function enforceAndVerify(action, user, reason){
 
     if (now - lastUiAt >= refreshUiEveryMs){
       lastUiAt = now;
+      updateOverlay("Refreshing player list & logs…");
       await refreshUi();
     }
 
+    updateOverlay("Waiting for action to apply…");
     await new Promise(r => setTimeout(r, checkEveryMs));
     const still = await isStillHere();
     if (!still){
+      setModerationProgress(100, "Done");
       pendingHidden.delete(userId);
       renderActive();
       updateButtons();
@@ -896,6 +958,7 @@ async function enforceAndVerify(action, user, reason){
     }
   }
 
+  setModerationProgress(100, "Timed out");
   pendingHidden.delete(userId);
   renderActive();
   updateButtons();
