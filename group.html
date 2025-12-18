@@ -344,7 +344,16 @@
   <script>
     const GROUP_ID = 466852954;
 
-    const els = {
+    
+
+    // Require login from index.html
+    function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
+    function rememberReturn(){ try{ localStorage.setItem("panel_return_to", "group.html"); }catch{} }
+    if (!isLoggedIn()){
+      rememberReturn();
+      location.replace("index.html");
+    }
+const els = {
       groupTitle: document.getElementById("groupTitle"),
       countText: document.getElementById("countText"),
       status: document.getElementById("status"),
