@@ -314,11 +314,7 @@
           <button id="themeDark" type="button" aria-pressed="true" title="Dark">🌙</button>
           <button id="themeAuto" type="button" aria-pressed="false" title="Auto">🖥️</button>
         </div>
-        <span class="pillStatus" title="Logged in" style="align-self:center">
-  <span class="small">👤</span>
-  <span class="small" id="whoami">—</span>
-</span>
-<button id="logout" type="button" class="ghostBtn" title="Log out">🚪 Logout</button>
+        <button id="logout" type="button" class="ghostBtn" title="Log out">🚪 Logout</button>
       </div>
     </div>
 
@@ -433,6 +429,16 @@
   <div class="toastWrap" id="toasts"></div>
 
   <script>
+
+function showModalMessage(message, title="Notice"){
+  try{
+    openModal({title, message, actions:[{label:"OK", value:true, primary:true}]});
+  }catch(e){
+    alert(title + "\n\n" + message);
+  }
+}
+
+
     const ALLOWED_USERNAMES = new Set(["eagla","nebula","specimen","arrow","damage","caprie"]);
     const STAFF_IDS = new Set([8007453710,4976035348,154251360,9930928180,485280430]);
 
@@ -493,7 +499,6 @@
       loginBtn: document.getElementById("loginBtn"),
       loginStatus: document.getElementById("loginStatus"),
       logout: document.getElementById("logout"),
-      whoami: document.getElementById("whoami"),
 
       status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
@@ -709,23 +714,16 @@ function showModerationOverlay(show, subText){
     function setLoggedIn(username){
       localStorage.setItem("panel_logged_in", "1");
       localStorage.setItem("panel_login_user", String(username || ""));
+    
       updateSpecimenControls();
-      updateWhoAmI();
     }
     function clearLoggedIn(){
       localStorage.removeItem("panel_logged_in");
       localStorage.removeItem("panel_login_user");
+    
       updateSpecimenControls();
-      updateWhoAmI();
     }
     function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
-
-
-    function updateWhoAmI(){
-      if (!els.whoami) return;
-      const u = String(getLoginUser() || "").trim();
-      els.whoami.textContent = u ? u : "—";
-    }
 
     function updateSpecimenControls(){
       const u = String(getLoginUser() || "").trim().toLowerCase();
@@ -733,7 +731,6 @@ function showModerationOverlay(show, subText){
     }
 
     function showLogin(){
-      if (els.whoami) els.whoami.textContent = "—";
       els.app.style.display = "none";
       els.loginOverlay.style.display = "flex";
       els.loginStatus.textContent = "";
@@ -742,7 +739,6 @@ function showModerationOverlay(show, subText){
     }
     function showApp(){
       updateSpecimenControls();
-      updateWhoAmI();
       els.loginOverlay.style.display = "none";
       els.app.style.display = "block";
     }
@@ -1266,10 +1262,9 @@ async function enforceAndVerify(action, user, reason){
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-admin-key": adminKey,
-            "x-admin-user": String(getLoginUser() || "")
+            "x-admin-key": adminKey
           },
-          body: JSON.stringify({ user: String(getLoginUser() || "") })
+          body: JSON.stringify({ by: String(getLoginUser() || "") })
         });
         let body = null;
         try { body = await res.json(); } catch { body = null; }
@@ -1350,7 +1345,6 @@ async function enforceAndVerify(action, user, reason){
     };
 
     function initPanel(){
-      updateWhoAmI();
       const savedBase = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
       const savedAdmin = localStorage.getItem("admin_key_v1") || "";
       els.workerBase.value = savedBase;
