@@ -279,6 +279,28 @@
     }
     .edgeInfo.show{display:block;}
 
+
+    .pagerRow{
+      display:none;
+      margin: 6px 0 0 0;
+      padding: 12px 0 2px;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .pagerRow.show{ display:flex; }
+    .pageInfo{
+      color: var(--muted);
+      font-weight: 900;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 14px;
+      min-width: 96px;
+      text-align:center;
+    }
+
 </style>
 </head>
 <body>
@@ -311,6 +333,11 @@
         <div class="edgeInfo" id="oldestInfo"></div>
         <div id="membersMount"></div>
         <div class="edgeInfo" id="newestInfo"></div>
+        <div class="pagerRow" id="pagerRow">
+          <button class="btn" id="prevPageBtn">← Prev</button>
+          <div class="pageInfo" id="pageInfo">Page 1</div>
+          <button class="btn" id="nextPageBtn">Next page →</button>
+        </div>
       </div>
     </div>
   </div>
@@ -360,7 +387,11 @@ const els = {
       list: document.getElementById("membersMount"),
       oldestInfo: document.getElementById("oldestInfo"),
       newestInfo: document.getElementById("newestInfo"),
-      refreshBtn: document.getElementById("refreshBtn"),
+            pagerRow: document.getElementById("pagerRow"),
+      prevPageBtn: document.getElementById("prevPageBtn"),
+      nextPageBtn: document.getElementById("nextPageBtn"),
+      pageInfo: document.getElementById("pageInfo"),
+refreshBtn: document.getElementById("refreshBtn"),
       cfg: document.getElementById("cfg"),
       cfgUrl: document.getElementById("cfgUrl"),
       cfgCancel: document.getElementById("cfgCancel"),
@@ -420,7 +451,62 @@ function getWorkerBase() {
       }
     }
 
-    function addRow(displayName, username, userId) {
+    
+    const PAGE_SIZE = 100;
+    let _membersAll = [];
+    let _pageIndex = 0;
+    let _thumbCache = {}; // userId -> imageUrl
+
+    function totalPages(){
+      return Math.max(1, Math.ceil((_membersAll.length || 0) / PAGE_SIZE));
+    }
+
+    function updatePager(){
+      if (!els.pagerRow || !els.pageInfo || !els.prevPageBtn || !els.nextPageBtn) return;
+      const tp = totalPages();
+      const show = (_membersAll.length > PAGE_SIZE);
+      els.pagerRow.classList.toggle("show", show);
+      els.pageInfo.textContent = "Page " + String(_pageIndex + 1) + " / " + String(tp);
+
+      // Only required: Next page. Prev included for convenience.
+      els.prevPageBtn.disabled = (_pageIndex <= 0);
+      els.nextPageBtn.disabled = (_pageIndex >= tp - 1);
+    }
+
+    async function ensureThumbsFor(ids){
+      const need = [];
+      for (const id of ids){
+        const k = String(id);
+        if (!_thumbCache[k]) need.push(id);
+      }
+      if (!need.length) return;
+      try{
+        const map = await fetchThumbMap(need);
+        for (const k in map) _thumbCache[k] = map[k];
+      }catch{}
+    }
+
+    async function renderPage(){
+      clearMembers();
+      const start = _pageIndex * PAGE_SIZE;
+      const slice = _membersAll.slice(start, start + PAGE_SIZE);
+
+      const ids = [];
+      for (const m of slice){
+        addRow(m.displayName, m.username, m.userId);
+        ids.push(m.userId);
+      }
+
+      updatePager();
+
+      setStatus("Loading avatars...");
+      await ensureThumbsFor(ids);
+      applyThumbs(_thumbCache);
+
+      setStatus("Showing " + String(slice.length) + " of " + String(_membersAll.length) + " members. Press Refresh to update.");
+    }
+
+function addRow(displayName, username, userId) {
       const row = document.createElement("div");
       row.className = "memberCard";
 
@@ -571,6 +657,7 @@ const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent
 
       // Fetch created dates (via Worker proxy) and sort oldest -> newest
       const createdMap = await fetchCreatedMap(ids);
+      stopDots();
 
       members.sort((a, b) => {
         const ca = createdMap[String(a.userId)] || "";
@@ -600,24 +687,12 @@ const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent
 
       // Render members in sorted order
       stopDots();
-      setStatus("Rendering...");
-      clearMembers();
-      for (const m of members) {
-        addRow(m.displayName, m.username, m.userId);
-      }
-
-      // Fetch thumbs via Worker proxy and apply
-      stopDots();
-      setStatus("Loading avatars...");
-      try {
-        const thumbMap = await fetchThumbMap(ids);
-        applyThumbs(thumbMap);
-      } catch {}
-
-      stopDots();
-      setStatus(`Loaded ${members.length} members. (Oldest → newest) Press Refresh to update.`);
+      _membersAll = members;
+      _pageIndex = 0;
+      updatePager();
+      await renderPage();
       els.refreshBtn.disabled = false;
-    }
+}
 
     // ===== Styled tooltips =====
     let _uiTipEl = null;
