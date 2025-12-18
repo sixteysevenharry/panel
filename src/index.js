@@ -214,29 +214,6 @@ export default {
       }
 
       /* =====================================================
-         PANEL -> CLEAR ALL MODERATION LOGS (SPECIMEN ONLY)
-         ===================================================== */
-      if (url.pathname === "/admin/clearLogs" && request.method === "POST") {
-        const adminKey = request.headers.get("x-admin-key") || "";
-        if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) return json({ error: "Unauthorized" }, 401);
-
-        let body;
-        try { body = await request.json(); } catch { body = {}; }
-
-        const whoRaw =
-          String((body && (body.user || body.by)) || "").trim() ||
-          String(request.headers.get("x-admin-user") || "").trim();
-
-        const who = whoRaw.toLowerCase();
-        if (who !== "specimen") return json({ error: "Specimen only" }, 403);
-
-        await env.LIVE.delete(MOD_LOG_KEY);
-        await env.LIVE.delete(BAN_STATE_KEY);
-
-        return json({ ok: true });
-      }
-
-/* =====================================================
          WEBSITE -> CURRENTLY BANNED USERS (ACTIVE ONLY)
          ===================================================== */
       if (url.pathname === "/moderated" && request.method === "GET") {
@@ -304,7 +281,7 @@ export default {
         const id = String(body.id || "");
         const action = String(body.action || "");
         const userId = Number(body.userId || 0);
-        const ok = body.ok === true;
+        const ok = (body.ok === true || body.ok === "true" || body.ok === 1 || body.ok === "1");
 
         if (!id) return json({ error: "Missing id" }, 400);
 
