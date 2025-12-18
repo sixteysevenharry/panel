@@ -210,14 +210,50 @@
   border-color: rgba(255,77,109,.35) !important;
   background: linear-gradient(180deg, rgba(255,77,109,.10) 0%, rgba(18,23,34,.6) 100%) !important;
 }
-  </style>
+  
+    /* ===== Custom tooltips (styled, not browser default) ===== */
+    .uiTip{
+      position: fixed;
+      z-index: 999999;
+      max-width: 320px;
+      padding: 10px 12px;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      line-height: 1.25;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .12s ease, transform .12s ease;
+      pointer-events: none;
+      user-select: none;
+      white-space: normal;
+    }
+    .uiTip.show{
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .uiTip .tTitle{
+      font-weight: 700;
+      margin: 0 0 6px 0;
+      font-size: 13px;
+    }
+    .uiTip .tBody{
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+    
+</style>
 </head>
 <body>
   <div class="app" id="app" style="display:none">
     <div class="top">
       <h1>
         Players in-game
-        <span class="pillStatus" title="Live status">
+        <span class="pillStatus">
           <span class="dot" id="statusDot"></span>
           <span class="small" id="status"></span>
         </span>
@@ -225,15 +261,15 @@
 
       <div class="toolbar">
         <div class="seg" role="group" aria-label="Theme">
-          <button id="themeLight" type="button" aria-pressed="false" title="Light">☀️</button>
-          <button id="themeDark" type="button" aria-pressed="true" title="Dark">🌙</button>
-          <button id="themeAuto" type="button" aria-pressed="false" title="Auto">🖥️</button>
+          <button id="themeLight" type="button" aria-pressed="false" data-tip="Light">☀️</button>
+          <button id="themeDark" type="button" aria-pressed="true" data-tip="Dark">🌙</button>
+          <button id="themeAuto" type="button" aria-pressed="false" data-tip="Auto">🖥️</button>
         </div>
-        <span class="pillStatus" title="Logged in" style="align-self:center">
+        <span class="pillStatus" style="align-self:center">
   <span class="small">👤</span>
   <span class="small" id="whoami">—</span>
 </span>
-<button id="logout" type="button" class="ghostBtn" title="Log out">🚪 Logout</button>
+<button id="logout" type="button" class="ghostBtn" data-tip="Log out">🚪 Logout</button>
       </div>
     </div>
 
@@ -251,10 +287,10 @@
         <input id="search" placeholder="Search name / display / id" />
       </div>
       <div class="btns" style="margin-top:18px">
-        <button id="save" type="button" title="Save settings (Worker URL + Admin key) to your browser">💾 Save</button>
-        <button id="lockBtn" type="button" class="ghostBtn" title="Lock / Unlock">🔒</button>
+        <button id="save" type="button" data-tip="Save settings (Worker URL + Admin key) to your browser">💾 Save</button>
+        <button id="lockBtn" type="button" class="ghostBtn" data-tip="Lock / Unlock">🔒</button>
         <span class="small" id="lockMeta" style="opacity:.85"></span>
-        <button id="refresh" type="button" title="Refresh players + logs from the Worker">🔄 Refresh</button>
+        <button id="refresh" type="button" data-tip="Refresh players + logs from the Worker">🔄 Refresh</button>
       </div>
     </div>
 
@@ -784,6 +820,7 @@ function showModerationOverlay(show, subText){
       if (els.lockBtn){
         els.lockBtn.textContent = locked ? "🔓" : "🔒";
       
+      
       if (els.lockBtn){
         const who = (lockState.by || "").trim();
         const when = lockState.at ? fmtWhen(lockState.at) : "";
@@ -791,8 +828,16 @@ function showModerationOverlay(show, subText){
         const byText = who ? (" by " + who) : "";
         const atText = when ? (" • " + when) : "";
         const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
-        els.lockBtn.title = stateText + byText + atText + " — " + actionHint;
+        els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
       }
+if (els.lockBtn){
+        const who = (lockState.by || "").trim();
+        const when = lockState.at ? fmtWhen(lockState.at) : "";
+        const stateText = locked ? "LOCKED" : "UNLOCKED";
+        const byText = who ? (" by " + who) : "";
+        const atText = when ? (" • " + when) : "";
+        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+        }
 }
       if (els.lockMeta){
         if (lockState.by && lockState.at){
@@ -1193,7 +1238,110 @@ async function enforceAndVerify(action, user, reason){
       await runAction("unban", user, r, () => { selectedLogId = null; });
     };
 
-    function initPanel(){
+    
+    // ===== Custom tooltip system (styled) =====
+    let _uiTipEl = null;
+    let _uiTipTarget = null;
+
+    function ensureTip(){
+      if (_uiTipEl) return _uiTipEl;
+      _uiTipEl = document.createElement("div");
+      _uiTipEl.className = "uiTip";
+      _uiTipEl.innerHTML = '<div class="tTitle" id="uiTipTitle"></div><div class="tBody" id="uiTipBody"></div>';
+      document.body.appendChild(_uiTipEl);
+      return _uiTipEl;
+    }
+
+    function setTipContent(text){
+      const el = ensureTip();
+      const titleEl = el.querySelector("#uiTipTitle");
+      const bodyEl  = el.querySelector("#uiTipBody");
+      const raw = String(text || "").trim();
+
+      // Allow "Title — body" format
+      const parts = raw.split(" — ");
+      const t = (parts[0] || "").trim();
+      const b = (parts.slice(1).join(" — ") || "").trim();
+
+      if (titleEl) titleEl.textContent = t || "Info";
+      if (bodyEl) bodyEl.textContent = b || "";
+    }
+
+    function positionTip(clientX, clientY){
+      const el = ensureTip();
+      const pad = 12;
+      const vw = window.innerWidth || 0;
+      const vh = window.innerHeight || 0;
+
+      // Start near cursor
+      let x = clientX + 14;
+      let y = clientY + 14;
+
+      // Measure
+      el.style.left = "0px";
+      el.style.top = "0px";
+      el.style.maxWidth = "320px";
+      el.classList.add("show");
+
+      const rect = el.getBoundingClientRect();
+
+      if (x + rect.width + pad > vw) x = Math.max(pad, clientX - rect.width - 14);
+      if (y + rect.height + pad > vh) y = Math.max(pad, clientY - rect.height - 14);
+
+      el.style.left = x + "px";
+      el.style.top  = y + "px";
+    }
+
+    function showTipFor(target, clientX, clientY){
+      const text = (target && target.getAttribute) ? target.getAttribute("data-tip") : "";
+      if (!text) return;
+      _uiTipTarget = target;
+      setTipContent(text);
+      positionTip(clientX, clientY);
+    }
+
+    function hideTip(){
+      if (!_uiTipEl) return;
+      _uiTipEl.classList.remove("show");
+      _uiTipTarget = null;
+    }
+
+    function initTooltips(){
+      ensureTip();
+
+      const candidates = Array.from(document.querySelectorAll("[data-tip]"));
+      for (const el of candidates){
+        // Mouse
+        el.addEventListener("mouseenter", (e) => {
+          const t = e.currentTarget;
+          const tip = t.getAttribute("data-tip") || "";
+          if (!tip) return;
+          showTipFor(t, e.clientX, e.clientY);
+        });
+        el.addEventListener("mousemove", (e) => {
+          if (_uiTipTarget !== e.currentTarget) return;
+          positionTip(e.clientX, e.clientY);
+        });
+        el.addEventListener("mouseleave", () => hideTip());
+
+        // Keyboard focus
+        el.addEventListener("focus", (e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          const cx = Math.round(r.left + Math.min(40, r.width/2));
+          const cy = Math.round(r.top + r.height + 6);
+          showTipFor(e.currentTarget, cx, cy);
+        });
+        el.addEventListener("blur", () => hideTip());
+      }
+
+      // Hide if scrolling/resizing
+      window.addEventListener("scroll", () => hideTip(), { passive: true });
+      window.addEventListener("resize", () => hideTip());
+    }
+    
+
+function initPanel(){
+      initTooltips();
       updateWhoAmI();
       const savedBase = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
       const savedAdmin = localStorage.getItem("admin_key_v1") || "";
