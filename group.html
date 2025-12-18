@@ -257,6 +257,55 @@ body{ padding-bottom: 74px; }
       --focus: 0 0 0 4px rgba(233,237,246,.16);
     }
     
+
+/* ===== Top toolbar + theme selector (matches index) ===== */
+.btnRow{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.toolbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.seg{
+  display:flex;
+  border:1px solid var(--border);
+  border-radius:999px;
+  overflow:hidden;
+  background:var(--surface);
+  box-shadow: var(--shadow);
+}
+.seg button{
+  border:0;
+  border-right:1px solid var(--border);
+  border-radius:0;
+  padding:8px 10px;
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:var(--btnHover); color:var(--text)}
+.seg button[aria-pressed="true"]{background:var(--btnHover); color:var(--text)}
+
+/* ===== Custom tooltips (styled) ===== */
+.uiTip{
+  position: fixed;
+  z-index: 999999;
+  max-width: 320px;
+  padding: 10px 12px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  line-height: 1.25;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .12s ease, transform .12s ease;
+  pointer-events: none;
+  user-select: none;
+  white-space: normal;
+}
+.uiTip.show{opacity:1; transform: translateY(0)}
+.uiTip .tTitle{font-weight:800; margin:0 0 6px 0; font-size:13px}
+.uiTip .tBody{margin:0; color: var(--muted); font-size:12.5px}
+
 </style>
 </head>
 <body>
@@ -267,7 +316,12 @@ body{ padding-bottom: 74px; }
         <div class="meta" id="statusLine">Press Refresh to load.</div>
       </div>
       <div class="btnRow">
-        <button class="btn" id="refreshBtn">⟳ Refresh</button>
+        <div class="seg" role="group" aria-label="Theme">
+          <button id="themeLight" type="button" aria-pressed="false" data-tip="THEME — Light mode">☀️</button>
+          <button id="themeDark" type="button" aria-pressed="true" data-tip="THEME — Dark mode">🌙</button>
+          <button id="themeAuto" type="button" aria-pressed="false" data-tip="THEME — Follow system theme">🖥️</button>
+        </div>
+        <button class="btn" id="refreshBtn" data-tip="REFRESH — Loads members (only when you press this)">⟳ Refresh</button>
       </div>
     </div>
 
@@ -387,9 +441,9 @@ row.appendChild(img);
       t.appendChild(un);
       t.appendChild(id);
 
-  row.appendChild(t);
-  els.list.appendChild(row);
-}
+      row.appendChild(t);
+      els.list.appendChild(row);
+    }
 
 async function refresh(){
       const base = getWorkerBase();
@@ -471,13 +525,106 @@ async function refresh(){
     if (!getWorkerBase()){
       showCfg(true);
     }
-  </script>
+  
+    // ===== Custom tooltip system (styled) =====
+    let _uiTipEl = null;
+    let _uiTipTarget = null;
+
+    function ensureTip(){
+      if (_uiTipEl) return _uiTipEl;
+      _uiTipEl = document.createElement("div");
+      _uiTipEl.className = "uiTip";
+      _uiTipEl.innerHTML = '<div class="tTitle" id="uiTipTitle"></div><div class="tBody" id="uiTipBody"></div>';
+      document.body.appendChild(_uiTipEl);
+      return _uiTipEl;
+    }
+
+    function setTipContent(text){
+      const el = ensureTip();
+      const titleEl = el.querySelector("#uiTipTitle");
+      const bodyEl  = el.querySelector("#uiTipBody");
+      const raw = String(text || "").trim();
+
+      const parts = raw.split(" — ");
+      const t = (parts[0] || "").trim();
+      const b = (parts.slice(1).join(" — ") || "").trim();
+
+      if (titleEl) titleEl.textContent = t || "Info";
+      if (bodyEl) bodyEl.textContent = b || "";
+    }
+
+    function positionTip(x, y){
+      const el = ensureTip();
+      const pad = 12;
+      const vw = window.innerWidth || 0;
+      const vh = window.innerHeight || 0;
+
+      let left = x + 14;
+      let top  = y + 14;
+
+      el.style.left = "0px";
+      el.style.top  = "0px";
+      el.classList.add("show");
+
+      const rect = el.getBoundingClientRect();
+      if (left + rect.width + pad > vw) left = Math.max(pad, x - rect.width - 14);
+      if (top + rect.height + pad > vh) top  = Math.max(pad, y - rect.height - 14);
+
+      el.style.left = left + "px";
+      el.style.top  = top + "px";
+    }
+
+    function showTipFor(target, x, y){
+      const text = target.getAttribute("data-tip") || "";
+      if (!text) return;
+      _uiTipTarget = target;
+      setTipContent(text);
+      positionTip(x, y);
+    }
+
+    function hideTip(){
+      if (!_uiTipEl) return;
+      _uiTipEl.classList.remove("show");
+      _uiTipTarget = null;
+    }
+
+    function initTooltips(){
+      ensureTip();
+      const nodes = Array.from(document.querySelectorAll("[data-tip]"));
+      for (const el of nodes){
+        el.addEventListener("mouseenter", (e) => showTipFor(e.currentTarget, e.clientX, e.clientY));
+        el.addEventListener("mousemove", (e) => { if (_uiTipTarget === e.currentTarget) positionTip(e.clientX, e.clientY); });
+        el.addEventListener("mouseleave", hideTip);
+        el.addEventListener("focus", (e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          showTipFor(e.currentTarget, Math.round(r.left + Math.min(40, r.width/2)), Math.round(r.top + r.height + 6));
+        });
+        el.addEventListener("blur", hideTip);
+      }
+      window.addEventListener("scroll", hideTip, { passive: true });
+      window.addEventListener("resize", hideTip);
+    }
+
+    // ===== Theme (shared key with index) =====
+    function applyTheme(mode){
+      localStorage.setItem("panel_theme_mode", mode);
+      const l = document.getElementById("themeLight");
+      const d = document.getElementById("themeDark");
+      const a = document.getElementById("themeAuto");
+      if (l) l.setAttribute("aria-pressed", mode === "light");
+      if (d) d.setAttribute("aria-pressed", mode === "dark");
+      if (a) a.setAttribute("aria-pressed", mode === "auto");
+      if (mode === "auto"){ document.documentElement.removeAttribute("data-theme"); return; }
+      document.documentElement.setAttribute("data-theme", mode);
+    }
+    
+</script>
 
   <div class="pageNav">
     <div class="navWrap">
-      <a href="index.html" class="" aria-label="Previous">&lt;</a>
+      <a href="index.html" class="" data-tip="PAGE — Previous page" aria-label="Previous">&lt;</a>
       <span class="num">2</span>
-      <a href="#" class="disabled" aria-label="Next">&gt;</a>
+      <a href="#" class="disabled" data-tip="PAGE — Next page" aria-label="Next">&gt;</a>
     </div>
   </div>
 
