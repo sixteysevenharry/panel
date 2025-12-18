@@ -550,8 +550,7 @@ function showModerationOverlay(show, subText){
         <div class="small">UserId: ${Number(p.userId) || ""}</div>
       `;
     }
-
-    function makeLogCardHTML(e){
+function makeLogCardHTML(e){
   const resolved = resolveName(e.userId, e.username, e.displayName);
   const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
   const handle = esc(resolved.username || "");
@@ -606,8 +605,7 @@ function showModerationOverlay(show, subText){
         els.activeList.appendChild(div);
       }
     }
-
-    function renderLogs(){
+function renderLogs(){
   els.logList.innerHTML = "";
   setCounts();
 
@@ -793,8 +791,8 @@ async function enforceAndVerify(action, user, reason){
 
   const started = Date.now();
   const hardTimeoutMs = 120000;
-  const resendEveryMs = 1200;
-  const checkEveryMs  = 700;
+  const resendEveryMs = 2500;
+  const checkEveryMs  = 900;
   const refreshUiEveryMs = 1200;
 
   let lastSendAt = 0;
@@ -863,8 +861,8 @@ async function enforceAndVerify(action, user, reason){
 
   const started = Date.now();
   const hardTimeoutMs = 90000; // 90s overall
-  const resendEveryMs = 1200;  // resend every 3s if still present
-  const checkEveryMs  = 700;  // check presence every 1.2s
+  const resendEveryMs = 3000;  // resend every 3s if still present
+  const checkEveryMs  = 1200;  // check presence every 1.2s
 
   let lastSendAt = 0;
   let lastId = "";
