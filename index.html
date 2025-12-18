@@ -142,6 +142,44 @@
     .ghostBtn{border:1px solid var(--border);background:transparent}
     .ghostBtn:hover{background:var(--btnHover)}
     @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
+  .modOverlay{
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px;
+  background: rgba(0,0,0,.22);
+  backdrop-filter: blur(10px);
+  z-index:10000;
+}
+[data-theme="dark"] .modOverlay{ background: rgba(0,0,0,.55); }
+.modCard{
+  width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
+  background:var(--surface); box-shadow: var(--shadow); padding:18px;
+  animation: toastIn .18s ease-out;
+}
+.modTitle{font-size:20px;margin:0 0 6px}
+.modHint{margin:0;color:var(--muted);font-size:13px}
+.spinRow{display:flex;align-items:center;gap:12px;margin-top:14px}
+.spinner{
+  width:34px;height:34px;border-radius:50%;
+  border:3px solid rgba(128,128,128,.25);
+  border-top-color: var(--ring);
+  animation: spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+  .logOk{
+  border-color: rgba(11,122,59,.35) !important;
+  background: linear-gradient(180deg, rgba(11,122,59,.10) 0%, var(--surface2) 100%) !important;
+}
+.logFail{
+  border-color: rgba(176,0,32,.35) !important;
+  background: linear-gradient(180deg, rgba(176,0,32,.10) 0%, var(--surface2) 100%) !important;
+}
+[data-theme="dark"] .logOk{
+  border-color: rgba(61,220,132,.35) !important;
+  background: linear-gradient(180deg, rgba(61,220,132,.10) 0%, rgba(18,23,34,.6) 100%) !important;
+}
+[data-theme="dark"] .logFail{
+  border-color: rgba(255,77,109,.35) !important;
+  background: linear-gradient(180deg, rgba(255,77,109,.10) 0%, rgba(18,23,34,.6) 100%) !important;
+}
   </style>
 </head>
 <body>
@@ -236,6 +274,17 @@
     </div>
   </div>
 
+<div class="modOverlay" id="modOverlay" style="display:none">
+  <div class="modCard">
+    <h2 class="modTitle">Moderating User</h2>
+    <p class="modHint">This may take some time. Please keep this tab open.</p>
+    <div class="spinRow">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="small" id="modOverlaySub">Applying action…</div>
+    </div>
+  </div>
+</div>
+
   <div class="toastWrap" id="toasts"></div>
 
   <script>
@@ -315,6 +364,8 @@
       activeCount: document.getElementById("activeCount"),
       logCount: document.getElementById("logCount"),
       toasts: document.getElementById("toasts"),
+      modOverlay: document.getElementById("modOverlay"),
+      modOverlaySub: document.getElementById("modOverlaySub"),
 
       kick: document.getElementById("kick"),
       kickReason: document.getElementById("kickReason"),
@@ -352,6 +403,17 @@
       els.status.className = "small" + (state === "error" ? " error" : "");
       els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
     }
+
+function showModerationOverlay(show, subText){
+  if (!els.modOverlay) return;
+  if (show){
+    if (els.modOverlaySub) els.modOverlaySub.textContent = subText || "Applying action…";
+    els.modOverlay.style.display = "flex";
+  } else {
+    els.modOverlay.style.display = "none";
+  }
+}
+
 
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
@@ -423,6 +485,8 @@
     let selectedLogId = null;
     let uiLocked = false;
 
+    const pendingHidden = new Set();
+
     let refreshCooldownUntil = 0;
     let refreshCooldownTimer = null;
 
@@ -488,24 +552,36 @@
     }
 
     function makeLogCardHTML(e){
-      const resolved = resolveName(e.userId, e.username, e.displayName);
-      const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
-      const handle = esc(resolved.username || "");
-      const action = esc(String(e.action || "").toUpperCase());
-      const by = esc(e.by || "");
-      const reason = esc(e.reason || "");
-      const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
-      const pills = [
-        action ? `<span class="pill">${action}</span>` : "",
-        by ? `<span class="pill">By: ${by}</span>` : "",
-        when ? `<span class="pill">${esc(when)}</span>` : ""
-      ].join(" ");
-      return `
-        <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${pills}</div>
-        <div class="small">UserId: ${Number(e.userId) || ""}</div>
-        ${reason ? `<div class="small">Reason: ${reason}</div>` : ""}
-      `;
-    }
+  const resolved = resolveName(e.userId, e.username, e.displayName);
+  const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
+  const handle = esc(resolved.username || "");
+  const action = esc(String(e.action || "").toUpperCase());
+  const by = esc(e.by || "");
+  const reason = esc(e.reason || "");
+  const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
+
+  const st = String(e.status || "").toLowerCase();
+  const statusText =
+    st === "applied" ? "SUCCESS" :
+    st === "failed"  ? "NOT SUCCESSFUL" :
+    st === "pending" ? "PENDING" :
+    (st ? st.toUpperCase() : "");
+
+  const statusPill = statusText ? `<span class="pill">${esc(statusText)}</span>` : "";
+
+  const pills = [
+    action ? `<span class="pill">${action}</span>` : "",
+    statusPill,
+    by ? `<span class="pill">By: ${by}</span>` : "",
+    when ? `<span class="pill">${esc(when)}</span>` : ""
+  ].filter(Boolean).join(" ");
+
+  return `
+    <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${pills}</div>
+    <div class="small">UserId: ${Number(e.userId) || ""}</div>
+    ${reason ? `<div class="small">Reason: ${reason}</div>` : ""}
+  `;
+}
 
     function renderActive(){
       els.activeList.innerHTML = "";
@@ -518,6 +594,7 @@
       }
 
       for (const p of list){
+        if (pendingHidden.has(Number(p.userId))) continue;
         const staff = isStaff(p.userId);
         const div = document.createElement("div");
         div.className =
@@ -531,14 +608,28 @@
     }
 
     function renderLogs(){
-      els.logList.innerHTML = "";
-      setCounts();
+  els.logList.innerHTML = "";
+  setCounts();
 
-      const list = logs.filter(matchSearch);
-      if (!list.length){
-        els.logList.innerHTML = "<div class='small'>No enforcement logs.</div>";
-        return;
-      }
+  const list = logs.filter(matchSearch);
+  if (!list.length){
+    els.logList.innerHTML = "<div class='small'>No enforcement logs.</div>";
+    return;
+  }
+
+  for (const e of list){
+    const st = String(e.status || "").toLowerCase();
+    const extra =
+      st === "applied" ? " logOk" :
+      st === "failed"  ? " logFail" : "";
+
+    const div = document.createElement("div");
+    div.className = "card" + extra + (String(e.id) === String(selectedLogId) ? " selected" : "");
+    div.innerHTML = makeLogCardHTML(e);
+    if (!uiLocked) div.onclick = () => { selectedLogId = String(e.id); selectedActiveUserId = null; renderActive(); renderLogs(); updateButtons(); };
+    els.logList.appendChild(div);
+  }
+}
 
       for (const e of list){
         const div = document.createElement("div");
@@ -688,14 +779,133 @@
   return { ok:true, id: body && body.id ? String(body.id) : "" };
 }
 
+
 async function enforceAndVerify(action, user, reason){
-  const sent = await sendModeration(action, user, reason || "");
-  if (!sent.ok || !sent.id) return { ok:false };
+  const act = String(action || "").toLowerCase();
+  const userId = Number(user && user.userId || 0);
 
-  const v = await waitHistoryOk(sent.id, 20000); // 20s timeout
-  if (!v.ok) return v;
+  if (act === "unban"){
+    const sent = await sendModeration("unban", user, reason || "");
+    return (sent && sent.ok) ? { ok:true, id: sent.id || "" } : { ok:false, message: "unban failed" };
+  }
 
-  return { ok:true, id: sent.id };
+  if (!userId) return { ok:false, message: "missing userId" };
+
+  const started = Date.now();
+  const hardTimeoutMs = 120000;
+  const resendEveryMs = 1200;
+  const checkEveryMs  = 700;
+  const refreshUiEveryMs = 1200;
+
+  let lastSendAt = 0;
+  let lastUiAt = 0;
+  let lastId = "";
+
+  async function refreshUi(){
+    try{
+      await fetchPlayers();
+      await fetchLogs();
+    } catch {}
+  }
+
+  async function isStillHere(){
+    try{
+      const players = await fetchPlayersOnce();
+      return players.some(p => Number(p.userId) === userId);
+    } catch {
+      return true;
+    }
+  }
+
+  pendingHidden.add(userId);
+  renderActive();
+  updateButtons();
+
+  if (!(await isStillHere())){
+    pendingHidden.delete(userId);
+    renderActive();
+    updateButtons();
+    return { ok:true, id: "" };
+  }
+
+  while (Date.now() - started < hardTimeoutMs){
+    const now = Date.now();
+
+    if (now - lastSendAt >= resendEveryMs){
+      const sent = await sendModeration(act, user, reason || "");
+      lastSendAt = now;
+      if (sent && sent.ok && sent.id) lastId = String(sent.id);
+    }
+
+    if (now - lastUiAt >= refreshUiEveryMs){
+      lastUiAt = now;
+      await refreshUi();
+    }
+
+    await new Promise(r => setTimeout(r, checkEveryMs));
+    const still = await isStillHere();
+    if (!still){
+      pendingHidden.delete(userId);
+      renderActive();
+      updateButtons();
+      return { ok:true, id: lastId };
+    }
+  }
+
+  pendingHidden.delete(userId);
+  renderActive();
+  updateButtons();
+  return { ok:false, timeout:true, message: "Timed out (kept retrying)." };
+}
+
+  // Safety: if no userId, fail fast
+  if (!userId) return { ok:false, message: "missing userId" };
+
+  const started = Date.now();
+  const hardTimeoutMs = 90000; // 90s overall
+  const resendEveryMs = 1200;  // resend every 3s if still present
+  const checkEveryMs  = 700;  // check presence every 1.2s
+
+  let lastSendAt = 0;
+  let lastId = "";
+
+  // helper: check if user still in game
+  async function isStillHere(){
+    try{
+      const players = await fetchPlayersOnce();
+      return players.some(p => Number(p.userId) === userId);
+    } catch {
+      return true; // if we can't read, assume still present and keep trying
+    }
+  }
+
+  // If the player is already gone, succeed immediately (covers multi-server / already kicked)
+  if (!(await isStillHere())){
+    return { ok:true, id: "" };
+  }
+
+  while (Date.now() - started < hardTimeoutMs){
+    const now = Date.now();
+
+    // re-send action if needed
+    if (now - lastSendAt >= resendEveryMs){
+      const sent = await sendModeration(act, user, reason || "");
+      lastSendAt = now;
+      if (sent && sent.ok && sent.id) lastId = String(sent.id);
+
+      // also mark history "applied" quickly if worker supports it, but don't wait on it
+      // (we verify by presence instead)
+    }
+
+    // presence check
+    await new Promise(r => setTimeout(r, checkEveryMs));
+    const still = await isStillHere();
+    if (!still){
+      return { ok:true, id: lastId };
+    }
+  }
+
+  return { ok:false, timeout:true, message: "Timed out waiting for player to leave (kept retrying)." };
 }
 
     function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
@@ -727,17 +937,27 @@ async function enforceAndVerify(action, user, reason){
     };
 
     async function runAction(action, user, reason, onSuccess){
-      beginVerifyLock();
-      try{
-        const v = await enforceAndVerify(action, user, reason || "");
-        if (v.ok){
-          toast("ok","Enforcement action approved","");
-          if (typeof onSuccess === "function") onSuccess();
-          await fetchLogs();
-          await fetchPlayers();
-        } else {
-          toast("err", v.timeout ? "ERROR: TIME OUT" : "Failed", v.message || "");
-        }
+  const act = String(action || "").toLowerCase();
+  if (act === "kick" || act === "ban"){
+    showModerationOverlay(true, "Moderating user… this may take some time.");
+  }
+
+  beginVerifyLock();
+  try{
+    const v = await enforceAndVerify(action, user, reason || "");
+    if (v.ok){
+      toast("ok","Enforcement action approved","");
+      if (typeof onSuccess === "function") onSuccess();
+      await fetchLogs();
+      await fetchPlayers();
+    } else {
+      toast("err", v.timeout ? "ERROR: TIME OUT" : "Failed", v.message || "");
+    }
+  } finally {
+    endVerifyLock();
+    showModerationOverlay(false, "");
+  }
+}
       } finally {
         endVerifyLock();
       }
