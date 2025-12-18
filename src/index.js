@@ -215,6 +215,52 @@ await env.LIVE.delete(MOD_LOG_KEY);
 
         return json({ ok: true });
       }
+      /* =====================================================
+         WEBSITE/ROBLOX -> GAME LOCK STATE
+         ===================================================== */
+      if (url.pathname === "/lockState" && request.method === "GET") {
+        const raw = await env.LIVE.get("game_lock_v1");
+        let state = {};
+        try { state = raw ? JSON.parse(raw) : {}; } catch { state = {}; }
+        const locked = state.locked === true;
+        return json({ ok: true, locked, by: String(state.by || ""), at: Number(state.at || 0) });
+      }
+
+      /* =====================================================
+         PANEL -> SET GAME LOCK (ALL ADMINS; 2 MIN COOLDOWN EACH)
+         Body: { locked: boolean }
+         ===================================================== */
+      if (url.pathname === "/admin/setLock" && request.method === "POST") {
+        const adminKey = request.headers.get("x-admin-key") || "";
+        if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) return json({ error: "Unauthorized" }, 401);
+
+        let body; try { body = await request.json(); } catch { body = {}; }
+        const whoRaw = String(body.user || request.headers.get("x-admin-user") || "").trim();
+        if (!whoRaw) return json({ error: "Missing user" }, 400);
+        const who = whoRaw.slice(0, 60);
+
+        const cdKey = "lock_cd:" + who.toLowerCase();
+        const now = Date.now();
+        const lastRaw = await env.LIVE.get(cdKey);
+        const last = Number(lastRaw || 0);
+
+        if (last && (now - last) < 120000) {
+          const waitMs = 120000 - (now - last);
+          return json({ error: "Cooldown", waitMs }, 429);
+        }
+
+        const locked = body.locked === true;
+
+        const newState = { locked, by: who, at: now };
+        await env.LIVE.put("game_lock_v1", JSON.stringify(newState));
+
+        // store cooldown for this admin
+        await env.LIVE.put(cdKey, String(now), { expirationTtl: 180 });
+
+        return json({ ok: true, locked, by: who, at: now });
+      }
+
+
 
       /* =====================================================
          WEBSITE -> CURRENTLY BANNED USERS (ACTIVE ONLY)
