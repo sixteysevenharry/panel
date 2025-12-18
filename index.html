@@ -481,6 +481,55 @@ function showModerationOverlay(show, subText){
 
     let activePlayers = [];
     let logs = [];
+    function mergeLogs(items){
+      const buckets = new Map();
+
+      function statusRank(s){
+        const st = String(s || "").toLowerCase();
+        if (st === "applied") return 3;   // success
+        if (st === "failed")  return 2;   // failure
+        if (st === "pending") return 1;   // pending
+        return 0;
+      }
+
+      function logKey(e){
+        const action = String(e && e.action || "").toLowerCase();
+        const userId = String(Number(e && e.userId || 0));
+        const by = String(e && e.by || "");
+        const reason = String(e && e.reason || "");
+        return action + "|" + userId + "|" + by + "|" + reason;
+      }
+
+      function createdAtNum(e){
+        const n = Number(e && e.createdAt);
+        return Number.isFinite(n) ? n : 0;
+      }
+
+      for (const e of (Array.isArray(items) ? items : [])){
+        if (!e) continue;
+        const key = logKey(e);
+        const prev = buckets.get(key);
+        if (!prev){
+          buckets.set(key, e);
+          continue;
+        }
+
+        const rNew = statusRank(e.status);
+        const rOld = statusRank(prev.status);
+        const tNew = createdAtNum(e);
+        const tOld = createdAtNum(prev);
+
+        // Prefer better status; if same status, prefer newest.
+        if (rNew > rOld || (rNew === rOld && tNew >= tOld)){
+          buckets.set(key, e);
+        }
+      }
+
+      const merged = Array.from(buckets.values());
+      merged.sort((a,b) => createdAtNum(b) - createdAtNum(a));
+      return merged;
+    }
+
     let selectedActiveUserId = null;
     let selectedLogId = null;
     let uiLocked = false;
@@ -671,8 +720,12 @@ function showModerationOverlay(show, subText){
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Logs HTTP " + res.status);
       const data = await res.json();
-      logs = Array.isArray(data.items) ? data.items : [];
-      renderLogs();
+      logs = mergeLogs(Array.isArray(data.items) ? data.items : []);
+      
+      if (selectedLogId && !logs.some(e => String(e.id) === String(selectedLogId))){
+        selectedLogId = null;
+      }
+renderLogs();
       updateButtons();
       return logs;
     }
