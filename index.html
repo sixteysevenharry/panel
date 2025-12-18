@@ -550,7 +550,8 @@ function showModerationOverlay(show, subText){
         <div class="small">UserId: ${Number(p.userId) || ""}</div>
       `;
     }
-function makeLogCardHTML(e){
+
+    function makeLogCardHTML(e){
   const resolved = resolveName(e.userId, e.username, e.displayName);
   const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
   const handle = esc(resolved.username || "");
@@ -605,7 +606,8 @@ function makeLogCardHTML(e){
         els.activeList.appendChild(div);
       }
     }
-function renderLogs(){
+
+    function renderLogs(){
   els.logList.innerHTML = "";
   setCounts();
 
@@ -628,15 +630,6 @@ function renderLogs(){
     els.logList.appendChild(div);
   }
 }
-
-      for (const e of list){
-        const div = document.createElement("div");
-        div.className = "card" + (String(e.id) === String(selectedLogId) ? " selected" : "");
-        div.innerHTML = makeLogCardHTML(e);
-        if (!uiLocked) div.onclick = () => { selectedLogId = String(e.id); selectedActiveUserId = null; renderActive(); renderLogs(); updateButtons(); };
-        els.logList.appendChild(div);
-      }
-    }
 
     function updateButtons(){
       if (uiLocked){
@@ -784,47 +777,47 @@ async function enforceAndVerify(action, user, reason){
 
   if (act === "unban"){
     const sent = await sendModeration("unban", user, reason || "");
-    return sent && sent.ok ? { ok:true } : { ok:false };
+    return (sent && sent.ok) ? { ok:true, id: sent.id || "" } : { ok:false, message: "unban failed" };
   }
 
-  if (!userId) return { ok:false };
+  if (!userId) return { ok:false, message: "missing userId" };
 
   const started = Date.now();
   const hardTimeoutMs = 120000;
   const resendEveryMs = 1200;
-  const checkEveryMs = 700;
+  const checkEveryMs  = 700;
+  const refreshUiEveryMs = 1200;
 
-  let lastSend = 0;
+  let lastSendAt = 0;
+  let lastUiAt = 0;
+  let lastId = "";
+
+  async function refreshUi(){
+    try{
+      await fetchPlayers();
+      await fetchLogs();
+    } catch {}
+  }
 
   async function isStillHere(){
     try{
-      const res = await fetch(endpoint("/players"), { cache:"no-store" });
-      if (!res.ok) return true;
-      const data = await res.json();
-      return (data.players || []).some(p => Number(p.userId) === userId);
+      const players = await fetchPlayersOnce();
+      return players.some(p => Number(p.userId) === userId);
     } catch {
       return true;
     }
   }
 
-  while (Date.now() - started < hardTimeoutMs){
-    const now = Date.now();
+  pendingHidden.add(userId);
+  renderActive();
+  updateButtons();
 
-    if (now - lastSend >= resendEveryMs){
-      await sendModeration(act, user, reason || "");
-      lastSend = now;
-    }
-
-    await new Promise(r => setTimeout(r, checkEveryMs));
-
-    if (!(await isStillHere())){
-      return { ok:true };
-    }
+  if (!(await isStillHere())){
+    pendingHidden.delete(userId);
+    renderActive();
+    updateButtons();
+    return { ok:true, id: "" };
   }
-
-  return { ok:false, timeout:true };
-}
-
 
   while (Date.now() - started < hardTimeoutMs){
     const now = Date.now();
@@ -854,56 +847,6 @@ async function enforceAndVerify(action, user, reason){
   renderActive();
   updateButtons();
   return { ok:false, timeout:true, message: "Timed out (kept retrying)." };
-}
-
-  // Safety: if no userId, fail fast
-  if (!userId) return { ok:false, message: "missing userId" };
-
-  const started = Date.now();
-  const hardTimeoutMs = 90000; // 90s overall
-  const resendEveryMs = 3000;  // resend every 3s if still present
-  const checkEveryMs  = 1200;  // check presence every 1.2s
-
-  let lastSendAt = 0;
-  let lastId = "";
-
-  // helper: check if user still in game
-  async function isStillHere(){
-    try{
-      const players = await fetchPlayersOnce();
-      return players.some(p => Number(p.userId) === userId);
-    } catch {
-      return true; // if we can't read, assume still present and keep trying
-    }
-  }
-
-  // If the player is already gone, succeed immediately (covers multi-server / already kicked)
-  if (!(await isStillHere())){
-    return { ok:true, id: "" };
-  }
-
-  while (Date.now() - started < hardTimeoutMs){
-    const now = Date.now();
-
-    // re-send action if needed
-    if (now - lastSendAt >= resendEveryMs){
-      const sent = await sendModeration(act, user, reason || "");
-      lastSendAt = now;
-      if (sent && sent.ok && sent.id) lastId = String(sent.id);
-
-      // also mark history "applied" quickly if worker supports it, but don't wait on it
-      // (we verify by presence instead)
-    }
-
-    // presence check
-    await new Promise(r => setTimeout(r, checkEveryMs));
-    const still = await isStillHere();
-    if (!still){
-      return { ok:true, id: lastId };
-    }
-  }
-
-  return { ok:false, timeout:true, message: "Timed out waiting for player to leave (kept retrying)." };
 }
 
     function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
@@ -956,10 +899,6 @@ async function enforceAndVerify(action, user, reason){
     showModerationOverlay(false, "");
   }
 }
-      } finally {
-        endVerifyLock();
-      }
-    }
 
     els.kick.onclick = async () => {
       const p = getSelectedActive(); if (!p) return;
