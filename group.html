@@ -15,105 +15,112 @@
       --shadow: 0 10px 30px rgba(17,19,24,.08);
       --focus: 0 0 0 4px rgba(17,19,24,.12);
     }
+    [data-theme="dark"]{
+      --bg:#0c0f14; --surface:#121722; --surface2:#0f1420;
+      --text:#e9edf6; --muted:#a9b2c3;
+      --border:#202a3a; --border2:#2a3750; --ring:#e9edf6;
+      --btn:#141b29; --btnText:#e9edf6; --btnBorder:#2a3750; --btnHover:#1a2436;
+      --danger:#ff4d6d; --ok:#3ddc84;
+      --shadow: 0 14px 40px rgba(0,0,0,.45);
+      --focus: 0 0 0 4px rgba(233,237,246,.16);
+    }
 
     *{box-sizing:border-box}
-    html,body{height:100%}
     body{
       margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      background:var(--bg);
-      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: 74px;
     }
 
-    .wrap{
-      max-width: 980px;
-      margin: 22px auto;
-      padding: 0 16px 18px;
-    }
+    .wrap{ max-width: 980px; margin: 0 auto; padding: 18px 16px 28px; }
 
     .top{
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:12px;
-      padding: 14px 16px;
+      gap: 12px;
+      flex-wrap:wrap;
+      margin-bottom: 14px;
+    }
+
+    .titleBox{ display:flex; flex-direction:column; gap:6px; min-width:260px; }
+    .title{ font-weight: 900; font-size: 22px; letter-spacing: -.02em; }
+    .sub{ color: var(--muted); font-size: 13px; }
+
+    .toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+    .seg{
+      display:flex;
       border:1px solid var(--border);
+      border-radius:999px;
+      overflow:hidden;
       background:var(--surface);
-      border-radius: var(--radius);
       box-shadow: var(--shadow);
     }
-
-    .title{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-      min-width:0;
-    }
-    .title h1{
-      margin:0;
-      font-size:16px;
-      letter-spacing:.2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .title .meta{
-      font-size:12.5px;
+    .seg button{
+      border:0;
+      border-right:1px solid var(--border);
+      border-radius:0;
+      padding:8px 10px;
+      background:transparent;
       color:var(--muted);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      cursor:pointer;
+      min-width: 42px;
     }
-
-    .btnRow{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-shrink:0;
-    }
+    .seg button:last-child{border-right:0}
+    .seg button:hover{background:var(--btnHover); color:var(--text)}
+    .seg button[aria-pressed="true"]{background:var(--btnHover); color:var(--text)}
 
     .btn{
-      border:1px solid var(--border2);
-      background:var(--surface2);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius: 12px;
+      border:1px solid var(--btnBorder);
+      background: var(--btn);
+      color: var(--btnText);
+      border-radius: 14px;
+      padding: 10px 12px;
       cursor:pointer;
-      font-weight:600;
+      box-shadow: var(--shadow);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-weight: 800;
     }
-    .btn:hover{filter:brightness(.98)}
-    .btn:active{transform:translateY(1px)}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .btn:hover{ background: var(--btnHover); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; }
 
-    .listCard{
-      margin-top: 14px;
+    .card{
       border:1px solid var(--border);
-      background:var(--surface);
-      border-radius: var(--radius);
+      background: var(--surface);
+      border-radius: 16px;
       box-shadow: var(--shadow);
       overflow:hidden;
     }
 
     .listHead{
+      padding: 14px 14px;
+      border-bottom:1px solid var(--border);
       display:flex;
-      justify-content:space-between;
       align-items:center;
-      gap:12px;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap:wrap;
       background: var(--surface2);
-      }
-
-    .count{
-      font-size:12.5px;
-      color:var(--muted);
     }
 
-    .list{
-      max-height: calc(100vh - 200px);
-      overflow:auto;
-      padding: 12px 0;
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-weight: 900;
     }
+    .pill .muted{ color: var(--muted); font-weight: 700; }
+
+    .status{ padding: 12px 14px; color: var(--muted); font-size: 13px; border-bottom:1px solid var(--border); background: var(--surface); }
 
     .list{ padding: 12px; }
 
@@ -130,7 +137,7 @@
     .avatar{
       width: 58px;
       height: 58px;
-      border-radius: 999px;
+      border-radius: 14px;
       flex: 0 0 auto;
       background: rgba(255,255,255,.08);
       border: 1px solid var(--border2);
@@ -138,7 +145,7 @@
     }
     .mText{ display:flex; flex-direction:column; min-width:0; }
     .mDN{
-      font-weight: 800;
+      font-weight: 900;
       color: var(--text);
       font-size: 16px;
       line-height: 1.1;
@@ -163,249 +170,180 @@
       opacity: .9;
     }
 
-
-
-    .row:last-child{border-bottom:none}
-    /* Small config overlay if worker url isn't saved yet */
-    .overlay{
-      position:fixed; inset:0;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding: 18px;
-      background: rgba(17,19,24,.35);
-      backdrop-filter: blur(6px);
-      z-index: 9999;
+    /* ===== Page nav ===== */
+    .pageNav{
+      position: fixed;
+      left: 0; right: 0; bottom: 14px;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 9998;
     }
+    .pageNav .navWrap{
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+    }
+    .pageNav a, .pageNav span{ font-size: 14px; color: var(--text); }
+    .pageNav a{
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border2);
+      background: var(--btn);
+    }
+    .pageNav a:hover{ background: var(--btnHover); }
+    .pageNav a.disabled{ pointer-events: none; opacity: .45; }
+    .pageNav .num{ min-width: 24px; text-align: center; font-weight: 900; }
+
+    /* ===== Styled tooltips ===== */
+    .uiTip{
+      position: fixed;
+      z-index: 999999;
+      max-width: 340px;
+      padding: 10px 12px;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      line-height: 1.25;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .12s ease, transform .12s ease;
+      pointer-events: none;
+      user-select: none;
+      white-space: normal;
+    }
+    .uiTip.show{ opacity: 1; transform: translateY(0); }
+    .uiTip .tTitle{ font-weight: 900; margin: 0 0 6px 0; font-size: 13px; }
+    .uiTip .tBody{ margin: 0; color: var(--muted); font-size: 12.5px; }
+
+    /* ===== Config mini modal ===== */
+    .modalBackdrop{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 18px;
+    }
+    .modalBackdrop.show{ display:flex; }
     .modal{
-      width:min(520px, 100%);
-      border:1px solid var(--border);
-      background:var(--surface);
+      width: min(560px, 100%);
+      border: 1px solid var(--border);
+      background: var(--surface);
       border-radius: 18px;
       box-shadow: var(--shadow);
-      padding: 16px;
+      overflow:hidden;
     }
-    .modal h2{margin:0 0 8px 0;font-size:16px}
-    .modal p{margin:0 0 12px 0;color:var(--muted);font-size:13px;line-height:1.35}
-    .field{
-      display:flex; gap:10px; align-items:center;
+    .modalHead{ padding: 14px 14px; border-bottom:1px solid var(--border); font-weight: 900; }
+    .modalBody{ padding: 14px; color: var(--muted); }
+    .field{ display:flex; flex-direction:column; gap:8px; margin-top: 10px; }
+    .field input{
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px 12px;
+      outline: none;
     }
-    input{
-      flex:1;
-      border:1px solid var(--border2);
-      border-radius: 12px;
+    .modalActions{ padding: 14px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
+    .ghost{
+      border: 1px solid var(--btnBorder);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 14px;
       padding: 10px 12px;
-      font-size: 13px;
-      outline:none;
+      cursor:pointer;
     }
-    input:focus{
-      border-color: var(--ring);
-      box-shadow: 0 0 0 3px rgba(17,19,24,.12);
-    }
-  
-/* ===== Page nav ===== */
-.pageNav{
-  position: fixed;
-  left: 0; right: 0; bottom: 14px;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 9998;
-}
-.pageNav .navWrap{
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border: 1px solid var(--border2);
-  background: var(--surface);
-  border-radius: 999px;
-  box-shadow: var(--shadow);
-}
-.pageNav a, .pageNav span{
-  font-size: 14px;
-  color: var(--text);
-}
-.pageNav a{
-  text-decoration: none;
-  padding: 6px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border2);
-  background: var(--btn);
-}
-.pageNav a:hover{ background: var(--btnHover); }
-.pageNav a.disabled{
-  pointer-events: none;
-  opacity: .45;
-}
-.pageNav .num{
-  min-width: 24px;
-  text-align: center;
-  font-weight: 800;
-}
-body{ padding-bottom: 74px; }
-
-
-[data-theme="dark"]{
-      --bg:#0c0f14; --surface:#121722; --surface2:#0f1420;
-      --text:#e9edf6; --muted:#a9b2c3;
-      --border:#202a3a; --border2:#2a3750; --ring:#e9edf6;
-      --btn:#141b29; --btnText:#e9edf6; --btnBorder:#2a3750; --btnHover:#1a2436;
-      --danger:#ff4d6d; --ok:#3ddc84;
-      --shadow: 0 14px 40px rgba(0,0,0,.45);
-      --focus: 0 0 0 4px rgba(233,237,246,.16);
-    }
-    
-
-/* ===== Top toolbar + theme selector (matches index) ===== */
-.btnRow{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
-.toolbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
-.seg{
-  display:flex;
-  border:1px solid var(--border);
-  border-radius:999px;
-  overflow:hidden;
-  background:var(--surface);
-  box-shadow: var(--shadow);
-}
-.seg button{
-  border:0;
-  border-right:1px solid var(--border);
-  border-radius:0;
-  padding:8px 10px;
-  background:transparent;
-  color:var(--muted);
-  cursor:pointer;
-}
-.seg button:last-child{border-right:0}
-.seg button:hover{background:var(--btnHover); color:var(--text)}
-.seg button[aria-pressed="true"]{background:var(--btnHover); color:var(--text)}
-
-/* ===== Custom tooltips (styled) ===== */
-.uiTip{
-  position: fixed;
-  z-index: 999999;
-  max-width: 320px;
-  padding: 10px 12px;
-  border: 1px solid var(--border2);
-  background: var(--surface);
-  color: var(--text);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  font-size: 13px;
-  line-height: 1.25;
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity .12s ease, transform .12s ease;
-  pointer-events: none;
-  user-select: none;
-  white-space: normal;
-}
-.uiTip.show{opacity:1; transform: translateY(0)}
-.uiTip .tTitle{font-weight:800; margin:0 0 6px 0; font-size:13px}
-.uiTip .tBody{margin:0; color: var(--muted); font-size:12.5px}
-
-</style>
+    .ghost:hover{ background: var(--btnHover); }
+  </style>
 </head>
 <body>
   <div class="wrap">
     <div class="top">
-      <div class="title">
-        <h1 id="groupTitle">Group Members</h1>
-        <div class="meta" id="statusLine">Press Refresh to load.</div>
+      <div class="titleBox">
+        <div class="title" id="groupTitle">Group Members</div>
+        <div class="sub">Press Refresh to update the list.</div>
       </div>
-      <div class="btnRow">
+
+      <div class="toolbar">
         <div class="seg" role="group" aria-label="Theme">
           <button id="themeLight" type="button" aria-pressed="false" data-tip="THEME — Light mode">☀️</button>
           <button id="themeDark" type="button" aria-pressed="true" data-tip="THEME — Dark mode">🌙</button>
           <button id="themeAuto" type="button" aria-pressed="false" data-tip="THEME — Follow system theme">🖥️</button>
         </div>
-        <button class="btn" id="refreshBtn" data-tip="REFRESH — Loads members (only when you press this)">⟳ Refresh</button>
+        <button class="btn" id="refreshBtn" data-tip="REFRESH — Loads group members (only when pressed)">⟳ Refresh</button>
       </div>
     </div>
 
-    <div class="listCard">
+    <div class="card">
       <div class="listHead">
-        <div class="count" id="countLine">0 members</div>
-        <div class="count" id="updatedLine"></div>
+        <div class="pill" id="countPill">
+          <span>Members</span>
+          <span class="muted" id="countText">—</span>
+        </div>
       </div>
+      <div class="status" id="status">Ready.</div>
       <div class="list" id="list"></div>
     </div>
   </div>
 
-  <div class="overlay" id="cfgOverlay">
+  <div class="pageNav">
+    <div class="navWrap">
+      <a href="index.html" aria-label="Previous" data-tip="PAGE — Back to panel">&lt;</a>
+      <span class="num">2</span>
+      <a href="#" class="disabled" aria-label="Next" data-tip="PAGE — No more pages">&gt;</a>
+    </div>
+  </div>
+
+  <div class="modalBackdrop" id="cfg">
     <div class="modal">
-      <h2>Worker URL required</h2>
-      <p>Paste your Worker base URL (example: <span class="u">https://panel.example.workers.dev</span>). This will be saved on this device.</p>
-      <div class="field">
-        <input id="workerInput" placeholder="https://your-worker.workers.dev" />
-        <button class="btn" id="saveWorker">Save</button>
+      <div class="modalHead">Set Worker URL</div>
+      <div class="modalBody">
+        This page needs your Worker base URL (same one used by index.html).
+        <div class="field">
+          <label for="cfgUrl">Worker URL</label>
+          <input id="cfgUrl" placeholder="https://panel.example.workers.dev" />
+        </div>
+      </div>
+      <div class="modalActions">
+        <button class="ghost" id="cfgCancel">Cancel</button>
+        <button class="btn" id="cfgSave">Save</button>
       </div>
     </div>
   </div>
 
   <script>
     const GROUP_ID = 466852954;
-    const LS_WORKER = "worker_base_v1";
 
     const els = {
       groupTitle: document.getElementById("groupTitle"),
-      statusLine: document.getElementById("statusLine"),
-      countLine: document.getElementById("countLine"),
-      updatedLine: document.getElementById("updatedLine"),
+      countText: document.getElementById("countText"),
+      status: document.getElementById("status"),
       list: document.getElementById("list"),
       refreshBtn: document.getElementById("refreshBtn"),
-      cfgOverlay: document.getElementById("cfgOverlay"),
-      workerInput: document.getElementById("workerInput"),
-      saveWorker: document.getElementById("saveWorker")
+      cfg: document.getElementById("cfg"),
+      cfgUrl: document.getElementById("cfgUrl"),
+      cfgCancel: document.getElementById("cfgCancel"),
+      cfgSave: document.getElementById("cfgSave"),
+      themeLight: document.getElementById("themeLight"),
+      themeDark: document.getElementById("themeDark"),
+      themeAuto: document.getElementById("themeAuto"),
     };
 
-    function getWorkerBase(){
-      return (localStorage.getItem(LS_WORKER) || "").trim().replace(/\/$/, "");
-    }
+    function setStatus(t){ els.status.textContent = t; }
 
-    function setWorkerBase(v){
-      localStorage.setItem(LS_WORKER, String(v||"").trim().replace(/\/$/, ""));
-    }
-
-    function endpoint(path){
-      const base = getWorkerBase();
-      return base + path;
-    }
-
-    function showCfg(show){
-      els.cfgOverlay.style.display = show ? "flex" : "none";
-      if (show) {
-        els.workerInput.value = getWorkerBase();
-        setTimeout(() => els.workerInput.focus(), 50);
-      }
-    }
-
-    async function fetchJSON(url){
-      const r = await fetch(url, { cache: "no-store" });
-      const t = await r.text();
-      let body = null;
-      try { body = JSON.parse(t); } catch { body = null; }
-      return { ok: r.ok, status: r.status, body, raw: t };
-    }
-
-    function setStatus(text){
-      els.statusLine.textContent = text;
-    }
-
-    function setUpdated(ms){
-      if (!ms) { els.updatedLine.textContent = ""; return; }
-      try { els.updatedLine.textContent = "Updated: " + new Date(ms).toLocaleString(); }
-      catch { els.updatedLine.textContent = ""; }
-    }
-
-    function clearList(){
-      els.list.innerHTML = "";
-            const allIds = [];
-els.countLine.textContent = "0 members";
-      setUpdated(0);
-    }
+    function clearList(){ els.list.innerHTML = ""; }
 
     function addRow(displayName, username, userId){
       const row = document.createElement("div");
@@ -418,9 +356,9 @@ els.countLine.textContent = "0 members";
       img.decoding = "async";
       img.referrerPolicy = "no-referrer";
       img.dataset.userid = String(userId || "");
-            if (userId) {
-}
-row.appendChild(img);
+      // show a subtle placeholder until we resolve the rbxcdn url
+      img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+      row.appendChild(img);
 
       const t = document.createElement("div");
       t.className = "mText";
@@ -445,9 +383,26 @@ row.appendChild(img);
       els.list.appendChild(row);
     }
 
+    function getWorkerBase(){
+      return (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
+    }
+    function setWorkerBase(v){
+      localStorage.setItem("worker_base_v1", String(v||"").trim().replace(/\/+$/,""));
+    }
+    function endpoint(path){
+      const base = getWorkerBase();
+      return base ? (base + path) : path;
+    }
+    async function fetchJSON(url){
+      const r = await fetch(url, { cache: "no-store" });
+      const text = await r.text();
+      let body = null;
+      try{ body = text ? JSON.parse(text) : null; }catch{ body = null; }
+      return { ok: r.ok, status: r.status, body };
+    }
 
+    // ===== thumbnails.roblox.com (JSON -> imageUrl) =====
     async function fetchThumbs(ids){
-      if (!ids || !ids.length) return {};
       const uniq = Array.from(new Set(ids.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
       if (!uniq.length) return {};
       const url = "https://thumbnails.roblox.com/v1/users/avatar-headshot"
@@ -467,7 +422,6 @@ row.appendChild(img);
     }
 
     function applyThumbs(map){
-      if (!map) return;
       const imgs = els.list.querySelectorAll("img.avatar[data-userid]");
       for (const im of imgs){
         const id = im.dataset.userid || "";
@@ -476,88 +430,70 @@ row.appendChild(img);
       }
     }
 
-async function refresh(){
+    async function refresh(){
       const base = getWorkerBase();
       if (!base) { showCfg(true); return; }
 
       els.refreshBtn.disabled = true;
       clearList();
 
-      // Group info (optional)
       setStatus("Loading group info...");
-      try{
-        const info = await fetchJSON(endpoint(`/groupInfo?groupId=${GROUP_ID}&t=${Date.now()}`));
-        if (info.ok && info.body){
-          const name = info.body.name ? String(info.body.name) : "Group Members";
-          els.groupTitle.textContent = name + " — Members";
-        } else {
-          els.groupTitle.textContent = "Group Members";
-        }
-      }catch{
+      const info = await fetchJSON(endpoint(`/groupInfo?groupId=${GROUP_ID}&t=${Date.now()}`));
+      if (info.ok && info.body && info.body.name){
+        els.groupTitle.textContent = String(info.body.name) + " — Members";
+      } else {
         els.groupTitle.textContent = "Group Members";
       }
 
-      // Members (paged)
-      let cursor = "";
+      setStatus("Loading members...");
       let total = 0;
-      let page = 0;
+      let cursor = "";
+      const allIds = [];
 
-      setStatus("Fetching members...");
-
-      try{
-        while (true){
-          page += 1;
-          const url = endpoint(`/groupMembers?groupId=${GROUP_ID}&limit=100` + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : "") + `&t=${Date.now()}`);
-          const res = await fetchJSON(url);
-
-          if (!res.ok){
-            const msg = (res.body && res.body.error) ? res.body.error : ("HTTP " + res.status);
-            setStatus("Failed: " + msg);
-            break;
-          }
-
-          const body = res.body || {};
-          const data = Array.isArray(body.data) ? body.data : [];
-          for (const entry of data){
-            const user = entry && entry.user ? entry.user : {};
-            const role = entry && entry.role ? entry.role : {};
-            const userId = Number(user.userId || user.id || 0);
-            addRow(String(user.displayName || ""), String(user.username || ""), userId);
-            total += 1;
-          }
-
-          els.countLine.textContent = total.toLocaleString() + " members";
-          setStatus("Loaded " + total.toLocaleString() + " members (page " + page + ")...");
-
-          cursor = body.nextPageCursor ? String(body.nextPageCursor) : "";
-          if (!cursor) {
-            setStatus("Done. Loaded " + total.toLocaleString() + " members.");
-            setUpdated(Date.now());
-            break;
-          }
+      for (let page = 0; page < 120; page++) {
+        const url = endpoint(`/groupMembers?groupId=${GROUP_ID}&cursor=${encodeURIComponent(cursor)}&t=${Date.now()}`);
+        const res = await fetchJSON(url);
+        if (!res.ok || !res.body) {
+          setStatus("Failed: HTTP " + res.status);
+          break;
         }
-      } catch (e){
-        setStatus("Failed: " + (e && e.message ? e.message : "Unknown error"));
-      } finally {
-        els.refreshBtn.disabled = false;
+
+        const data = res.body;
+        const pageIds = [];
+
+        const items = Array.isArray(data.data) ? data.data : [];
+        for (const entry of items) {
+          const u = entry && entry.user ? entry.user : {};
+          const userId = Number(u.userId || 0);
+          if (!userId) continue;
+          const username = String(u.username || "");
+          const displayName = String(u.displayName || "");
+          addRow(displayName, username, userId);
+
+          pageIds.push(userId);
+          allIds.push(userId);
+          total++;
+        }
+
+        // resolve avatars for this page immediately
+        try {
+          const map = await fetchThumbs(pageIds);
+          applyThumbs(map);
+        } catch {}
+
+        cursor = String(data.nextPageCursor || "");
+        if (!cursor) break;
       }
+
+      els.countText.textContent = String(total);
+      setStatus(`Loaded ${
+        total
+      } members. Press Refresh to update.`);
+
+      els.refreshBtn.disabled = false;
     }
 
-    els.refreshBtn.addEventListener("click", refresh);
-
-    els.saveWorker.addEventListener("click", () => {
-      const v = (els.workerInput.value || "").trim().replace(/\/$/, "");
-      if (!v) return;
-      setWorkerBase(v);
-      showCfg(false);
-    });
-
-    // If no worker base stored, prompt
-    if (!getWorkerBase()){
-      showCfg(true);
-    }
-  
-    // ===== Custom tooltip system (styled) =====
+    // ===== Styled tooltips =====
     let _uiTipEl = null;
     let _uiTipTarget = null;
 
@@ -569,42 +505,33 @@ async function refresh(){
       document.body.appendChild(_uiTipEl);
       return _uiTipEl;
     }
-
     function setTipContent(text){
       const el = ensureTip();
       const titleEl = el.querySelector("#uiTipTitle");
       const bodyEl  = el.querySelector("#uiTipBody");
       const raw = String(text || "").trim();
-
       const parts = raw.split(" — ");
       const t = (parts[0] || "").trim();
       const b = (parts.slice(1).join(" — ") || "").trim();
-
       if (titleEl) titleEl.textContent = t || "Info";
       if (bodyEl) bodyEl.textContent = b || "";
     }
-
     function positionTip(x, y){
       const el = ensureTip();
       const pad = 12;
       const vw = window.innerWidth || 0;
       const vh = window.innerHeight || 0;
-
       let left = x + 14;
       let top  = y + 14;
-
       el.style.left = "0px";
       el.style.top  = "0px";
       el.classList.add("show");
-
       const rect = el.getBoundingClientRect();
       if (left + rect.width + pad > vw) left = Math.max(pad, x - rect.width - 14);
       if (top + rect.height + pad > vh) top  = Math.max(pad, y - rect.height - 14);
-
       el.style.left = left + "px";
       el.style.top  = top + "px";
     }
-
     function showTipFor(target, x, y){
       const text = target.getAttribute("data-tip") || "";
       if (!text) return;
@@ -612,13 +539,11 @@ async function refresh(){
       setTipContent(text);
       positionTip(x, y);
     }
-
     function hideTip(){
       if (!_uiTipEl) return;
       _uiTipEl.classList.remove("show");
       _uiTipTarget = null;
     }
-
     function initTooltips(){
       ensureTip();
       const nodes = Array.from(document.querySelectorAll("[data-tip]"));
@@ -636,28 +561,39 @@ async function refresh(){
       window.addEventListener("resize", hideTip);
     }
 
-    // ===== Theme (shared key with index) =====
+    // ===== Theme (shared with index) =====
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
-      const l = document.getElementById("themeLight");
-      const d = document.getElementById("themeDark");
-      const a = document.getElementById("themeAuto");
-      if (l) l.setAttribute("aria-pressed", mode === "light");
-      if (d) d.setAttribute("aria-pressed", mode === "dark");
-      if (a) a.setAttribute("aria-pressed", mode === "auto");
-      if (mode === "auto"){ document.documentElement.removeAttribute("data-theme"); return; }
+      if (els.themeLight) els.themeLight.setAttribute("aria-pressed", mode === "light");
+      if (els.themeDark)  els.themeDark.setAttribute("aria-pressed", mode === "dark");
+      if (els.themeAuto)  els.themeAuto.setAttribute("aria-pressed", mode === "auto");
+      if (mode === "auto") { document.documentElement.removeAttribute("data-theme"); return; }
       document.documentElement.setAttribute("data-theme", mode);
     }
-    
-</script>
 
-  <div class="pageNav">
-    <div class="navWrap">
-      <a href="index.html" class="" data-tip="PAGE — Previous page" aria-label="Previous">&lt;</a>
-      <span class="num">2</span>
-      <a href="#" class="disabled" data-tip="PAGE — Next page" aria-label="Next">&gt;</a>
-    </div>
-  </div>
+    function showCfg(on){
+      if (!els.cfg) return;
+      if (on) els.cfg.classList.add("show");
+      else els.cfg.classList.remove("show");
+    }
 
+    els.cfgCancel.onclick = () => showCfg(false);
+    els.cfgSave.onclick = () => {
+      const v = (els.cfgUrl.value || "").trim();
+      if (v) { setWorkerBase(v); showCfg(false); }
+    };
+
+    els.refreshBtn.onclick = refresh;
+
+    els.themeLight.onclick = () => applyTheme("light");
+    els.themeDark.onclick  = () => applyTheme("dark");
+    els.themeAuto.onclick  = () => applyTheme("auto");
+
+    initTooltips();
+    applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
+
+    // If Worker base is missing, prompt once
+    if (!getWorkerBase()) showCfg(true);
+  </script>
 </body>
 </html>
