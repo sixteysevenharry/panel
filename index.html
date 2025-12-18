@@ -813,35 +813,19 @@ function showModerationOverlay(show, subText){
       try { return new Date(Number(ms)).toLocaleString(); } catch { return ""; }
     }
 
-    function renderLockState(){
-      const locked = !!lockState.locked;
-      if (els.lockBtn){
-        els.lockBtn.textContent = locked ? "🔓" : "🔒";
-      
-      
-      if (els.lockBtn){
-        const who = (lockState.by || "").trim();
-        const when = lockState.at ? fmtWhen(lockState.at) : "";
-        const stateText = locked ? "LOCKED" : "UNLOCKED";
-        const byText = who ? (" by " + who) : "";
-        const atText = when ? (" • " + when) : "";
-        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
-        els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
-      }
-if (els.lockBtn){
-        const who = (lockState.by || "").trim();
-        const when = lockState.at ? fmtWhen(lockState.at) : "";
-        const stateText = locked ? "LOCKED" : "UNLOCKED";
-        const byText = who ? (" by " + who) : "";
-        const atText = when ? (" • " + when) : "";
-        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
-        }
+function renderLockState(){
+  const locked = !!lockState.locked;
+  if (els.lockBtn){
+    els.lockBtn.textContent = locked ? "🔓" : "🔒";
+    const who = (lockState.by || "").trim();
+    const when = lockState.at ? fmtWhen(lockState.at) : "";
+    const stateText = locked ? "LOCKED" : "UNLOCKED";
+    const byText = who ? (" by " + who) : "";
+    const atText = when ? (" • " + when) : "";
+    const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+    els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
+  }
 }
-else{
-          els.lockMeta.textContent = locked ? "Locked" : "Unlocked";
-        }
-      }
-    }
 
     async function fetchLockState(){
       try{
