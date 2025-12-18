@@ -204,10 +204,13 @@ export default {
         const adminKey = request.headers.get("x-admin-key") || "";
         if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) return json({ error: "Unauthorized" }, 401);
 
-        const who = String(request.headers.get("x-admin-user") || "").toLowerCase();
+        let body; try { body = await request.json(); } catch { body = {}; }
+
+        const whoRaw = String((body && (body.user || body.by)) || "").trim() || String(request.headers.get("x-admin-user") || "").trim();
+        const who = whoRaw.toLowerCase();
         if (who !== "specimen") return json({ error: "Specimen only" }, 403);
 
-        await env.LIVE.delete(MOD_LOG_KEY);
+await env.LIVE.delete(MOD_LOG_KEY);
         await env.LIVE.delete(BAN_STATE_KEY);
 
         return json({ ok: true });
