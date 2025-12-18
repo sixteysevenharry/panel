@@ -816,7 +816,7 @@ function showModerationOverlay(show, subText){
 function renderLockState(){
   const locked = !!lockState.locked;
   if (els.lockBtn){
-    els.lockBtn.textContent = locked ? "🔓" : "🔒";
+    els.lockBtn.textContent = locked ? "🔒" : "🔓";
     const who = (lockState.by || "").trim();
     const when = lockState.at ? fmtWhen(lockState.at) : "";
     const stateText = locked ? "LOCKED" : "UNLOCKED";
