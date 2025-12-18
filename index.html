@@ -213,7 +213,7 @@
       </div>
       <div class="field">
         <div class="label">Admin Key</div>
-        <input id="adminKey" type="password" placeholder="ADMIN_KEY (stored in your browser)" />
+        <input id="adminKey" placeholder="ADMIN_KEY (stored in your browser)" />
       </div>
       <div class="field">
         <div class="label">Search</div>
@@ -293,6 +293,7 @@
   <script>
     const ALLOWED_USERNAMES = new Set(["eagla","nebula","specimen","arrow","damage","caprie"]);
     const STAFF_IDS = new Set([8007453710,4976035348,154251360,9930928180,485280430]);
+
     const NAME_CACHE_KEY = "panel_name_cache_v1";
 
     function loadNameCache(){
@@ -314,6 +315,7 @@
       const username = String(user.username || "");
       const displayName = String(user.displayName || "");
       if (!username && !displayName) return;
+
       const cache = loadNameCache();
       cache[String(id)] = { username, displayName, at: Date.now() };
       saveNameCache(cache);
@@ -323,16 +325,19 @@
       const u = String(username || "");
       const d = String(displayName || "");
       if (u || d) return { username: u, displayName: d };
+
       const found = activePlayers && activePlayers.find(p => Number(p.userId) === Number(userId));
       if (found && (found.username || found.displayName)){
         cacheNameFrom(found);
         return { username: String(found.username || ""), displayName: String(found.displayName || "") };
       }
+
       const cache = loadNameCache();
       const hit = cache[String(Number(userId))];
       if (hit && (hit.username || hit.displayName)){
         return { username: String(hit.username || ""), displayName: String(hit.displayName || "") };
       }
+
       return { username: "", displayName: "" };
     }
 
@@ -473,7 +478,10 @@
     let selectedActiveUserId = null;
     let selectedLogId = null;
     let uiLocked = false;
+
     const pendingHidden = new Set();
+
+    let refreshCooldownUntil = 0;
     let refreshCooldownTimer = null;
 
     function startCooldown(btn, seconds, label){
@@ -624,46 +632,52 @@
     }
 
     async function fetchPlayers(){
-      const base = baseUrl();
-      if (!base) return;
       const url = endpoint("/players");
       setStatus("loading","Loading players...");
-      try {
-        const res = await fetch(url, { cache:"no-store" });
-        if (!res.ok) throw new Error("Players HTTP " + res.status);
-        const data = await res.json();
-        activePlayers = Array.isArray(data.players) ? data.players : [];
-        try{ for (const p of activePlayers) cacheNameFrom(p); } catch {}
-        els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
-        renderActive();
-        updateButtons();
-        setStatus("ok","OK");
-      } catch (e) {
-        setStatus("error", e.message);
-      }
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error("Players HTTP " + res.status);
+      const data = await res.json();
+      activePlayers = Array.isArray(data.players) ? data.players : [];
+      try{ for (const p of activePlayers) cacheNameFrom(p); } catch {}
+      els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
+      renderActive();
+      updateButtons();
+      setStatus("ok","OK");
+      return activePlayers;
     }
 
     async function fetchLogs(){
-      const base = baseUrl();
-      if (!base) return;
       const url = endpoint("/history");
-      try {
-        const res = await fetch(url, { cache:"no-store" });
-        if (!res.ok) throw new Error("Logs HTTP " + res.status);
-        const data = await res.json();
-        logs = Array.isArray(data.items) ? data.items : [];
-        renderLogs();
-        updateButtons();
-      } catch (e) { console.warn("Logs fetch failed", e); }
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error("Logs HTTP " + res.status);
+      const data = await res.json();
+      logs = Array.isArray(data.items) ? data.items : [];
+      renderLogs();
+      updateButtons();
+      return logs;
     }
 
-    async function sendModeration(action, user, reason) {
+    async function fetchPlayersOnce(){
+      const url = endpoint("/players");
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error("Players HTTP " + res.status);
+      const data = await res.json();
+      return Array.isArray(data.players) ? data.players : [];
+    }
+
+    async function sendModeration(action, user, reason){
+      if (!user) return { ok:false };
       const userId = Number(user.userId || 0);
-      const adminKey = els.adminKey.value.trim();
-      if (!adminKey) {
-        toast("err", "Missing Key", "Enter ADMIN_KEY first.");
+      if (isStaff(userId)) {
+        toast("err", "Blocked", "That user is STAFF and cannot be moderated.");
         return { ok:false };
       }
+      const adminKey = els.adminKey.value.trim();
+      if (!adminKey) {
+        toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
+        return { ok:false };
+      }
+      try{ cacheNameFrom(user); } catch {}
       const payload = {
         action,
         userId,
@@ -672,113 +686,134 @@
         username: String(user.username || ""),
         displayName: String(user.displayName || "")
       };
-      try {
-        const res = await fetch(endpoint("/admin/moderate"), {
+      let res, body = null;
+      try{
+        res = await fetch(endpoint("/admin/moderate"), {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": adminKey
+          },
           body: JSON.stringify(payload)
         });
-        const body = await res.json();
-        if (!res.ok) {
-          toast("err", "Rejected", body.error || "HTTP " + res.status);
-          return { ok:false };
-        }
-        return { ok:true, id: body.id };
-      } catch (e) {
-        toast("err", "Failed", e.message);
+        try { body = await res.json(); } catch { body = null; }
+      } catch(e){
+        toast("err", "Request failed", e.message);
         return { ok:false };
       }
+      if (!res || !res.ok) {
+        toast("err", "Request rejected", (body && body.error) ? body.error : ("HTTP " + (res ? res.status : "?")));
+        return { ok:false };
+      }
+      return { ok:true, id: body && body.id ? String(body.id) : "" };
     }
 
-    async function enforceAndVerify(action, user, reason) {
+    async function enforceAndVerify(action, user, reason){
       const act = String(action || "").toLowerCase();
-      if (act === "unban") return await sendModeration("unban", user, reason);
-      
-      const userId = Number(user.userId);
-      pendingHidden.add(userId);
-      renderActive();
+      const userId = Number(user && user.userId || 0);
 
-      const response = await sendModeration(act, user, reason);
-      if (!response.ok) {
-        pendingHidden.delete(userId);
-        renderActive();
-        return response;
+      if (act === "unban"){
+        const sent = await sendModeration("unban", user, reason || "");
+        return (sent && sent.ok) ? { ok:true, id: sent.id || "" } : { ok:false, message: "unban failed" };
       }
 
-      // Polling for 15 seconds to see if they left
+      if (!userId) return { ok:false, message: "missing userId" };
+
+      // SEND ACTION ONCE
+      const firstResponse = await sendModeration(act, user, reason || "");
+      if (!firstResponse || !firstResponse.ok) return { ok:false, message: "Action failed to send" };
+
+      const lastId = firstResponse.id;
       const started = Date.now();
-      while (Date.now() - started < 15000) {
-        await new Promise(r => setTimeout(r, 2000));
-        const res = await fetch(endpoint("/players"), { cache:"no-store" });
-        const data = await res.json();
-        const stillIn = (data.players || []).some(p => Number(p.userId) === userId);
-        if (!stillIn) break;
+      const hardTimeoutMs = 60000;
+      const checkEveryMs  = 800;
+
+      pendingHidden.add(userId);
+      renderActive();
+      updateButtons();
+
+      // POLL FOR REMOVAL
+      while (Date.now() - started < hardTimeoutMs){
+        try {
+          const players = await fetchPlayersOnce();
+          const stillHere = players.some(p => Number(p.userId) === userId);
+
+          // Approval as soon as they are gone
+          if (!stillHere) {
+            pendingHidden.delete(userId);
+            return { ok:true, id: lastId };
+          }
+        } catch(e) {}
+        await new Promise(r => setTimeout(r, checkEveryMs));
       }
 
       pendingHidden.delete(userId);
-      return { ok: true };
+      renderActive();
+      return { ok:false, timeout:true, message: "Action sent, but user still detected in-game." };
     }
 
-    // --- BUTTON EVENT LISTENERS ---
+    function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
+    function getSelectedLog(){ return logs.find(e => String(e.id) === String(selectedLogId)) || null; }
 
+    async function refreshAll(){
+      await fetchPlayers();
+      await fetchLogs();
+    }
+
+    els.search.addEventListener("input", () => { renderActive(); renderLogs(); updateButtons(); });
     els.save.onclick = () => {
-      localStorage.setItem("panel_worker_base", els.workerBase.value.trim());
-      localStorage.setItem("panel_admin_key", els.adminKey.value.trim());
-      toast("ok", "Saved", "Settings stored in browser.");
-      fetchPlayers();
-      fetchLogs();
+      localStorage.setItem("worker_base_v1", baseUrl());
+      localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
+      toast("ok","Saved","Worker Base + Admin Key stored in this browser");
+      setStatus("ok","Saved");
     };
 
     els.refresh.onclick = async () => {
       if (els.refresh.disabled) return;
-      startCooldown(els.refresh, 3, "Refresh");
-      await Promise.all([fetchPlayers(), fetchLogs()]);
+      startCooldown(els.refresh, 10, "Refresh");
+      try{ await refreshAll(); } catch(e){
+        setStatus("error", "Refresh failed: " + e.message);
+        toast("err","Refresh failed", e.message);
+      }
     };
 
-    const handleMod = async (action, needsReason) => {
-      const targetUser = activePlayers.find(p => Number(p.userId) === selectedActiveUserId) || 
-                         logs.find(l => String(l.id) === selectedLogId);
-      if (!targetUser) return toast("err", "Error", "Select a user first.");
-      
-      let reason = "";
-      if (needsReason) {
-        reason = prompt(`Reason for ${action}:`);
-        if (reason === null) return;
-      }
-
-      showModerationOverlay(true, `Applying ${action}...`);
+    async function runAction(action, user, reason, onSuccess){
+      const act = String(action || "").toLowerCase();
+      if (act === "kick" || act === "ban") showModerationOverlay(true, "Moderating user…");
       beginVerifyLock();
-      const res = await enforceAndVerify(action, targetUser, reason);
-      showModerationOverlay(false);
-      endVerifyLock();
-
-      if (res.ok) {
-        toast("ok", "Success", `${action} applied.`);
-        fetchPlayers();
-        fetchLogs();
-      }
-    };
-
-    els.kick.onclick = () => handleMod("kick", false);
-    els.kickReason.onclick = () => handleMod("kick", true);
-    els.ban.onclick = () => handleMod("ban", false);
-    els.banReason.onclick = () => handleMod("ban", true);
-    els.unban.onclick = () => handleMod("unban", false);
-    els.unbanReason.onclick = () => handleMod("unban", true);
-    els.search.oninput = () => { renderActive(); renderLogs(); };
-
-    function initPanel() {
-      els.workerBase.value = localStorage.getItem("panel_worker_base") || "";
-      els.adminKey.value = localStorage.getItem("panel_admin_key") || "";
-      if (baseUrl()) {
-        fetchPlayers();
-        fetchLogs();
-      } else {
-        setStatus("error", "Configure Worker URL");
+      try{
+        const v = await enforceAndVerify(action, user, reason || "");
+        if (v.ok){
+          toast("ok","Enforcement action approved","");
+          if (typeof onSuccess === "function") onSuccess();
+          await refreshAll();
+        } else {
+          toast("err", v.timeout ? "TIME OUT" : "Failed", v.message || "");
+        }
+      } finally {
+        endVerifyLock();
+        showModerationOverlay(false, "");
       }
     }
 
-    if (isLoggedIn()) { showApp(); initPanel(); } else { showLogin(); }
+    els.kick.onclick = async () => { const p = getSelectedActive(); if (p) await runAction("kick", p, "", null); };
+    els.kickReason.onclick = async () => { const p = getSelectedActive(); if (p) await runAction("kick", p, prompt("Kick reason?") || "", null); };
+    els.ban.onclick = async () => { const p = getSelectedActive(); if (p) await runAction("ban", p, "", null); };
+    els.banReason.onclick = async () => { const p = getSelectedActive(); if (p) await runAction("ban", p, prompt("Ban reason?") || "", null); };
+    els.unban.onclick = async () => { const e = getSelectedLog(); if (e) await runAction("unban", { userId: e.userId, username: e.username || "", displayName: e.displayName || "" }, "", () => { selectedLogId = null; }); };
+    els.unbanReason.onclick = async () => { const e = getSelectedLog(); if (e) await runAction("unban", { userId: e.userId, username: e.username || "", displayName: e.displayName || "" }, prompt("Unban note?") || "", () => { selectedLogId = null; }); };
+
+    function initPanel(){
+      els.workerBase.value = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
+      els.adminKey.value = localStorage.getItem("admin_key_v1") || "";
+      setStatus("ok","Ready (press Refresh)");
+      renderActive();
+      renderLogs();
+      updateButtons();
+    }
+
+    if (isLoggedIn()){ showApp(); initPanel(); }
+    else showLogin();
   </script>
 </body>
 </html>
