@@ -252,6 +252,8 @@
       </div>
       <div class="btns" style="margin-top:18px">
         <button id="save" type="button">💾 Save</button>
+        <button id="lockBtn" type="button" class="ghostBtn" title="Lock / Unlock">🔒</button>
+        <span class="small" id="lockMeta" style="opacity:.85"></span>
         <button id="refresh" type="button">🔄 Refresh</button>
       </div>
     </div>
@@ -780,7 +782,7 @@ function showModerationOverlay(show, subText){
     function renderLockState(){
       const locked = !!lockState.locked;
       if (els.lockBtn){
-        els.lockBtn.textContent = locked ? "🔓 Unlock Game" : "🔒 Lock Game";
+        els.lockBtn.textContent = locked ? "🔓" : "🔒";
       }
       if (els.lockMeta){
         if (lockState.by && lockState.at){
