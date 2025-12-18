@@ -462,7 +462,102 @@ await env.LIVE.delete(MOD_LOG_KEY);
       }
 
 
-return new Response("Not found", { status: 404, headers: cors });
+
+      /* =====================================================
+         WEBSITE -> THUMBNAILS PROXY (avoids CORS)
+         GET /thumbs?userIds=1,2,3&size=420x420&format=Png&isCircular=false
+         ===================================================== */
+      if (url.pathname === "/thumbs" && request.method === "GET") {
+        const userIdsRaw = String(url.searchParams.get("userIds") || "");
+        const size = String(url.searchParams.get("size") || "420x420");
+        const format = String(url.searchParams.get("format") || "Png");
+        const isCircular = String(url.searchParams.get("isCircular") || "false");
+
+        const ids = userIdsRaw.split(",")
+          .map(s => Number(String(s).trim()))
+          .filter(n => Number.isFinite(n) && n > 0)
+          .slice(0, 100);
+
+        if (!ids.length) return json({ error: "Missing userIds" }, 400);
+
+        const cacheKey = `thumbs:${ids.join(",")}:${size}:${format}:${isCircular}`;
+        const cached = await env.LIVE.get(cacheKey);
+        if (cached) {
+          try { return json(JSON.parse(cached)); } catch {}
+        }
+
+        const upstream = "https://thumbnails.roblox.com/v1/users/avatar-headshot"
+          + "?userIds=" + encodeURIComponent(ids.join(","))
+          + "&size=" + encodeURIComponent(size)
+          + "&format=" + encodeURIComponent(format)
+          + "&isCircular=" + encodeURIComponent(isCircular);
+
+        const r = await fetch(upstream, { headers: { "accept": "application/json" } });
+        const bodyText = await r.text();
+
+        if (!r.ok) {
+          return new Response(bodyText || JSON.stringify({ error: "Upstream error" }), {
+            status: r.status,
+            headers: { "content-type": "application/json", ...cors }
+          });
+        }
+
+        let body;
+        try { body = JSON.parse(bodyText); } catch { body = {}; }
+
+        // Cache (KV minimum 60s)
+        await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 300 });
+
+        return json(body);
+      }
+
+      /* =====================================================
+         WEBSITE -> USER CREATED DATE PROXY (avoids CORS)
+         GET /usersCreated?userIds=1,2,3
+         Returns: { ok:true, data:[{userId, created}] }
+         ===================================================== */
+      if (url.pathname === "/usersCreated" && request.method === "GET") {
+        const userIdsRaw = String(url.searchParams.get("userIds") || "");
+        const ids = userIdsRaw.split(",")
+          .map(s => Number(String(s).trim()))
+          .filter(n => Number.isFinite(n) && n > 0)
+          .slice(0, 80);
+
+        if (!ids.length) return json({ error: "Missing userIds" }, 400);
+
+        const out = [];
+        for (const id of ids) {
+          const ck = `ucreated:${id}`;
+          const cached = await env.LIVE.get(ck);
+          if (cached) {
+            out.push({ userId: id, created: String(cached) });
+            continue;
+          }
+
+          const r = await fetch(`https://users.roblox.com/v1/users/${id}`, {
+            headers: { "accept": "application/json" }
+          });
+
+          if (!r.ok) {
+            // If one fails, just skip it (still return others)
+            continue;
+          }
+
+          let body = null;
+          try { body = await r.json(); } catch { body = null; }
+
+          const created = body && body.created ? String(body.created) : "";
+          if (created) {
+            out.push({ userId: id, created });
+            // Cache 24h (KV minimum 60s)
+            await env.LIVE.put(ck, created, { expirationTtl: 86400 });
+          }
+        }
+
+        return json({ ok: true, data: out });
+      }
+
+      return new Response("Not found", { status: 404, headers: cors });
     } catch (e) {
       return json({ error: "Worker exception", message: String(e?.message || e) }, 500);
     }
