@@ -127,98 +127,10 @@
       background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.08), transparent 55%), rgba(0,0,0,.22);
       backdrop-filter: blur(8px); z-index:9998;
     }
-    
-    .uiModalCard{
-      width:min(520px, calc(100vw - 28px));
-      background: linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
-      border:1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 14px 14px 12px 14px;
-    }
-    .uiModalHead{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px; margin-bottom:10px;
-    }
-    .uiModalTitle{
-      font-size:18px; margin:0; letter-spacing:.2px;
-    }
-    .uiModalX{
-      width:34px; height:34px; border-radius: 12px;
-      border:1px solid var(--border2);
-      background: var(--btn);
-      color: var(--text);
-      cursor:pointer;
-    }
-    .uiModalX:hover{ background: var(--btnHover); }
-    .uiModalBody{ display:flex; flex-direction:column; gap:12px; }
-    .uiModalMsg{ margin:0; color: var(--muted); line-height:1.35; white-space:pre-wrap; }
-    .uiModalInput{
-      width:100%;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border:1px solid var(--border2);
-      background: #fff;
-      color: var(--text);
-      outline:none;
-    }
-    .uiModalInput:focus{
-      box-shadow: 0 0 0 2px rgba(17,19,24,.12);
-      border-color: var(--border2);
-    }
-    .uiModalActions{
-      display:flex; justify-content:flex-end; gap:10px; margin-top:12px;
-      flex-wrap:wrap;
-    }
-
-[data-theme="dark"] .overlay{
+    [data-theme="dark"] .overlay{
       background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.10), transparent 55%), rgba(0,0,0,.55);
     }
-    
-    .uiModalCard{
-      width:min(520px, calc(100vw - 28px));
-      background: linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
-      border:1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 14px 14px 12px 14px;
-    }
-    .uiModalHead{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px; margin-bottom:10px;
-    }
-    .uiModalTitle{
-      font-size:18px; margin:0; letter-spacing:.2px;
-    }
-    .uiModalX{
-      width:34px; height:34px; border-radius: 12px;
-      border:1px solid var(--border2);
-      background: var(--btn);
-      color: var(--text);
-      cursor:pointer;
-    }
-    .uiModalX:hover{ background: var(--btnHover); }
-    .uiModalBody{ display:flex; flex-direction:column; gap:12px; }
-    .uiModalMsg{ margin:0; color: var(--muted); line-height:1.35; white-space:pre-wrap; }
-    .uiModalInput{
-      width:100%;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border:1px solid var(--border2);
-      background: #fff;
-      color: var(--text);
-      outline:none;
-    }
-    .uiModalInput:focus{
-      box-shadow: 0 0 0 2px rgba(17,19,24,.12);
-      border-color: var(--border2);
-    }
-    .uiModalActions{
-      display:flex; justify-content:flex-end; gap:10px; margin-top:12px;
-      flex-wrap:wrap;
-    }
-
-.loginCard{
+    .loginCard{
       width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
       background:var(--surface); box-shadow: var(--shadow); padding:18px; animation: toastIn .18s ease-out;
     }
@@ -227,7 +139,10 @@
     .loginRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
     .loginRow .field{flex:1 1 240px; min-width:240px}
     .loginFoot{margin-top:10px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
-    .ghostBtn{border:1px solid var(--border);background:transparent}
+    .dangerBtn{border:1px solid var(--border2);background:var(--danger);color:#fff;padding:10px 12px;border-radius:12px;cursor:pointer}
+.dangerBtn:hover{filter:brightness(.95)}
+
+.ghostBtn{border:1px solid var(--border);background:transparent}
     .ghostBtn:hover{background:var(--btnHover)}
     @media (prefers-reduced-motion: reduce){ *{transition:none !important} .dot.load{animation:none !important} .spinner{animation: spin 1s linear infinite !important} }
   .modOverlay{
@@ -314,7 +229,11 @@
           <button id="themeDark" type="button" aria-pressed="true" title="Dark">🌙</button>
           <button id="themeAuto" type="button" aria-pressed="false" title="Auto">🖥️</button>
         </div>
-        <button id="logout" type="button" class="ghostBtn" title="Log out">🚪 Logout</button>
+        <span class="pillStatus" title="Logged in" style="align-self:center">
+  <span class="small">👤</span>
+  <span class="small" id="whoami">—</span>
+</span>
+<button id="logout" type="button" class="ghostBtn" title="Log out">🚪 Logout</button>
       </div>
     </div>
 
@@ -334,7 +253,6 @@
       <div class="btns" style="margin-top:18px">
         <button id="save" type="button">💾 Save</button>
         <button id="refresh" type="button">🔄 Refresh</button>
-        <button id="clearAllLogs" type="button" style="display:none">🧹 Clear All Logs</button>
       </div>
     </div>
 
@@ -411,34 +329,9 @@
   </div>
 </div>
 
-  
-<div class="overlay" id="uiModal" style="display:none" aria-hidden="true">
-  <div class="uiModalCard" role="dialog" aria-modal="true" aria-labelledby="uiModalTitle">
-    <div class="uiModalHead">
-      <h2 class="uiModalTitle" id="uiModalTitle">Notice</h2>
-      <button class="uiModalX" id="uiModalX" type="button" aria-label="Close">✕</button>
-    </div>
-    <div class="uiModalBody">
-      <p class="uiModalMsg" id="uiModalMsg"></p>
-      <input class="uiModalInput" id="uiModalInput" type="text" autocomplete="off" spellcheck="false" style="display:none" />
-    </div>
-    <div class="uiModalActions" id="uiModalActions"></div>
-  </div>
-</div>
-
   <div class="toastWrap" id="toasts"></div>
 
   <script>
-
-function showModalMessage(message, title="Notice"){
-  try{
-    openModal({title, message, actions:[{label:"OK", value:true, primary:true}]});
-  }catch(e){
-    alert(title + "\n\n" + message);
-  }
-}
-
-
     const ALLOWED_USERNAMES = new Set(["eagla","nebula","specimen","arrow","damage","caprie"]);
     const STAFF_IDS = new Set([8007453710,4976035348,154251360,9930928180,485280430]);
 
@@ -499,6 +392,7 @@ function showModalMessage(message, title="Notice"){
       loginBtn: document.getElementById("loginBtn"),
       loginStatus: document.getElementById("loginStatus"),
       logout: document.getElementById("logout"),
+      whoami: document.getElementById("whoami"),
 
       status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
@@ -509,7 +403,7 @@ function showModalMessage(message, title="Notice"){
       search: document.getElementById("search"),
       save: document.getElementById("save"),
       refresh: document.getElementById("refresh"),
-      clearAllLogs: document.getElementById("clearAllLogs"),
+      clearLogsBtn: document.getElementById("clearLogsBtn"),
 
       activeList: document.getElementById("activeList"),
       logList: document.getElementById("logList"),
@@ -538,123 +432,7 @@ function showModalMessage(message, title="Notice"){
       return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
     }
 
-    
-    // --- Unified HTML modal for alerts/confirms/prompts (no browser popups) ---
-    const ui = (() => {
-      const overlay = document.getElementById("uiModal");
-      const titleEl = document.getElementById("uiModalTitle");
-      const msgEl = document.getElementById("uiModalMsg");
-      const inputEl = document.getElementById("uiModalInput");
-      const actionsEl = document.getElementById("uiModalActions");
-      const closeBtn = document.getElementById("uiModalX");
-
-      let resolver = null;
-      let escHandler = null;
-
-      function setOpen(open){
-        if (!overlay) return;
-        overlay.style.display = open ? "flex" : "none";
-        overlay.setAttribute("aria-hidden", open ? "false" : "true");
-        document.body.style.overflow = open ? "hidden" : "";
-      }
-
-      function cleanup(){
-        if (escHandler) document.removeEventListener("keydown", escHandler);
-        escHandler = null;
-        resolver = null;
-        actionsEl.innerHTML = "";
-        inputEl.style.display = "none";
-        inputEl.value = "";
-      }
-
-      function finish(val){
-        const r = resolver;
-        cleanup();
-        setOpen(false);
-        if (r) r(val);
-      }
-
-      function button(label, kind){
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "btn " + (kind || "");
-        b.textContent = label;
-        return b;
-      }
-
-      function show({ title="Notice", message="", mode="alert", okText="OK", cancelText="Cancel", defaultValue="", placeholder="" }){
-        return new Promise((resolve) => {
-          resolver = resolve;
-          titleEl.textContent = String(title || "Notice");
-          msgEl.textContent = String(message || "");
-
-          overlay.onclick = (e) => {
-            if (e.target === overlay){
-              if (mode === "alert") finish(true);
-              else finish(null);
-            }
-          };
-
-          closeBtn.onclick = () => {
-            if (mode === "alert") finish(true);
-            else finish(null);
-          };
-
-          actionsEl.innerHTML = "";
-
-          if (mode === "prompt"){
-            inputEl.style.display = "block";
-            inputEl.value = defaultValue ?? "";
-            inputEl.placeholder = placeholder || "";
-          } else {
-            inputEl.style.display = "none";
-            inputEl.value = "";
-          }
-
-          if (mode === "confirm" || mode === "prompt"){
-            const cancel = button(cancelText || "Cancel", "");
-            cancel.onclick = () => finish(null);
-            actionsEl.appendChild(cancel);
-          }
-
-          const ok = button(okText || "OK", "primary");
-          ok.onclick = () => finish(mode === "prompt" ? inputEl.value : true);
-          actionsEl.appendChild(ok);
-
-          escHandler = (e) => {
-            if (e.key === "Escape"){
-              if (mode === "alert") finish(true);
-              else finish(null);
-            }
-            if (mode === "prompt" && e.key === "Enter"){
-              finish(inputEl.value);
-            }
-          };
-          document.addEventListener("keydown", escHandler);
-
-          setOpen(true);
-
-          requestAnimationFrame(() => {
-            if (mode === "prompt") inputEl.focus();
-            else ok.focus();
-          });
-        });
-      }
-
-      return {
-        alert: (message, title) => show({ mode:"alert", title, message }),
-        confirm: async (message, title, okText="OK", cancelText="Cancel") => {
-          const r = await show({ mode:"confirm", title, message, okText, cancelText });
-          return r === true;
-        },
-        prompt: async (message, defaultValue="", title, placeholder="") => {
-          const r = await show({ mode:"prompt", title, message, defaultValue, placeholder, okText:"OK", cancelText:"Cancel" });
-          return (r === null) ? null : String(r);
-        }
-      };
-    })();
-
-function toast(kind, title, body){
+    function toast(kind, title, body){
       const div = document.createElement("div");
       div.className = "toast " + (kind || "");
       div.innerHTML = `
@@ -714,23 +492,21 @@ function showModerationOverlay(show, subText){
     function setLoggedIn(username){
       localStorage.setItem("panel_logged_in", "1");
       localStorage.setItem("panel_login_user", String(username || ""));
-    
-      updateSpecimenControls();
     }
     function clearLoggedIn(){
       localStorage.removeItem("panel_logged_in");
       localStorage.removeItem("panel_login_user");
-    
-      updateSpecimenControls();
     }
     function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
 
-    function updateSpecimenControls(){
-      const u = String(getLoginUser() || "").trim().toLowerCase();
-      if (els.clearAllLogs) els.clearAllLogs.style.display = (u === "specimen") ? "inline-flex" : "none";
+    function updateWhoAmI(){
+      if (!els.whoami) return;
+      const u = String(getLoginUser() || "").trim();
+      els.whoami.textContent = u ? u : "—";
     }
 
     function showLogin(){
+      if (els.whoami) els.whoami.textContent = "—";
       els.app.style.display = "none";
       els.loginOverlay.style.display = "flex";
       els.loginStatus.textContent = "";
@@ -738,7 +514,6 @@ function showModerationOverlay(show, subText){
       els.loginUser.focus();
     }
     function showApp(){
-      updateSpecimenControls();
       els.loginOverlay.style.display = "none";
       els.app.style.display = "block";
     }
@@ -760,7 +535,7 @@ function showModerationOverlay(show, subText){
 
     els.loginBtn.onclick = attemptLogin;
     els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
-    els.logout.onclick = async () => { if (!(await ui.confirm("Log out?","Confirm"))) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
+    els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
 
     function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
@@ -860,8 +635,6 @@ function showModerationOverlay(show, subText){
     }
     function endVerifyLock(){
       uiLocked = false;
-      renderActive();
-      renderLogs();
       updateButtons();
       setStatus("ok","Ready");
     }
@@ -1013,15 +786,12 @@ function showModerationOverlay(show, subText){
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Logs HTTP " + res.status);
       const data = await res.json();
-
-      const rawItems = Array.isArray(data.items) ? data.items : [];
-      const filtered = rawItems.filter(e => String(e.action || "").toLowerCase() !== "unban");
-      logs = mergeLogs(filtered);
-
+      logs = mergeLogs(Array.isArray(data.items) ? data.items : []);
+      
       if (selectedLogId && !logs.some(e => String(e.id) === String(selectedLogId))){
         selectedLogId = null;
       }
-      renderLogs();
+renderLogs();
       updateButtons();
       return logs;
     }
@@ -1239,52 +1009,34 @@ async function enforceAndVerify(action, user, reason){
       }
     };
 
-    els.clearAllLogs.onclick = async () => {
-      const u = String(getLoginUser() || "").trim().toLowerCase();
-      if (u !== "specimen") return;
-      if (uiLocked) {
-        toast("err","Busy","Wait until the current action finishes.");
-        return;
-      }
 
-      const ok = await ui.confirm("This will permanently clear ALL moderation logs for everyone. Continue?", "Clear moderation logs");
-      if (!ok) return;
-
+    els.clearLogsBtn && (els.clearLogsBtn.onclick = async () => {
+      if (!isSpecimen()) { toast("err","Specimen only",""); return; }
       const adminKey = els.adminKey.value.trim();
-      if (!adminKey) {
-        toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
-        return;
-      }
+      if (!adminKey) { toast("err","Missing ADMIN_KEY","Enter ADMIN_KEY first."); return; }
 
       try{
-        setStatus("loading","Clearing logs…");
         const res = await fetch(endpoint("/admin/clearLogs"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-admin-key": adminKey
+            "x-admin-key": adminKey,
+            "x-admin-user": String(getLoginUser() || "")
           },
-          body: JSON.stringify({ by: String(getLoginUser() || "") })
+          body: JSON.stringify({ user: String(getLoginUser() || "") })
         });
         let body = null;
-        try { body = await res.json(); } catch { body = null; }
-
+        try{ body = await res.json(); } catch {}
         if (!res.ok){
-          toast("err","Clear failed", (body && body.error) ? body.error : ("HTTP " + res.status));
-          setStatus("error","Clear failed");
+          toast("err","Clear logs failed", (body && body.error) ? body.error : ("HTTP " + res.status));
           return;
         }
-
-        logs = [];
-        selectedLogId = null;
-        renderLogs();
-        toast("ok","Logs cleared","All moderation logs were cleared.");
-        setStatus("ok","Ready");
-      } catch(e){
-        toast("err","Clear failed", e.message);
-        setStatus("error","Clear failed");
+        toast("ok","Logs cleared","");
+        await fetchLogs();
+      }catch(e){
+        toast("err","Clear logs failed", e.message);
       }
-    };
+    });
 
     async function runAction(action, user, reason, onSuccess){
   const act = String(action || "").toLowerCase();
@@ -1316,7 +1068,7 @@ async function enforceAndVerify(action, user, reason){
 
     els.kickReason.onclick = async () => {
       const p = getSelectedActive(); if (!p) return;
-      const r = (await ui.prompt("Kick reason?","", "Kick")) || "";
+      const r = prompt("Kick reason?") || "";
       await runAction("kick", p, r, null);
     };
 
@@ -1327,7 +1079,7 @@ async function enforceAndVerify(action, user, reason){
 
     els.banReason.onclick = async () => {
       const p = getSelectedActive(); if (!p) return;
-      const r = (await ui.prompt("Ban reason?","", "Ban")) || "";
+      const r = prompt("Ban reason?") || "";
       await runAction("ban", p, r, null);
     };
 
@@ -1339,12 +1091,13 @@ async function enforceAndVerify(action, user, reason){
 
     els.unbanReason.onclick = async () => {
       const e = getSelectedLog(); if (!e) return;
-      const r = (await ui.prompt("Unban note?","", "Unban")) || "";
+      const r = prompt("Unban note?") || "";
       const user = { userId: e.userId, username: e.username || "", displayName: e.displayName || "" };
       await runAction("unban", user, r, () => { selectedLogId = null; });
     };
 
     function initPanel(){
+      updateWhoAmI();
       const savedBase = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
       const savedAdmin = localStorage.getItem("admin_key_v1") || "";
       els.workerBase.value = savedBase;
