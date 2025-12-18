@@ -246,6 +246,50 @@
       font-size: 12.5px;
     }
     
+
+/* ===== Page nav ===== */
+.pageNav{
+  position: fixed;
+  left: 0; right: 0; bottom: 14px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 9998;
+}
+.pageNav .navWrap{
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+.pageNav a, .pageNav span{
+  font-size: 14px;
+  color: var(--text);
+}
+.pageNav a{
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border2);
+  background: var(--btn);
+}
+.pageNav a:hover{ background: var(--btnHover); }
+.pageNav a.disabled{
+  pointer-events: none;
+  opacity: .45;
+}
+.pageNav .num{
+  min-width: 24px;
+  text-align: center;
+  font-weight: 800;
+}
+body{ padding-bottom: 74px; }
+
 </style>
 </head>
 <body>
@@ -813,19 +857,35 @@ function showModerationOverlay(show, subText){
       try { return new Date(Number(ms)).toLocaleString(); } catch { return ""; }
     }
 
-function renderLockState(){
-  const locked = !!lockState.locked;
-  if (els.lockBtn){
-    els.lockBtn.textContent = locked ? "🔒" : "🔓";
-    const who = (lockState.by || "").trim();
-    const when = lockState.at ? fmtWhen(lockState.at) : "";
-    const stateText = locked ? "LOCKED" : "UNLOCKED";
-    const byText = who ? (" by " + who) : "";
-    const atText = when ? (" • " + when) : "";
-    const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
-    els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
-  }
+    function renderLockState(){
+      const locked = !!lockState.locked;
+      if (els.lockBtn){
+        els.lockBtn.textContent = locked ? "🔓" : "🔒";
+      
+      
+      if (els.lockBtn){
+        const who = (lockState.by || "").trim();
+        const when = lockState.at ? fmtWhen(lockState.at) : "";
+        const stateText = locked ? "LOCKED" : "UNLOCKED";
+        const byText = who ? (" by " + who) : "";
+        const atText = when ? (" • " + when) : "";
+        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+        els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
+      }
+if (els.lockBtn){
+        const who = (lockState.by || "").trim();
+        const when = lockState.at ? fmtWhen(lockState.at) : "";
+        const stateText = locked ? "LOCKED" : "UNLOCKED";
+        const byText = who ? (" by " + who) : "";
+        const atText = when ? (" • " + when) : "";
+        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+        }
 }
+else{
+          els.lockMeta.textContent = locked ? "Locked" : "Unlocked";
+        }
+      }
+    }
 
     async function fetchLockState(){
       try{
@@ -1337,5 +1397,14 @@ function initPanel(){
     if (isLoggedIn()){ showApp(); initPanel(); }
     else { showLogin(); }
   </script>
+
+  <div class="pageNav">
+    <div class="navWrap">
+      <a href="#" class="disabled" aria-label="Previous">&lt;</a>
+      <span class="num">1</span>
+      <a href="group.html" class="" aria-label="Next">&gt;</a>
+    </div>
+  </div>
+
 </body>
 </html>
