@@ -418,7 +418,7 @@ body{ padding-bottom: 74px; }
       img.referrerPolicy = "no-referrer";
       img.dataset.userid = String(userId || "");
             if (userId) {
-        img.src = "https://www.roblox.com/headshot-thumbnail/image?userId=" + encodeURIComponent(String(userId)) + "&width=150&height=150&format=png";
+        img.src = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" + encodeURIComponent(String(userId)) + "&size=420x420&format=Png&isCircular=false";
       }
 row.appendChild(img);
 
