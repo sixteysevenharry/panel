@@ -373,7 +373,82 @@ await env.LIVE.delete(MOD_LOG_KEY);
         return json({ ok: true });
       }
 
-      return new Response("Not found", { status: 404, headers: cors });
+      
+/* =====================================================
+   WEBSITE -> GROUP INFO (public)
+   /groupInfo?groupId=123
+   ===================================================== */
+if (url.pathname === "/groupInfo" && request.method === "GET") {
+  const groupId = Number(url.searchParams.get("groupId") || 0);
+  if (!groupId) return json({ error: "Missing groupId" }, 400);
+
+  const cacheKey = `grpinfo:${groupId}`;
+  const cached = await env.LIVE.get(cacheKey);
+  if (cached) {
+    try { return json(JSON.parse(cached)); } catch {}
+  }
+
+  const r = await fetch(`https://groups.roblox.com/v1/groups/${groupId}`, {
+    headers: { "accept": "application/json" }
+  });
+
+  const bodyText = await r.text();
+  if (!r.ok) {
+    // Pass Roblox error through (rate limits etc.)
+    return new Response(bodyText || "Upstream error", { status: r.status, headers: { "content-type": "application/json", ...cors } });
+  }
+
+  let body;
+  try { body = JSON.parse(bodyText); } catch { body = {}; }
+
+  // Cache lightly to avoid rate limits (Roblox recently tightened Groups API limits)
+  await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 120 });
+
+  return json(body);
+}
+
+/* =====================================================
+   WEBSITE -> GROUP MEMBERS (public; cursor pagination)
+   /groupMembers?groupId=123&limit=100&cursor=...
+   ===================================================== */
+if (url.pathname === "/groupMembers" && request.method === "GET") {
+  const groupId = Number(url.searchParams.get("groupId") || 0);
+  if (!groupId) return json({ error: "Missing groupId" }, 400);
+
+  const limitRaw = Number(url.searchParams.get("limit") || 100);
+  const limit = Math.max(10, Math.min(100, limitRaw));
+  const cursor = String(url.searchParams.get("cursor") || "").trim();
+
+  const cacheKey = `grpmem:${groupId}:${limit}:${cursor || "first"}`;
+  const cached = await env.LIVE.get(cacheKey);
+  if (cached) {
+    try { return json(JSON.parse(cached)); } catch {}
+  }
+
+  const qs = new URLSearchParams();
+  qs.set("sortOrder", "Asc");
+  qs.set("limit", String(limit));
+  if (cursor) qs.set("cursor", cursor);
+
+  const r = await fetch(`https://groups.roblox.com/v1/groups/${groupId}/users?` + qs.toString(), {
+    headers: { "accept": "application/json" }
+  });
+
+  const bodyText = await r.text();
+  if (!r.ok) {
+    return new Response(bodyText || "Upstream error", { status: r.status, headers: { "content-type": "application/json", ...cors } });
+  }
+
+  let body;
+  try { body = JSON.parse(bodyText); } catch { body = {}; }
+
+  // Cache very short to reduce 429s while still reflecting changes quickly
+  await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 30 });
+
+  return json(body);
+}
+
+return new Response("Not found", { status: 404, headers: cors });
     } catch (e) {
       return json({ error: "Worker exception", message: String(e?.message || e) }, 500);
     }
