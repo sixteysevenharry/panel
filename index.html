@@ -403,6 +403,8 @@
       search: document.getElementById("search"),
       save: document.getElementById("save"),
       refresh: document.getElementById("refresh"),
+      lockBtn: document.getElementById("lockBtn"),
+      lockMeta: document.getElementById("lockMeta"),
       clearLogsBtn: document.getElementById("clearLogsBtn"),
 
       activeList: document.getElementById("activeList"),
@@ -766,7 +768,82 @@ function showModerationOverlay(show, subText){
       els.unbanReason.disabled = !canUnban;
     }
 
-    async function fetchPlayers(){
+    
+    let lockState = { locked:false, by:"", at:0 };
+    let lockLastAt = 0;
+
+    function fmtWhen(ms){
+      if (!ms) return "";
+      try { return new Date(Number(ms)).toLocaleString(); } catch { return ""; }
+    }
+
+    function renderLockState(){
+      const locked = !!lockState.locked;
+      if (els.lockBtn){
+        els.lockBtn.textContent = locked ? "🔓 Unlock Game" : "🔒 Lock Game";
+      }
+      if (els.lockMeta){
+        if (lockState.by && lockState.at){
+          els.lockMeta.textContent = (locked ? "Locked" : "Unlocked") + " by " + lockState.by + " • " + fmtWhen(lockState.at);
+        }else{
+          els.lockMeta.textContent = locked ? "Locked" : "Unlocked";
+        }
+      }
+    }
+
+    async function fetchLockState(){
+      try{
+        const res = await fetch(endpoint("/lockState"), { cache: "no-store" });
+        const body = await res.json().catch(()=>null);
+        if (res.ok && body && body.ok){
+          lockState = { locked: !!body.locked, by: String(body.by||""), at: Number(body.at||0) };
+          renderLockState();
+
+          // If lock changed, refresh players so UI reflects movement quickly
+          if (lockState.at && lockState.at !== lockLastAt){
+            lockLastAt = lockState.at;
+            // light refresh; don't spam
+            fetchPlayers().catch(()=>{});
+          }
+        }
+      }catch{}
+    }
+
+    async function setLockState(locked){
+      const adminKey = els.adminKey.value.trim();
+      if (!adminKey){ toast("err","Missing ADMIN_KEY","Enter ADMIN_KEY first."); return; }
+      const user = String(getLoginUser() || "").trim();
+      if (!user){ toast("err","Not logged in","Log in first."); return; }
+
+      try{
+        const res = await fetch(endpoint("/admin/setLock"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": adminKey,
+            "x-admin-user": user
+          },
+          body: JSON.stringify({ locked: !!locked, user })
+        });
+        const body = await res.json().catch(()=>null);
+        if (!res.ok){
+          if (body && body.error === "Cooldown"){
+            const s = Math.ceil(Number(body.waitMs || 0) / 1000);
+            toast("err","Cooldown","Try again in " + s + "s");
+          }else{
+            toast("err","Lock failed", (body && body.error) ? body.error : ("HTTP " + res.status));
+          }
+          return;
+        }
+        lockState = { locked: !!body.locked, by: String(body.by||user), at: Number(body.at||Date.now()) };
+        renderLockState();
+        toast("ok", lockState.locked ? "Game locked" : "Game unlocked", "");
+      }catch(e){
+        toast("err","Lock failed", e.message);
+      }
+    }
+
+async function fetchPlayers(){
       const url = endpoint("/players");
       setStatus("loading","Loading players...");
       const res = await fetch(url, { cache:"no-store" });
@@ -1008,6 +1085,14 @@ async function enforceAndVerify(action, user, reason){
         toast("err","Refresh failed", e.message);
       }
     };
+
+    els.lockBtn && (els.lockBtn.onclick = async () => {
+      // Toggle current state
+      await setLockState(!lockState.locked);
+      // refresh lock state from server shortly after
+      setTimeout(() => { fetchLockState(); }, 500);
+    });
+
 
 
     els.clearLogsBtn && (els.clearLogsBtn.onclick = async () => {
