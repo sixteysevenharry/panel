@@ -266,7 +266,20 @@
       cursor:pointer;
     }
     .ghost:hover{ background: var(--btnHover); }
-  </style>
+  
+    .edgeInfo{
+      display:none;
+      margin: 0 0 12px 0;
+      padding: 12px 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .edgeInfo.show{display:block;}
+
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -294,7 +307,11 @@
         </div>
       </div>
       <div class="status" id="status">Ready.</div>
-      <div class="list" id="list"></div>
+      <div class="list" id="list">
+        <div class="edgeInfo" id="oldestInfo"></div>
+        <div id="membersMount"></div>
+        <div class="edgeInfo" id="newestInfo"></div>
+      </div>
     </div>
   </div>
 
@@ -323,6 +340,7 @@
     </div>
   </div>
 
+  
   <script>
     const GROUP_ID = 466852954;
 
@@ -330,7 +348,9 @@
       groupTitle: document.getElementById("groupTitle"),
       countText: document.getElementById("countText"),
       status: document.getElementById("status"),
-      list: document.getElementById("list"),
+      list: document.getElementById("membersMount"),
+      oldestInfo: document.getElementById("oldestInfo"),
+      newestInfo: document.getElementById("newestInfo"),
       refreshBtn: document.getElementById("refreshBtn"),
       cfg: document.getElementById("cfg"),
       cfgUrl: document.getElementById("cfgUrl"),
@@ -341,11 +361,43 @@
       themeAuto: document.getElementById("themeAuto"),
     };
 
-    function setStatus(t){ els.status.textContent = t; }
+    function setStatus(t) { els.status.textContent = t; }
 
-    function clearList(){ els.list.innerHTML = ""; }
+    function getWorkerBase() {
+      return (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
+    }
+    function setWorkerBase(v) {
+      localStorage.setItem("worker_base_v1", String(v||"").trim().replace(/\/+$/,""));
+    }
+    function endpoint(path) {
+      const base = getWorkerBase();
+      return base ? (base + path) : path;
+    }
 
-    function addRow(displayName, username, userId){
+    async function fetchJSON(url, opts={}) {
+      const r = await fetch(url, { cache: "no-store", ...opts });
+      const text = await r.text();
+      let body = null;
+      try { body = text ? JSON.parse(text) : null; } catch { body = null; }
+      return { ok: r.ok, status: r.status, body };
+    }
+
+    function clearMembers() {
+      els.list.innerHTML = "";
+    }
+
+    function showEdge(el, text) {
+      if (!el) return;
+      if (text) {
+        el.textContent = text;
+        el.classList.add("show");
+      } else {
+        el.textContent = "";
+        el.classList.remove("show");
+      }
+    }
+
+    function addRow(displayName, username, userId) {
       const row = document.createElement("div");
       row.className = "memberCard";
 
@@ -356,8 +408,14 @@
       img.decoding = "async";
       img.referrerPolicy = "no-referrer";
       img.dataset.userid = String(userId || "");
-      // show a subtle placeholder until we resolve the rbxcdn url
       img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+
+      // Fallback if thumbnail fails
+      img.onerror = () => {
+        img.onerror = null;
+        img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+      };
+
       row.appendChild(img);
 
       const t = document.createElement("div");
@@ -383,113 +441,152 @@
       els.list.appendChild(row);
     }
 
-    function getWorkerBase(){
-      return (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
-    }
-    function setWorkerBase(v){
-      localStorage.setItem("worker_base_v1", String(v||"").trim().replace(/\/+$/,""));
-    }
-    function endpoint(path){
-      const base = getWorkerBase();
-      return base ? (base + path) : path;
-    }
-    async function fetchJSON(url){
-      const r = await fetch(url, { cache: "no-store" });
-      const text = await r.text();
-      let body = null;
-      try{ body = text ? JSON.parse(text) : null; }catch{ body = null; }
-      return { ok: r.ok, status: r.status, body };
-    }
+    async function fetchThumbMap(userIds) {
+      const chunks = [];
+      const uniq = Array.from(new Set(userIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
+      for (let i = 0; i < uniq.length; i += 100) chunks.push(uniq.slice(i, i + 100));
 
-    // ===== thumbnails.roblox.com (JSON -> imageUrl) =====
-    async function fetchThumbs(ids){
-      const uniq = Array.from(new Set(ids.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
-      if (!uniq.length) return {};
-      const url = "https://thumbnails.roblox.com/v1/users/avatar-headshot"
-        + "?userIds=" + encodeURIComponent(uniq.join(","))
-        + "&size=420x420&format=Png&isCircular=false";
-      const r = await fetch(url, { cache: "no-store" });
-      const j = await r.json().catch(()=>null);
-      const out = {};
-      if (j && Array.isArray(j.data)){
-        for (const it of j.data){
-          if (it && it.targetId != null && it.imageUrl){
-            out[String(it.targetId)] = String(it.imageUrl);
+      const map = {};
+      for (const chunk of chunks) {
+        const res = await fetchJSON(endpoint(`/thumbs?userIds=${encodeURIComponent(chunk.join(","))}&size=420x420&format=Png&isCircular=false&t=${Date.now()}`));
+        if (!res.ok || !res.body || !Array.isArray(res.body.data)) continue;
+        for (const it of res.body.data) {
+          if (it && it.targetId != null && it.imageUrl) {
+            map[String(it.targetId)] = String(it.imageUrl);
           }
         }
       }
-      return out;
+      return map;
     }
 
-    function applyThumbs(map){
+    function applyThumbs(map) {
       const imgs = els.list.querySelectorAll("img.avatar[data-userid]");
-      for (const im of imgs){
+      for (const im of imgs) {
         const id = im.dataset.userid || "";
         const u = map[id];
-        if (u && im.src !== u) im.src = u;
+        if (u) im.src = u;
       }
     }
 
-    async function refresh(){
+    async function fetchCreatedMap(userIds) {
+      const uniq = Array.from(new Set(userIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
+      const chunks = [];
+      for (let i = 0; i < uniq.length; i += 80) chunks.push(uniq.slice(i, i + 80));
+
+      const map = {};
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        setStatus(`Loading account creation dates... (${i+1}/${chunks.length})`);
+        const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent(chunk.join(","))}&t=${Date.now()}`));
+        if (!res.ok || !res.body || !Array.isArray(res.body.data)) continue;
+        for (const it of res.body.data) {
+          if (it && it.userId && it.created) map[String(it.userId)] = String(it.created);
+        }
+      }
+      return map;
+    }
+
+    function fmtDate(iso) {
+      const d = new Date(iso);
+      if (!isFinite(d.getTime())) return "";
+      return d.toLocaleString(undefined, { year:"numeric", month:"short", day:"2-digit" });
+    }
+
+    async function refresh() {
       const base = getWorkerBase();
       if (!base) { showCfg(true); return; }
 
       els.refreshBtn.disabled = true;
-      clearList();
-
+      clearMembers();
+      showEdge(els.oldestInfo, "");
+      showEdge(els.newestInfo, "");
+      els.countText.textContent = "—";
       setStatus("Loading group info...");
+
       const info = await fetchJSON(endpoint(`/groupInfo?groupId=${GROUP_ID}&t=${Date.now()}`));
-      if (info.ok && info.body && info.body.name){
+      if (info.ok && info.body && info.body.name) {
         els.groupTitle.textContent = String(info.body.name) + " — Members";
       } else {
         els.groupTitle.textContent = "Group Members";
       }
 
       setStatus("Loading members...");
-      let total = 0;
+      const members = [];
       let cursor = "";
-      const allIds = [];
 
-      for (let page = 0; page < 120; page++) {
+      for (let page = 0; page < 200; page++) {
         const url = endpoint(`/groupMembers?groupId=${GROUP_ID}&cursor=${encodeURIComponent(cursor)}&t=${Date.now()}`);
         const res = await fetchJSON(url);
         if (!res.ok || !res.body) {
           setStatus("Failed: HTTP " + res.status);
-          break;
+          els.refreshBtn.disabled = false;
+          return;
         }
 
         const data = res.body;
-        const pageIds = [];
-
         const items = Array.isArray(data.data) ? data.data : [];
         for (const entry of items) {
           const u = entry && entry.user ? entry.user : {};
           const userId = Number(u.userId || 0);
           if (!userId) continue;
-          const username = String(u.username || "");
-          const displayName = String(u.displayName || "");
-          addRow(displayName, username, userId);
-
-          pageIds.push(userId);
-          allIds.push(userId);
-          total++;
+          members.push({
+            userId,
+            username: String(u.username || ""),
+            displayName: String(u.displayName || "")
+          });
         }
-
-        // resolve avatars for this page immediately
-        try {
-          const map = await fetchThumbs(pageIds);
-          applyThumbs(map);
-        } catch {}
 
         cursor = String(data.nextPageCursor || "");
         if (!cursor) break;
       }
 
-      els.countText.textContent = String(total);
-      setStatus(`Loaded ${
-        total
-      } members. Press Refresh to update.`);
+      const ids = members.map(m => m.userId);
+      els.countText.textContent = String(members.length);
 
+      // Fetch created dates (via Worker proxy) and sort oldest -> newest
+      const createdMap = await fetchCreatedMap(ids);
+
+      members.sort((a, b) => {
+        const ca = createdMap[String(a.userId)] || "";
+        const cb = createdMap[String(b.userId)] || "";
+        const ta = Date.parse(ca);
+        const tb = Date.parse(cb);
+        const va = isFinite(ta) ? ta : Number.POSITIVE_INFINITY;
+        const vb = isFinite(tb) ? tb : Number.POSITIVE_INFINITY;
+        return va - vb;
+      });
+
+      // Oldest / newest labels
+      const withDates = members
+        .map(m => ({ id: m.userId, created: createdMap[String(m.userId)] || "" }))
+        .filter(x => x.created && isFinite(Date.parse(x.created)))
+        .sort((a,b) => Date.parse(a.created) - Date.parse(b.created));
+
+      if (withDates.length) {
+        const oldest = withDates[0].created;
+        const newest = withDates[withDates.length - 1].created;
+        showEdge(els.oldestInfo, "Oldest account creation date: " + fmtDate(oldest) + " (" + oldest + ")");
+        showEdge(els.newestInfo, "Newest account creation date: " + fmtDate(newest) + " (" + newest + ")");
+      } else {
+        showEdge(els.oldestInfo, "");
+        showEdge(els.newestInfo, "");
+      }
+
+      // Render members in sorted order
+      setStatus("Rendering...");
+      clearMembers();
+      for (const m of members) {
+        addRow(m.displayName, m.username, m.userId);
+      }
+
+      // Fetch thumbs via Worker proxy and apply
+      setStatus("Loading avatars...");
+      try {
+        const thumbMap = await fetchThumbMap(ids);
+        applyThumbs(thumbMap);
+      } catch {}
+
+      setStatus(`Loaded ${members.length} members. (Oldest → newest) Press Refresh to update.`);
       els.refreshBtn.disabled = false;
     }
 
@@ -497,7 +594,7 @@
     let _uiTipEl = null;
     let _uiTipTarget = null;
 
-    function ensureTip(){
+    function ensureTip() {
       if (_uiTipEl) return _uiTipEl;
       _uiTipEl = document.createElement("div");
       _uiTipEl.className = "uiTip";
@@ -505,7 +602,7 @@
       document.body.appendChild(_uiTipEl);
       return _uiTipEl;
     }
-    function setTipContent(text){
+    function setTipContent(text) {
       const el = ensureTip();
       const titleEl = el.querySelector("#uiTipTitle");
       const bodyEl  = el.querySelector("#uiTipBody");
@@ -516,7 +613,7 @@
       if (titleEl) titleEl.textContent = t || "Info";
       if (bodyEl) bodyEl.textContent = b || "";
     }
-    function positionTip(x, y){
+    function positionTip(x, y) {
       const el = ensureTip();
       const pad = 12;
       const vw = window.innerWidth || 0;
@@ -532,22 +629,22 @@
       el.style.left = left + "px";
       el.style.top  = top + "px";
     }
-    function showTipFor(target, x, y){
+    function showTipFor(target, x, y) {
       const text = target.getAttribute("data-tip") || "";
       if (!text) return;
       _uiTipTarget = target;
       setTipContent(text);
       positionTip(x, y);
     }
-    function hideTip(){
+    function hideTip() {
       if (!_uiTipEl) return;
       _uiTipEl.classList.remove("show");
       _uiTipTarget = null;
     }
-    function initTooltips(){
+    function initTooltips() {
       ensureTip();
       const nodes = Array.from(document.querySelectorAll("[data-tip]"));
-      for (const el of nodes){
+      for (const el of nodes) {
         el.addEventListener("mouseenter", (e) => showTipFor(e.currentTarget, e.clientX, e.clientY));
         el.addEventListener("mousemove", (e) => { if (_uiTipTarget === e.currentTarget) positionTip(e.clientX, e.clientY); });
         el.addEventListener("mouseleave", hideTip);
@@ -562,7 +659,7 @@
     }
 
     // ===== Theme (shared with index) =====
-    function applyTheme(mode){
+    function applyTheme(mode) {
       localStorage.setItem("panel_theme_mode", mode);
       if (els.themeLight) els.themeLight.setAttribute("aria-pressed", mode === "light");
       if (els.themeDark)  els.themeDark.setAttribute("aria-pressed", mode === "dark");
@@ -571,7 +668,7 @@
       document.documentElement.setAttribute("data-theme", mode);
     }
 
-    function showCfg(on){
+    function showCfg(on) {
       if (!els.cfg) return;
       if (on) els.cfg.classList.add("show");
       else els.cfg.classList.remove("show");
@@ -592,8 +689,8 @@
     initTooltips();
     applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
 
-    // If Worker base is missing, prompt once
     if (!getWorkerBase()) showCfg(true);
   </script>
+
 </body>
 </html>
