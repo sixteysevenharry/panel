@@ -289,8 +289,7 @@
       <div class="btns" style="margin-top:18px">
         <button id="save" type="button" data-tip="Save settings (Worker URL + Admin key) to your browser">💾 Save</button>
         <button id="lockBtn" type="button" class="ghostBtn" data-tip="Lock / Unlock">🔒</button>
-        <span class="small" id="lockMeta" style="opacity:.85"></span>
-        <button id="refresh" type="button" data-tip="Refresh players + logs from the Worker">🔄 Refresh</button>
+<button id="refresh" type="button" data-tip="Refresh players + logs from the Worker">🔄 Refresh</button>
       </div>
     </div>
 
@@ -442,7 +441,6 @@
       save: document.getElementById("save"),
       refresh: document.getElementById("refresh"),
       lockBtn: document.getElementById("lockBtn"),
-      lockMeta: document.getElementById("lockMeta"),
       clearLogsBtn: document.getElementById("clearLogsBtn"),
 
       activeList: document.getElementById("activeList"),
@@ -839,10 +837,7 @@ if (els.lockBtn){
         const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
         }
 }
-      if (els.lockMeta){
-        if (lockState.by && lockState.at){
-          els.lockMeta.textContent = (locked ? "Locked" : "Unlocked") + " by " + lockState.by + " • " + fmtWhen(lockState.at);
-        }else{
+else{
           els.lockMeta.textContent = locked ? "Locked" : "Unlocked";
         }
       }
@@ -850,7 +845,7 @@ if (els.lockBtn){
 
     async function fetchLockState(){
       try{
-        const res = await fetch(endpoint("/lockState"), { cache: "no-store" });
+        const res = await fetch(endpoint("/lockState") + (endpoint("/lockState").includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
         const body = await res.json().catch(()=>null);
         if (res.ok && body && body.ok){
           lockState = { locked: !!body.locked, by: String(body.by||""), at: Number(body.at||0) };
@@ -1342,6 +1337,8 @@ async function enforceAndVerify(action, user, reason){
 
 function initPanel(){
       initTooltips();
+      fetchLockState();
+      setInterval(fetchLockState, 1500);
       updateWhoAmI();
       const savedBase = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
       const savedAdmin = localStorage.getItem("admin_key_v1") || "";
