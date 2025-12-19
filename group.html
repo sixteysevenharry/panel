@@ -1045,8 +1045,7 @@
       const ids = recent.map(m => String(m.userId));
       if (els.recentTitle) els.recentTitle.textContent = `Recent accounts (last 30 days) — total`;
       if (els.recentCount) els.recentCount.textContent = String(recent.length);
-      if (els.recentIds) els.recentIds.value = ids.join("
-");
+      if (els.recentIds) els.recentIds.value = ids.join("");
       showRecent(true);
     };
 
