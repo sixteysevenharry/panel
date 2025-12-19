@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html>
 <head>
@@ -291,33 +290,6 @@
 }
 body{ padding-bottom: 74px; }
 
-
-.whoPfp{
-  width:26px;height:26px;border-radius:999px;
-  display:inline-block;object-fit:cover;
-  border:1px solid var(--border2);
-  background: var(--surface2);
-  margin-right:8px;
-  cursor:pointer;
-  flex: 0 0 auto;
-}
-.miniBtn{
-  padding: 6px 10px !important;
-  border-radius: 999px !important;
-  margin-left: 8px;
-}
-.pfpSm{
-  width:16px;height:16px;border-radius:999px;
-  object-fit:cover;
-  border:1px solid var(--border2);
-  background: var(--surface2);
-  margin-right:8px;
-  vertical-align: -3px;
-}
-.byPill{
-  display:inline-flex;align-items:center;
-}
-
 </style>
 </head>
 <body>
@@ -338,11 +310,9 @@ body{ padding-bottom: 74px; }
           <button id="themeAuto" type="button" aria-pressed="false" data-tip="Auto">🖥️</button>
         </div>
         <span class="pillStatus" style="align-self:center">
-  <img id="whoPfp" class="whoPfp" alt="" referrerpolicy="no-referrer" tabindex="0" data-tip="PROFILE — Click to change your profile picture" />
   <span class="small">👤</span>
   <span class="small" id="whoami">—</span>
 </span>
-<input id="pfpUpload" type="file" accept="image/*" style="display:none" />
 <button id="logout" type="button" class="ghostBtn" data-tip="Log out">🚪 Logout</button>
       </div>
     </div>
@@ -505,10 +475,7 @@ body{ padding-bottom: 74px; }
       logout: document.getElementById("logout"),
       whoami: document.getElementById("whoami"),
 
-      
-      whoPfp: document.getElementById("whoPfp"),
-      pfpUpload: document.getElementById("pfpUpload"),
-status: document.getElementById("status"),
+      status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
       meta: document.getElementById("meta"),
 
@@ -614,45 +581,6 @@ function showModerationOverlay(show, subText){
     }
     function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
 
-
-function defaultAvatarSvg(name){
-  const n = String(name || "").trim();
-  const ch = (n ? n[0] : "?").toUpperCase();
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#6b7280"/>
-          <stop offset="1" stop-color="#111827"/>
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="32" fill="url(#g)"/>
-      <text x="32" y="40" text-anchor="middle" font-family="system-ui,Segoe UI,Roboto,Arial" font-size="28" fill="#ffffff" font-weight="700">${ch}</text>
-    </svg>`;
-  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-}
-
-let pfpBust = 0;
-function pfpSrc(user){
-  const u = normalizeUser(user);
-  if (!u) return "";
-  const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
-  const v = pfpBust ? ("&v=" + encodeURIComponent(String(pfpBust))) : "";
-  return (base ? (base + "/pfp?user=") : "/pfp?user=") + encodeURIComponent(u) + v;
-}
-function updateWhoPfp(){
-  if (!els.whoPfp) return;
-  const u = String(getLoginUser() || "").trim();
-  els.whoPfp.style.display = "inline-block";
-  els.whoPfp.src = defaultAvatarSvg(u || "?");
-  if (!u) return;
-  const s = pfpSrc(u);
-  if (!s) return;
-  els.whoPfp.onerror = () => { els.whoPfp.src = defaultAvatarSvg(u); };
-  els.whoPfp.src = s;
-}
-
-
     function updateWhoAmI(){
       if (!els.whoami) return;
       const u = String(getLoginUser() || "").trim();
@@ -684,67 +612,12 @@ function updateWhoPfp(){
       setLoggedIn(u);
       toast("ok","Logged in","Welcome");
       showApp();
-      updateWhoAmI();
-      updateWhoPfp();
       initPanel();
     }
 
     els.loginBtn.onclick = attemptLogin;
     els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
-    
-    async function uploadPfp(file){
-      const u = String(getLoginUser() || "").trim();
-      if (!u) return;
-      const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
-      if (!base){ toast("err","Missing Worker URL","Set your Worker URL first"); return; }
-
-      const adminKey = localStorage.getItem("admin_key_v1") || "";
-      if (!adminKey){ toast("err","Missing Admin Key","Enter your admin key"); return; }
-
-      const toDataUrl = (f) => new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result || ""));
-        r.onerror = reject;
-        r.readAsDataURL(f);
-      });
-
-      const dataUrl = await toDataUrl(file);
-      if (!dataUrl.startsWith("data:image/")){ toast("err","Invalid file","Choose an image"); return; }
-
-      toast("ok","Uploading","Saving your profile picture...");
-      const res = await fetch(base + "/profile/pfp", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-admin-key": adminKey },
-        body: JSON.stringify({ user: u, dataUrl })
-      });
-
-      const text = await res.text();
-      let body = null;
-      try{ body = JSON.parse(text); }catch{ body = null; }
-
-      if (!res.ok){
-        toast("err","Upload failed", (body && body.error) ? String(body.error) : ("HTTP " + res.status));
-        return;
-      }
-
-      pfpBust = Date.now();
-      updateWhoPfp();
-      renderLogs();
-      toast("ok","Saved","Your profile picture is now visible in logs");
-    }
-
-    if (els.whoPfp && els.pfpUpload){
-  els.whoPfp.onclick = () => els.pfpUpload.click();
-  els.whoPfp.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.pfpUpload.click(); } };
-  els.pfpUpload.onchange = async () => {
-    const f = els.pfpUpload.files && els.pfpUpload.files[0];
-    els.pfpUpload.value = "";
-    if (!f) return;
-    try{ await uploadPfp(f); }catch(e){ toast("err","Upload failed", String(e?.message || e)); }
-  };
-}
-
-els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
+    els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
 
     function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
@@ -850,8 +723,8 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
 
     function setCounts(){
       els.activeCount.textContent = String(activePlayers.length || 0);
-      els.logCount.textContent = String(logs.length || 0);
-    }
+      els.logCount.textContent = String(logs.filter(e => String(e.status||"").toLowerCase() !== "pending").length || 0);
+}
 
     function matchSearch(p){
       const q = normalizeUser(els.search.value);
@@ -880,10 +753,7 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
   const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
   const handle = esc(resolved.username || "");
   const action = esc(String(e.action || "").toUpperCase());
-  const byRaw = String(e.by || "");
-  const byNorm = normalizeUser(byRaw);
-  const by = esc(byRaw || "");
-  const byImg = byNorm ? `<img class="pfpSm" src="${pfpSrc(byNorm)}" onerror="this.style.display='none'">` : "";
+  const by = esc(e.by || "");
   const reason = esc(e.reason || "");
   const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
 
@@ -891,15 +761,15 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
   const statusText =
     st === "applied" ? "SUCCESS" :
     st === "failed"  ? "NOT SUCCESSFUL" :
-    st === "pending" ? "PENDING" :
-    (st ? st.toUpperCase() : "");
+    "";
+
 
   const statusPill = statusText ? `<span class="pill">${esc(statusText)}</span>` : "";
 
   const pills = [
     action ? `<span class="pill">${action}</span>` : "",
     statusPill,
-    by ? `<span class="pill byPill">${byImg}<span>By: ${by}</span></span>` : "",
+    by ? `<span class="pill">By: ${by}</span>` : "",
     when ? `<span class="pill">${esc(when)}</span>` : ""
   ].filter(Boolean).join(" ");
 
@@ -938,8 +808,8 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
   els.logList.innerHTML = "";
   setCounts();
 
-  const list = logs.filter(matchSearch);
-  if (!list.length){
+  const list = logs.filter(matchSearch).filter(e => String(e.status||"").toLowerCase() !== "pending");
+if (!list.length){
     els.logList.innerHTML = "<div class='small'>No enforcement logs.</div>";
     return;
   }
@@ -987,29 +857,25 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
       try { return new Date(Number(ms)).toLocaleString(); } catch { return ""; }
     }
 
-    function renderLockState(){
-      const locked = !!lockState.locked;
-
-      if (els.lockBtn){
-        // Icon only (no text next to it)
-        els.lockBtn.textContent = locked ? "🔒" : "🔓";
-
-        const who = (lockState.by || "").trim();
-        const when = lockState.at ? fmtWhen(lockState.at) : "";
-        const stateText = locked ? "LOCKED" : "UNLOCKED";
-        const byText = who ? (" by " + who) : "";
-        const atText = when ? (" • " + when) : "";
-        const actionHint = locked
-          ? "Click to unlock (teleport players to main place)."
-          : "Click to lock (send joiners + players to lock place).";
-
-        els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
-      }
-    }
+function renderLockState(){
+  const locked = !!lockState.locked;
+  if (els.lockBtn){
+    els.lockBtn.textContent = locked ? "🔒" : "🔓";
+    const who = (lockState.by || "").trim();
+    const when = lockState.at ? fmtWhen(lockState.at) : "";
+    const stateText = locked ? "LOCKED" : "UNLOCKED";
+    const byText = who ? (" by " + who) : "";
+    const atText = when ? (" • " + when) : "";
+    const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+    els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
+  } else if (els.lockMeta){
+    els.lockMeta.textContent = locked ? "Locked" : "Unlocked";
+  }
+}
 
     async function fetchLockState(){
       try{
-        const res = await fetch(endpoint("/lockState") + "?t=" + Date.now(), { cache: "no-store" });
+        const res = await fetch(endpoint("/lockState") + (endpoint("/lockState").includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
         const body = await res.json().catch(()=>null);
         if (res.ok && body && body.ok){
           lockState = { locked: !!body.locked, by: String(body.by||""), at: Number(body.at||0) };
@@ -1255,15 +1121,32 @@ async function enforceAndVerify(action, user, reason){
       await refreshUi();
     }
 
-    updateOverlay("Waiting for action to apply…");
-    await new Promise(r => setTimeout(r, checkEveryMs));
-    const still = await isStillHere();
-    if (!still){
+    // Prefer server-confirmed log status (applied/failed) over player presence.
+    // This avoids "stuck checking player list" when the user already left or appears in another place.
+    const logItem = lastId ? logs.find(e => String(e.id) === String(lastId)) : null;
+    if (logItem && logItem.status === "applied"){
       setModerationProgress(100, "Done");
       pendingHidden.delete(userId);
       renderActive();
       updateButtons();
       return { ok:true, id: lastId };
+    }
+    if (logItem && logItem.status === "failed"){
+      setModerationProgress(100, "Failed");
+      pendingHidden.delete(userId);
+      renderActive();
+      updateButtons();
+      return { ok:false, id: lastId, message: "failed" };
+    }
+
+    updateOverlay("Waiting for server confirmation…");
+    await new Promise(r => setTimeout(r, checkEveryMs));
+
+    // Optional hint for the operator, but NOT the source of truth:
+    // if they disappear, we still wait for log confirmation.
+    const still = await isStillHere();
+    if (!still){
+      updateOverlay("Player left — waiting for confirmation…");
     }
   }
 
