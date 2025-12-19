@@ -290,6 +290,31 @@
 }
 body{ padding-bottom: 74px; }
 
+
+.whoPfp{
+  width:22px;height:22px;border-radius:999px;
+  display:inline-block;object-fit:cover;
+  border:1px solid var(--border2);
+  background: var(--surface2);
+  margin-right:8px;
+}
+.miniBtn{
+  padding: 6px 10px !important;
+  border-radius: 999px !important;
+  margin-left: 8px;
+}
+.pfpSm{
+  width:16px;height:16px;border-radius:999px;
+  object-fit:cover;
+  border:1px solid var(--border2);
+  background: var(--surface2);
+  margin-right:8px;
+  vertical-align: -3px;
+}
+.byPill{
+  display:inline-flex;align-items:center;
+}
+
 </style>
 </head>
 <body>
@@ -310,9 +335,12 @@ body{ padding-bottom: 74px; }
           <button id="themeAuto" type="button" aria-pressed="false" data-tip="Auto">🖥️</button>
         </div>
         <span class="pillStatus" style="align-self:center">
+  <img id="whoPfp" class="whoPfp" alt="" referrerpolicy="no-referrer" />
   <span class="small">👤</span>
   <span class="small" id="whoami">—</span>
+  <button id="pfpBtn" type="button" class="ghostBtn miniBtn" data-tip="PROFILE — Upload a profile picture shown in logs">🖼️</button>
 </span>
+<input id="pfpUpload" type="file" accept="image/*" style="display:none" />
 <button id="logout" type="button" class="ghostBtn" data-tip="Log out">🚪 Logout</button>
       </div>
     </div>
@@ -475,7 +503,11 @@ body{ padding-bottom: 74px; }
       logout: document.getElementById("logout"),
       whoami: document.getElementById("whoami"),
 
-      status: document.getElementById("status"),
+      
+      whoPfp: document.getElementById("whoPfp"),
+      pfpBtn: document.getElementById("pfpBtn"),
+      pfpUpload: document.getElementById("pfpUpload"),
+status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
       meta: document.getElementById("meta"),
 
@@ -581,6 +613,26 @@ function showModerationOverlay(show, subText){
     }
     function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
 
+let pfpBust = 0;
+function pfpSrc(user){
+  const u = normalizeUser(user);
+  if (!u) return "";
+  const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
+  const v = pfpBust ? ("&v=" + encodeURIComponent(String(pfpBust))) : "";
+  return (base ? (base + "/pfp?user=") : "/pfp?user=") + encodeURIComponent(u) + v;
+}
+function updateWhoPfp(){
+  if (!els.whoPfp) return;
+  const u = String(getLoginUser() || "").trim();
+  if (!u){ els.whoPfp.style.display = "none"; return; }
+  const s = pfpSrc(u);
+  if (!s){ els.whoPfp.style.display = "none"; return; }
+  els.whoPfp.style.display = "inline-block";
+  els.whoPfp.onerror = () => { els.whoPfp.style.display = "none"; };
+  els.whoPfp.src = s;
+}
+
+
     function updateWhoAmI(){
       if (!els.whoami) return;
       const u = String(getLoginUser() || "").trim();
@@ -612,12 +664,66 @@ function showModerationOverlay(show, subText){
       setLoggedIn(u);
       toast("ok","Logged in","Welcome");
       showApp();
+      updateWhoAmI();
+      updateWhoPfp();
       initPanel();
     }
 
     els.loginBtn.onclick = attemptLogin;
     els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
-    els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
+    
+    async function uploadPfp(file){
+      const u = String(getLoginUser() || "").trim();
+      if (!u) return;
+      const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
+      if (!base){ toast("err","Missing Worker URL","Set your Worker URL first"); return; }
+
+      const adminKey = localStorage.getItem("admin_key_v1") || "";
+      if (!adminKey){ toast("err","Missing Admin Key","Enter your admin key"); return; }
+
+      const toDataUrl = (f) => new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ""));
+        r.onerror = reject;
+        r.readAsDataURL(f);
+      });
+
+      const dataUrl = await toDataUrl(file);
+      if (!dataUrl.startsWith("data:image/")){ toast("err","Invalid file","Choose an image"); return; }
+
+      toast("ok","Uploading","Saving your profile picture...");
+      const res = await fetch(base + "/profile/pfp", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ user: u, dataUrl })
+      });
+
+      const text = await res.text();
+      let body = null;
+      try{ body = JSON.parse(text); }catch{ body = null; }
+
+      if (!res.ok){
+        toast("err","Upload failed", (body && body.error) ? String(body.error) : ("HTTP " + res.status));
+        return;
+      }
+
+      pfpBust = Date.now();
+      updateWhoPfp();
+      renderLogs();
+      toast("ok","Saved","Your profile picture is now visible in logs");
+    }
+
+    if (els.pfpBtn && els.pfpUpload){
+      els.pfpBtn.onclick = () => els.pfpUpload.click();
+      els.pfpUpload.onchange = async () => {
+        const f = els.pfpUpload.files && els.pfpUpload.files[0];
+        els.pfpUpload.value = "";
+        if (!f) return;
+        try{ await uploadPfp(f); }catch(e){ toast("err","Upload failed", String(e?.message || e)); }
+      };
+    }
+
+els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
 
     function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
@@ -753,7 +859,10 @@ function showModerationOverlay(show, subText){
   const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
   const handle = esc(resolved.username || "");
   const action = esc(String(e.action || "").toUpperCase());
-  const by = esc(e.by || "");
+  const byRaw = String(e.by || "");
+  const byNorm = normalizeUser(byRaw);
+  const by = esc(byRaw || "");
+  const byImg = byNorm ? `<img class="pfpSm" src="${pfpSrc(byNorm)}" onerror="this.style.display='none'">` : "";
   const reason = esc(e.reason || "");
   const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
 
@@ -769,7 +878,7 @@ function showModerationOverlay(show, subText){
   const pills = [
     action ? `<span class="pill">${action}</span>` : "",
     statusPill,
-    by ? `<span class="pill">By: ${by}</span>` : "",
+    by ? `<span class="pill byPill">${byImg}<span>By: ${by}</span></span>` : "",
     when ? `<span class="pill">${esc(when)}</span>` : ""
   ].filter(Boolean).join(" ");
 
@@ -857,21 +966,35 @@ function showModerationOverlay(show, subText){
       try { return new Date(Number(ms)).toLocaleString(); } catch { return ""; }
     }
 
-function renderLockState(){
-  const locked = !!lockState.locked;
-  if (els.lockBtn){
-    els.lockBtn.textContent = locked ? "🔒" : "🔓";
-    const who = (lockState.by || "").trim();
-    const when = lockState.at ? fmtWhen(lockState.at) : "";
-    const stateText = locked ? "LOCKED" : "UNLOCKED";
-    const byText = who ? (" by " + who) : "";
-    const atText = when ? (" • " + when) : "";
-    const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
-    els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
-  } else {
-    els.lockMeta.textContent = locked ? "Locked" : "Unlocked";
-  }
+    function renderLockState(){
+      const locked = !!lockState.locked;
+      if (els.lockBtn){
+        els.lockBtn.textContent = locked ? "🔓" : "🔒";
+      
+      
+      if (els.lockBtn){
+        const who = (lockState.by || "").trim();
+        const when = lockState.at ? fmtWhen(lockState.at) : "";
+        const stateText = locked ? "LOCKED" : "UNLOCKED";
+        const byText = who ? (" by " + who) : "";
+        const atText = when ? (" • " + when) : "";
+        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+        els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
+      }
+if (els.lockBtn){
+        const who = (lockState.by || "").trim();
+        const when = lockState.at ? fmtWhen(lockState.at) : "";
+        const stateText = locked ? "LOCKED" : "UNLOCKED";
+        const byText = who ? (" by " + who) : "";
+        const atText = when ? (" • " + when) : "";
+        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+        }
 }
+else{
+          els.lockMeta.textContent = locked ? "Locked" : "Unlocked";
+        }
+      }
+    }
 
     async function fetchLockState(){
       try{
