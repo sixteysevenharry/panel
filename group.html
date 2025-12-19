@@ -301,6 +301,20 @@
       text-align:center;
     }
 
+
+.whoPfp{
+  width:22px;height:22px;border-radius:999px;
+  display:inline-block;object-fit:cover;
+  border:1px solid var(--border2);
+  background: var(--surface2);
+  margin-right:8px;
+}
+.miniBtn{
+  padding: 6px 10px !important;
+  border-radius: 999px !important;
+  margin-left: 8px;
+}
+
 </style>
 </head>
 <body>
@@ -318,6 +332,15 @@
           <button id="themeAuto" type="button" aria-pressed="false" data-tip="THEME — Follow system theme">🖥️</button>
         </div>
         <button class="btn" id="refreshBtn" data-tip="REFRESH — Loads group members (only when pressed)">⟳ Refresh</button>
+        <button class="btn" id="recentBtn" data-tip="RECENT — Shows members on this page created within the last 30 days">🕒 Recent</button>
+        <button class="btn" id="hideRecentBtn" data-tip="HIDE — Hides members created in the last 30 days (only removes them from this list)">🧹 Hide &lt;30d</button>
+        <span class="pillStatus" style="align-self:center">
+          <img id="whoPfp" class="whoPfp" alt="" referrerpolicy="no-referrer" />
+          <span class="small">👤</span>
+          <span class="small" id="whoami">—</span>
+          <button id="pfpBtn" type="button" class="ghostBtn miniBtn" data-tip="PROFILE — Upload a profile picture shown in logs">🖼️</button>
+        </span>
+        <input id="pfpUpload" type="file" accept="image/*" style="display:none" />
       </div>
     </div>
 
@@ -350,6 +373,25 @@
     </div>
   </div>
 
+  <div class="modalBackdrop" id="recentModal">
+    <div class="modal">
+      <div class="modalHead" id="recentTitle">Recent accounts</div>
+      <div class="modalBody">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <div class="pill"><span>Found</span> <span class="muted" id="recentCount">0</span></div>
+          <button class="btn" id="copyRecentBtn">Copy IDs</button>
+        </div>
+        <div class="field">
+          <label for="recentIds">User IDs (one per line)</label>
+          <textarea id="recentIds" style="width:100%;min-height:220px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);border-radius:14px;padding:12px;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div class="modalActions">
+        <button class="ghost" id="closeRecentBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modalBackdrop" id="cfg">
     <div class="modal">
       <div class="modalHead">Set Worker URL</div>
@@ -371,6 +413,34 @@
   
   <script>
     const GROUP_ID = 466852954;
+
+    function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
+    function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
+
+    let pfpBust = 0;
+    function pfpSrc(user){
+      const u = normalizeUser(user);
+      if (!u) return "";
+      const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
+      const v = pfpBust ? ("&v=" + encodeURIComponent(String(pfpBust))) : "";
+      return (base ? (base + "/pfp?user=") : "/pfp?user=") + encodeURIComponent(u) + v;
+    }
+    function updateWhoAmI(){
+      if (!els.whoami) return;
+      const u = String(getLoginUser() || "").trim();
+      els.whoami.textContent = u ? u : "—";
+    }
+    function updateWhoPfp(){
+      if (!els.whoPfp) return;
+      const u = String(getLoginUser() || "").trim();
+      if (!u){ els.whoPfp.style.display = "none"; return; }
+      const s = pfpSrc(u);
+      if (!s){ els.whoPfp.style.display = "none"; return; }
+      els.whoPfp.style.display = "inline-block";
+      els.whoPfp.onerror = () => { els.whoPfp.style.display = "none"; };
+      els.whoPfp.src = s;
+    }
+
 
     // Require login from index.html
     function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
@@ -404,7 +474,21 @@
       themeLight: document.getElementById("themeLight"),
       themeDark: document.getElementById("themeDark"),
       themeAuto: document.getElementById("themeAuto"),
-    };
+    
+      
+      whoami: document.getElementById("whoami"),
+      whoPfp: document.getElementById("whoPfp"),
+      pfpBtn: document.getElementById("pfpBtn"),
+      pfpUpload: document.getElementById("pfpUpload"),
+      hideRecentBtn: document.getElementById("hideRecentBtn"),
+recentBtn: document.getElementById("recentBtn"),
+      recentModal: document.getElementById("recentModal"),
+      recentTitle: document.getElementById("recentTitle"),
+      recentCount: document.getElementById("recentCount"),
+      recentIds: document.getElementById("recentIds"),
+      copyRecentBtn: document.getElementById("copyRecentBtn"),
+      closeRecentBtn: document.getElementById("closeRecentBtn"),
+};
 
     function setStatus(t){ els.status.textContent = t; }
 
@@ -501,6 +585,9 @@
     let _cursorHistory = [""]; // cursor to fetch for each page index
     let _nextCursor = "";      // next cursor returned from API for current page
     let _thumbCache = {};      // userId -> imageUrl (cache across pages)
+    let _hideRecent = false;
+    let _membersAllPage = [];
+
 
     function updatePager(){
       if (!els.pagerRow) return;
@@ -616,10 +703,27 @@
 
       const ids = members.map(m => m.userId);
 
+      const viewIds = view.map(m => m.userId);
+
       // Only load creation dates for THIS page and sort THIS page
       const createdMap = await fetchCreatedMap(ids);
 
-      members.sort((a, b) => {
+      
+      for (const m of members){ m.created = createdMap[String(m.userId)] || ""; }
+
+      _membersAllPage = members.slice();
+const nowMs = Date.now();
+      const cutoff = nowMs - (30 * 24 * 60 * 60 * 1000);
+      let view = members;
+      if (_hideRecent){
+        view = members.filter(m => {
+          const t = Date.parse(m.created || "");
+          return isFinite(t) ? (t < cutoff) : true;
+        });
+      }
+      const hiddenCount = Math.max(0, members.length - view.length);
+
+      view.sort((a, b) => {
         const ca = createdMap[String(a.userId)] || "";
         const cb = createdMap[String(b.userId)] || "";
         const ta = Date.parse(ca);
@@ -630,7 +734,7 @@
       });
 
       // Oldest/newest for this page
-      const withDates = members
+      const withDates = view
         .map(m => ({ created: createdMap[String(m.userId)] || "" }))
         .filter(x => x.created && isFinite(Date.parse(x.created)))
         .sort((a,b) => Date.parse(a.created) - Date.parse(b.created));
@@ -648,19 +752,21 @@
       // Render this page
       setStatus("Rendering...");
       clearMembers();
-      for (const m of members){
+      for (const m of view){
         addRow(m.displayName, m.username, m.userId);
       }
 
       // Avatars for this page only
       setStatus("Loading avatars...");
-      await ensureThumbsFor(ids);
+      await ensureThumbsFor(viewIds);
       applyThumbs(_thumbCache);
+
+      _membersPage = view;
 
       _pageIndex = pageIndex;
       updatePager();
 
-      setStatus(`Loaded ${members.length} members on this page (sorted oldest → newest). Press Refresh to update.`);
+      setStatus(`Loaded ${view.length} members on this page (sorted oldest → newest).` + (hiddenCount ? ` (${hiddenCount} hidden <30d)` : "") + ` Press Refresh to update.`);
       els.refreshBtn.disabled = false;
     }
 
@@ -770,7 +876,39 @@
       document.documentElement.setAttribute("data-theme", mode);
     }
 
-    function showCfg(on){
+    
+    function showRecent(on){
+      if (!els.recentModal) return;
+      if (on) els.recentModal.classList.add("show");
+      else els.recentModal.classList.remove("show");
+    }
+
+    async function copyTextToClipboard(text){
+      const t = String(text || "");
+      try{
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          await navigator.clipboard.writeText(t);
+          return true;
+        }
+      }catch{}
+      try{
+        const ta = document.createElement("textarea");
+        ta.value = t;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        ta.style.top = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return !!ok;
+      }catch{
+        return false;
+      }
+    }
+
+function showCfg(on){
       if (!els.cfg) return;
       if (on) els.cfg.classList.add("show");
       else els.cfg.classList.remove("show");
@@ -782,7 +920,51 @@
       if (v){ setWorkerBase(v); showCfg(false); }
     };
 
-    els.refreshBtn.onclick = refresh;
+    function updateHideRecentBtn(){
+  if (!els.hideRecentBtn) return;
+  if (_hideRecent){
+    els.hideRecentBtn.textContent = "🧹 Show all";
+    els.hideRecentBtn.setAttribute("data-tip","SHOW — Shows all members again (undo hide)");
+  } else {
+    els.hideRecentBtn.textContent = "🧹 Hide <30d";
+    els.hideRecentBtn.setAttribute("data-tip","HIDE — Hides members created in the last 30 days (only removes them from this list)");
+  }
+}
+
+els.refreshBtn.onclick = refresh;
+
+if (els.hideRecentBtn) els.hideRecentBtn.onclick = async () => {
+  _hideRecent = !_hideRecent;
+  updateHideRecentBtn();
+  // Re-render current page using cached created dates
+  if (!_membersAllPage || !_membersAllPage.length){ return; }
+  // Fake a page reload render without fetching members again
+  const members = _membersAllPage.slice();
+  const nowMs = Date.now();
+  const cutoff = nowMs - (30 * 24 * 60 * 60 * 1000);
+  let view = members;
+  if (_hideRecent){
+    view = members.filter(m => {
+      const t = Date.parse(m.created || "");
+      return isFinite(t) ? (t < cutoff) : true;
+    });
+  }
+  const hiddenCount = Math.max(0, members.length - view.length);
+  view.sort((a, b) => {
+    const ta = Date.parse(a.created || "");
+    const tb = Date.parse(b.created || "");
+    const va = isFinite(ta) ? ta : Number.POSITIVE_INFINITY;
+    const vb = isFinite(tb) ? tb : Number.POSITIVE_INFINITY;
+    return va - vb;
+  });
+  clearMembers();
+  for (const m of view){ addRow(m.displayName, m.username, m.userId); }
+  const viewIds = view.map(m => m.userId);
+  await ensureThumbsFor(viewIds);
+  applyThumbs(_thumbCache);
+  _membersPage = view;
+  setStatus(`Loaded ${view.length} members on this page (sorted oldest → newest).` + (hiddenCount ? ` (${hiddenCount} hidden <30d)` : "") + ` Press Refresh to update.`);
+};
 
     if (els.nextPageBtn) els.nextPageBtn.onclick = async () => {
       if (!_nextCursor) return;
@@ -800,6 +982,60 @@
     els.themeDark.onclick  = () => applyTheme("dark");
     els.themeAuto.onclick  = () => applyTheme("auto");
 
+    
+    async function uploadPfp(file){
+      const u = String(getLoginUser() || "").trim();
+      if (!u) return;
+      const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
+      if (!base){ setStatus("Missing Worker URL."); showCfg(true); return; }
+
+      const adminKey = localStorage.getItem("admin_key_v1") || "";
+      if (!adminKey){ setStatus("Missing admin key."); return; }
+
+      const toDataUrl = (f) => new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ""));
+        r.onerror = reject;
+        r.readAsDataURL(f);
+      });
+
+      const dataUrl = await toDataUrl(file);
+      if (!dataUrl.startsWith("data:image/")){ setStatus("Invalid image file."); return; }
+
+      setStatus("Uploading profile picture...");
+      const res = await fetch(base + "/profile/pfp", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-admin-key": adminKey },
+        body: JSON.stringify({ user: u, dataUrl })
+      });
+
+      const text = await res.text();
+      let body = null;
+      try{ body = JSON.parse(text); }catch{ body = null; }
+
+      if (!res.ok){
+        setStatus("Upload failed: " + ((body && body.error) ? String(body.error) : ("HTTP " + res.status)));
+        return;
+      }
+
+      pfpBust = Date.now();
+      updateWhoPfp();
+      setStatus("Saved profile picture.");
+    }
+
+    if (els.pfpBtn && els.pfpUpload){
+      els.pfpBtn.onclick = () => els.pfpUpload.click();
+      els.pfpUpload.onchange = async () => {
+        const f = els.pfpUpload.files && els.pfpUpload.files[0];
+        els.pfpUpload.value = "";
+        if (!f) return;
+        try{ await uploadPfp(f); }catch(e){ setStatus("Upload failed: " + String(e?.message || e)); }
+      };
+    }
+
+updateWhoAmI();
+    updateWhoPfp();
+    updateHideRecentBtn();
     initTooltips();
     applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
 
