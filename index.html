@@ -991,7 +991,7 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
 
       if (els.lockBtn){
         // Icon only (no text next to it)
-        els.lockBtn.textContent = locked ? "🔓" : "🔒";
+        els.lockBtn.textContent = locked ? "🔒" : "🔓";
 
         const who = (lockState.by || "").trim();
         const when = lockState.at ? fmtWhen(lockState.at) : "";
