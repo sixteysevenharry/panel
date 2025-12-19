@@ -420,51 +420,9 @@
 
   
   
+  
   <script>
     const GROUP_ID = 466852954;
-
-    function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
-    function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
-
-    function defaultAvatarSvg(name){
-      const n = String(name || "").trim();
-      const ch = (n ? n[0] : "?").toUpperCase();
-      const svg =
-        `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\">`
-        + `<defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">`
-        + `<stop offset=\"0\" stop-color=\"#6b7280\"/><stop offset=\"1\" stop-color=\"#111827\"/>`
-        + `</linearGradient></defs>`
-        + `<rect width=\"64\" height=\"64\" rx=\"32\" fill=\"url(#g)\"/>`
-        + `<text x=\"32\" y=\"40\" text-anchor=\"middle\" font-family=\"system-ui,Segoe UI,Roboto,Arial\" font-size=\"28\" fill=\"#ffffff\" font-weight=\"700\">${ch}</text>`
-        + `</svg>`;
-      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-    }
-
-    let pfpBust = 0;
-    function pfpSrc(user){
-      const u = normalizeUser(user);
-      if (!u) return "";
-      const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
-      const v = pfpBust ? ("&v=" + encodeURIComponent(String(pfpBust))) : "";
-      return (base ? (base + "/pfp?user=") : "/pfp?user=") + encodeURIComponent(u) + v;
-    }
-    function updateWhoAmI(){
-      if (!els.whoami) return;
-      const u = String(getLoginUser() || "").trim();
-      els.whoami.textContent = u ? u : "—";
-    }
-    function updateWhoPfp(){
-      if (!els.whoPfp) return;
-      const u = String(getLoginUser() || "").trim();
-      els.whoPfp.style.display = "inline-block";
-      els.whoPfp.src = defaultAvatarSvg(u || "?");
-      if (!u) return;
-      const s = pfpSrc(u);
-      if (!s) return;
-      els.whoPfp.onerror = () => { els.whoPfp.src = defaultAvatarSvg(u); };
-      els.whoPfp.src = s;
-    }
-
 
     // Require login from index.html
     function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
@@ -485,6 +443,9 @@
       newestInfo: document.getElementById("newestInfo"),
 
       refreshBtn: document.getElementById("refreshBtn"),
+      recentBtn: document.getElementById("recentBtn"),
+      hideRecentBtn: document.getElementById("hideRecentBtn"),
+
       pagerRow: document.getElementById("pagerRow"),
       prevPageBtn: document.getElementById("prevPageBtn"),
       nextPageBtn: document.getElementById("nextPageBtn"),
@@ -498,20 +459,64 @@
       themeLight: document.getElementById("themeLight"),
       themeDark: document.getElementById("themeDark"),
       themeAuto: document.getElementById("themeAuto"),
-    
-      
+
       whoami: document.getElementById("whoami"),
       whoPfp: document.getElementById("whoPfp"),
       pfpUpload: document.getElementById("pfpUpload"),
-      hideRecentBtn: document.getElementById("hideRecentBtn"),
-recentBtn: document.getElementById("recentBtn"),
+
       recentModal: document.getElementById("recentModal"),
       recentTitle: document.getElementById("recentTitle"),
       recentCount: document.getElementById("recentCount"),
       recentIds: document.getElementById("recentIds"),
       copyRecentBtn: document.getElementById("copyRecentBtn"),
       closeRecentBtn: document.getElementById("closeRecentBtn"),
-};
+    };
+
+    function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
+    function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
+
+    function defaultAvatarSvg(name){
+      const n = String(name || "").trim();
+      const ch = (n ? n[0] : "?").toUpperCase();
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#6b7280"/>
+              <stop offset="1" stop-color="#111827"/>
+            </linearGradient>
+          </defs>
+          <rect width="64" height="64" rx="32" fill="url(#g)"/>
+          <text x="32" y="40" text-anchor="middle" font-family="system-ui,Segoe UI,Roboto,Arial" font-size="28" fill="#ffffff" font-weight="700">${ch}</text>
+        </svg>`;
+      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    }
+
+    let pfpBust = 0;
+    function pfpSrc(user){
+      const u = normalizeUser(user);
+      if (!u) return "";
+      const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
+      const v = pfpBust ? ("&v=" + encodeURIComponent(String(pfpBust))) : "";
+      return (base ? (base + "/pfp?user=") : "/pfp?user=") + encodeURIComponent(u) + v;
+    }
+
+    function updateWhoAmI(){
+      if (!els.whoami) return;
+      const u = String(getLoginUser() || "").trim();
+      els.whoami.textContent = u ? u : "—";
+    }
+    function updateWhoPfp(){
+      if (!els.whoPfp) return;
+      const u = String(getLoginUser() || "").trim();
+      els.whoPfp.style.display = "inline-block";
+      els.whoPfp.src = defaultAvatarSvg(u || "?");
+      if (!u) return;
+      const s = pfpSrc(u);
+      if (!s) return;
+      els.whoPfp.onerror = () => { els.whoPfp.src = defaultAvatarSvg(u); };
+      els.whoPfp.src = s;
+    }
 
     function setStatus(t){ els.status.textContent = t; }
 
@@ -549,6 +554,7 @@ recentBtn: document.getElementById("recentBtn"),
     }
 
     function clearMembers(){ els.list.innerHTML = ""; }
+
     function showEdge(el, text){
       if (!el) return;
       if (text){
@@ -559,6 +565,7 @@ recentBtn: document.getElementById("recentBtn"),
         el.classList.remove("show");
       }
     }
+
     function fmtDate(iso){
       const d = new Date(iso);
       if (!isFinite(d.getTime())) return "";
@@ -601,220 +608,6 @@ recentBtn: document.getElementById("recentBtn"),
 
       row.appendChild(t);
       els.list.appendChild(row);
-    }
-
-    // ---- Cursor-based pagination state ----
-    let _pageIndex = 0;
-    let _cursorHistory = [""]; // cursor to fetch for each page index
-    let _nextCursor = "";      // next cursor returned from API for current page
-    let _thumbCache = {};      // userId -> imageUrl (cache across pages)
-    let _hideRecent = false;
-    let _membersAllPage = [];
-
-
-    function updatePager(){
-      if (!els.pagerRow) return;
-      const hasPrev = _pageIndex > 0;
-      const hasNext = !!_nextCursor;
-      els.pagerRow.classList.toggle("show", hasPrev || hasNext);
-      if (els.pageInfo) els.pageInfo.textContent = "Page " + String(_pageIndex + 1);
-      if (els.prevPageBtn) els.prevPageBtn.disabled = !hasPrev;
-      if (els.nextPageBtn) els.nextPageBtn.disabled = !hasNext;
-      if (els.nextPageBtn) els.nextPageBtn.style.display = hasNext ? "" : "none";
-      if (els.prevPageBtn) els.prevPageBtn.style.display = hasPrev ? "" : "none";
-    }
-
-    async function fetchThumbMap(userIds){
-      const chunks = [];
-      const uniq = Array.from(new Set(userIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
-      for (let i=0;i<uniq.length;i+=100) chunks.push(uniq.slice(i,i+100));
-
-      const map = {};
-      for (const chunk of chunks){
-        const res = await fetchJSON(endpoint(`/thumbs?userIds=${encodeURIComponent(chunk.join(","))}&size=420x420&format=Png&isCircular=false&t=${Date.now()}`));
-        if (!res.ok || !res.body || !Array.isArray(res.body.data)) continue;
-        for (const it of res.body.data){
-          if (it && it.targetId != null && it.imageUrl){
-            map[String(it.targetId)] = String(it.imageUrl);
-          }
-        }
-      }
-      return map;
-    }
-
-    async function ensureThumbsFor(ids){
-      const need = [];
-      for (const id of ids){
-        const k = String(id);
-        if (!_thumbCache[k]) need.push(id);
-      }
-      if (!need.length) return;
-      try{
-        const map = await fetchThumbMap(need);
-        for (const k in map) _thumbCache[k] = map[k];
-      }catch{}
-    }
-
-    function applyThumbs(map){
-      const imgs = els.list.querySelectorAll("img.avatar[data-userid]");
-      for (const im of imgs){
-        const id = im.dataset.userid || "";
-        const u = map[id];
-        if (u) im.src = u;
-      }
-    }
-
-    async function fetchCreatedMap(userIds){
-      const uniq = Array.from(new Set(userIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
-      const chunks = [];
-      for (let i=0;i<uniq.length;i+=80) chunks.push(uniq.slice(i,i+80));
-
-      const map = {};
-      const prog = { i: 0, n: chunks.length };
-      startDots(() => `Loading account creation dates (${prog.i}/${prog.n})`);
-
-      for (let i=0;i<chunks.length;i++){
-        prog.i = i + 1;
-        const chunk = chunks[i];
-        const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent(chunk.join(","))}&t=${Date.now()}`));
-        if (!res.ok || !res.body || !Array.isArray(res.body.data)) continue;
-        for (const it of res.body.data){
-          if (it && it.userId && it.created) map[String(it.userId)] = String(it.created);
-        }
-      }
-
-      stopDots();
-      return map;
-    }
-
-    async function loadPage(cursor, pageIndex){
-      const base = getWorkerBase();
-      if (!base){ showCfg(true); return; }
-
-      els.refreshBtn.disabled = true;
-      if (els.prevPageBtn) els.prevPageBtn.disabled = true;
-      if (els.nextPageBtn) els.nextPageBtn.disabled = true;
-
-      clearMembers();
-      showEdge(els.oldestInfo, "");
-      showEdge(els.newestInfo, "");
-      setStatus("Loading members...");
-
-      const res = await fetchJSON(endpoint(`/groupMembers?groupId=${GROUP_ID}&cursor=${encodeURIComponent(cursor || "")}&t=${Date.now()}`));
-      if (!res.ok || !res.body){
-        setStatus("Failed: HTTP " + res.status);
-        els.refreshBtn.disabled = false;
-        updatePager();
-        return;
-      }
-
-      const data = res.body;
-      _nextCursor = String(data.nextPageCursor || "");
-
-      const raw = Array.isArray(data.data) ? data.data : [];
-      const members = [];
-      for (const entry of raw){
-        const u = entry && entry.user ? entry.user : {};
-        const userId = Number(u.userId || 0);
-        if (!userId) continue;
-        members.push({
-          userId,
-          username: String(u.username || ""),
-          displayName: String(u.displayName || ""),
-          created: ""
-        });
-      }
-
-      const ids = members.map(m => m.userId);
-
-      // Only load creation dates for THIS page
-      const createdMap = await fetchCreatedMap(ids);
-      for (const m of members){ m.created = createdMap[String(m.userId)] || ""; }
-      _membersAllPage = members.slice();
-
-      // Hide <30d is only a list filter
-      const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
-      let view = members;
-      if (_hideRecent){
-        view = members.filter(m => {
-          const t = Date.parse(m.created || "");
-          return isFinite(t) ? (t < cutoff) : true;
-        });
-      }
-      const hiddenCount = Math.max(0, members.length - view.length);
-
-      // Sort visible list oldest -> newest (within this page)
-      view.sort((a, b) => {
-        const ta = Date.parse(a.created || "");
-        const tb = Date.parse(b.created || "");
-        const va = isFinite(ta) ? ta : Number.POSITIVE_INFINITY;
-        const vb = isFinite(tb) ? tb : Number.POSITIVE_INFINITY;
-        return va - vb;
-      });
-
-      // Oldest/newest indicators for this page (visible list)
-      const withDates = view
-        .map(m => ({ created: m.created || "" }))
-        .filter(x => x.created && isFinite(Date.parse(x.created)))
-        .sort((a,b) => Date.parse(a.created) - Date.parse(b.created));
-
-      if (withDates.length){
-        const oldest = withDates[0].created;
-        const newest = withDates[withDates.length - 1].created;
-        showEdge(els.oldestInfo, "Oldest creation date (this page): " + fmtDate(oldest) + " (" + oldest + ")");
-        showEdge(els.newestInfo, "Newest creation date (this page): " + fmtDate(newest) + " (" + newest + ")");
-      } else {
-        showEdge(els.oldestInfo, "");
-        showEdge(els.newestInfo, "");
-      }
-
-      // Render visible list
-      setStatus("Rendering...");
-      clearMembers();
-      for (const m of view){
-        addRow(m.displayName, m.username, m.userId);
-      }
-
-      // Avatars only for visible list
-      setStatus("Loading avatars...");
-      const viewIds = view.map(m => m.userId);
-      await ensureThumbsFor(viewIds);
-      applyThumbs(_thumbCache);
-
-      _pageIndex = pageIndex;
-      _membersPage = view;
-      updatePager();
-
-      setStatus(`Loaded ${view.length} members on this page (sorted oldest → newest).` + (hiddenCount ? ` (${hiddenCount} hidden <30d)` : "") + ` Press Refresh to update.`);
-      els.refreshBtn.disabled = false;
-    }
-
-    async function refresh(){
-      const base = getWorkerBase();
-      if (!base){ showCfg(true); return; }
-
-      els.refreshBtn.disabled = true;
-      stopDots();
-
-      _pageIndex = 0;
-      _cursorHistory = [""];
-      _nextCursor = "";
-      updatePager();
-
-      setStatus("Loading group info...");
-      const info = await fetchJSON(endpoint(`/groupInfo?groupId=${GROUP_ID}&t=${Date.now()}`));
-      if (info.ok && info.body && info.body.name){
-        els.groupTitle.textContent = String(info.body.name) + " — Members";
-      } else {
-        els.groupTitle.textContent = "Group Members";
-      }
-      if (info.ok && info.body && info.body.memberCount != null){
-        els.countText.textContent = String(info.body.memberCount);
-      } else {
-        els.countText.textContent = "—";
-      }
-
-      await loadPage("", 0);
     }
 
     // ===== Styled tooltips =====
@@ -885,7 +678,7 @@ recentBtn: document.getElementById("recentBtn"),
       window.addEventListener("resize", hideTip);
     }
 
-    // ===== Theme (shared with index) =====
+    // ===== Theme =====
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
       if (els.themeLight) els.themeLight.setAttribute("aria-pressed", mode === "light");
@@ -895,7 +688,13 @@ recentBtn: document.getElementById("recentBtn"),
       document.documentElement.setAttribute("data-theme", mode);
     }
 
-    
+    function showCfg(on){
+      if (!els.cfg) return;
+      if (on) els.cfg.classList.add("show");
+      else els.cfg.classList.remove("show");
+    }
+
+    // ===== Recent modal =====
     function showRecent(on){
       if (!els.recentModal) return;
       if (on) els.recentModal.classList.add("show");
@@ -927,86 +726,18 @@ recentBtn: document.getElementById("recentBtn"),
       }
     }
 
-function showCfg(on){
-      if (!els.cfg) return;
-      if (on) els.cfg.classList.add("show");
-      else els.cfg.classList.remove("show");
-    }
-
-    els.cfgCancel.onclick = () => showCfg(false);
-    els.cfgSave.onclick = () => {
-      const v = (els.cfgUrl.value || "").trim();
-      if (v){ setWorkerBase(v); showCfg(false); }
+    if (els.closeRecentBtn) els.closeRecentBtn.onclick = () => showRecent(false);
+    if (els.recentModal) els.recentModal.addEventListener("click", (e) => { if (e.target === els.recentModal) showRecent(false); });
+    if (els.copyRecentBtn) els.copyRecentBtn.onclick = async () => {
+      const ok = await copyTextToClipboard(els.recentIds ? els.recentIds.value : "");
+      setStatus(ok ? "Copied IDs to clipboard." : "Could not copy (browser blocked it).");
     };
 
-    function updateHideRecentBtn(){
-  if (!els.hideRecentBtn) return;
-  if (_hideRecent){
-    els.hideRecentBtn.textContent = "🧹 Show all";
-    els.hideRecentBtn.setAttribute("data-tip","SHOW — Shows all members again (undo hide)");
-  } else {
-    els.hideRecentBtn.textContent = "🧹 Hide <30d";
-    els.hideRecentBtn.setAttribute("data-tip","HIDE — Hides members created in the last 30 days (only removes them from this list)");
-  }
-}
-
-els.refreshBtn.onclick = refresh;
-
-if (els.hideRecentBtn) els.hideRecentBtn.onclick = async () => {
-  _hideRecent = !_hideRecent;
-  updateHideRecentBtn();
-  if (!_membersAllPage || !_membersAllPage.length) return;
-  const members = _membersAllPage.slice();
-  const nowMs = Date.now();
-  const cutoff = nowMs - (30 * 24 * 60 * 60 * 1000);
-  let view = members;
-  if (_hideRecent){
-    view = members.filter(m => {
-      const t = Date.parse(m.created || "");
-      return isFinite(t) ? (t < cutoff) : true;
-    });
-  }
-  const hiddenCount = Math.max(0, members.length - view.length);
-  view.sort((a, b) => {
-    const ta = Date.parse(a.created || "");
-    const tb = Date.parse(b.created || "");
-    const va = isFinite(ta) ? ta : Number.POSITIVE_INFINITY;
-    const vb = isFinite(tb) ? tb : Number.POSITIVE_INFINITY;
-    return va - vb;
-  });
-  clearMembers();
-  for (const m of view){ addRow(m.displayName, m.username, m.userId); }
-  const viewIds = view.map(m => m.userId);
-  await ensureThumbsFor(viewIds);
-  applyThumbs(_thumbCache);
-  _membersPage = view;
-  setStatus(`Loaded ${view.length} members on this page (sorted oldest → newest).` + (hiddenCount ? ` (${hiddenCount} hidden <30d)` : "") + ` Press Refresh to update.`);
-};
-
-    if (els.nextPageBtn) els.nextPageBtn.onclick = async () => {
-      if (!_nextCursor) return;
-      const nextIndex = _pageIndex + 1;
-      _cursorHistory[nextIndex] = _nextCursor;
-      await loadPage(_nextCursor, nextIndex);
-    };
-    if (els.prevPageBtn) els.prevPageBtn.onclick = async () => {
-      const prevIndex = Math.max(0, _pageIndex - 1);
-      const c = _cursorHistory[prevIndex] || "";
-      await loadPage(c, prevIndex);
-    };
-
-    els.themeLight.onclick = () => applyTheme("light");
-    els.themeDark.onclick  = () => applyTheme("dark");
-    els.themeAuto.onclick  = () => applyTheme("auto");
-
-    updateWhoAmI();
-    updateWhoPfp();
-    updateHideRecentBtn();
-
+    // ===== PFP upload (click pfp) =====
     async function uploadPfp(file){
       const u = String(getLoginUser() || "").trim();
       if (!u) return;
-      const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
+      const base = getWorkerBase();
       if (!base){ setStatus("Missing Worker URL."); showCfg(true); return; }
 
       const adminKey = localStorage.getItem("admin_key_v1") || "";
@@ -1054,11 +785,309 @@ if (els.hideRecentBtn) els.hideRecentBtn.onclick = async () => {
       };
     }
 
-initTooltips();
+    // ===== Data state (GLOBAL SORT) =====
+    let _allMembersSorted = [];   // globally sorted by created oldest->newest
+    let _thumbCache = {};         // userId -> imageUrl (cached)
+    let _hideRecent = false;
+    let _pageIndex = 0;
+    let _totalPages = 0;
+
+    function updateHideRecentBtn(){
+      if (!els.hideRecentBtn) return;
+      if (_hideRecent){
+        els.hideRecentBtn.textContent = "🧹 Show all";
+        els.hideRecentBtn.setAttribute("data-tip","SHOW — Shows all members again (undo hide)");
+      } else {
+        els.hideRecentBtn.textContent = "🧹 Hide <30d";
+        els.hideRecentBtn.setAttribute("data-tip","HIDE — Hides members created in the last 30 days (only removes them from this list)");
+      }
+    }
+
+    function filteredMembers(){
+      if (!_hideRecent) return _allMembersSorted;
+      const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      return _allMembersSorted.filter(m => {
+        const t = Date.parse(m.created || "");
+        return isFinite(t) ? (t < cutoff) : true;
+      });
+    }
+
+    function updatePager(){
+      const list = filteredMembers();
+      _totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+      _pageIndex = Math.min(_pageIndex, _totalPages - 1);
+
+      const hasPrev = _pageIndex > 0;
+      const hasNext = _pageIndex < (_totalPages - 1);
+
+      if (els.pagerRow) els.pagerRow.classList.toggle("show", _totalPages > 1);
+      if (els.pageInfo) els.pageInfo.textContent = `Page ${_pageIndex + 1} / ${_totalPages}`;
+      if (els.prevPageBtn) els.prevPageBtn.disabled = !hasPrev;
+      if (els.nextPageBtn) els.nextPageBtn.disabled = !hasNext;
+      if (els.prevPageBtn) els.prevPageBtn.style.display = hasPrev ? "" : "none";
+      if (els.nextPageBtn) els.nextPageBtn.style.display = hasNext ? "" : "none";
+    }
+
+    async function fetchThumbMap(userIds){
+      const chunks = [];
+      const uniq = Array.from(new Set(userIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
+      for (let i=0;i<uniq.length;i+=100) chunks.push(uniq.slice(i,i+100));
+
+      const map = {};
+      for (const chunk of chunks){
+        const res = await fetchJSON(endpoint(`/thumbs?userIds=${encodeURIComponent(chunk.join(","))}&size=420x420&format=Png&isCircular=false&t=${Date.now()}`));
+        if (!res.ok || !res.body || !Array.isArray(res.body.data)) continue;
+        for (const it of res.body.data){
+          if (it && it.targetId != null && it.imageUrl){
+            map[String(it.targetId)] = String(it.imageUrl);
+          }
+        }
+      }
+      return map;
+    }
+
+    async function ensureThumbsFor(ids){
+      const need = [];
+      for (const id of ids){
+        const k = String(id);
+        if (!_thumbCache[k]) need.push(id);
+      }
+      if (!need.length) return;
+      try{
+        const map = await fetchThumbMap(need);
+        for (const k in map) _thumbCache[k] = map[k];
+      }catch{}
+    }
+
+    function applyThumbs(){
+      const imgs = els.list.querySelectorAll("img.avatar[data-userid]");
+      for (const im of imgs){
+        const id = im.dataset.userid || "";
+        const u = _thumbCache[id];
+        if (u) im.src = u;
+      }
+    }
+
+    async function fetchCreatedMap(userIds){
+      const uniq = Array.from(new Set(userIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
+      const chunks = [];
+      for (let i=0;i<uniq.length;i+=80) chunks.push(uniq.slice(i,i+80));
+
+      const map = {};
+      const prog = { i: 0, n: chunks.length };
+      startDots(() => `Loading account creation dates (${prog.i}/${prog.n})`);
+
+      for (let i=0;i<chunks.length;i++){
+        prog.i = i + 1;
+        const chunk = chunks[i];
+        const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent(chunk.join(","))}&t=${Date.now()}`));
+        if (!res.ok || !res.body || !Array.isArray(res.body.data)) continue;
+        for (const it of res.body.data){
+          if (it && it.userId && it.created) map[String(it.userId)] = String(it.created);
+        }
+      }
+
+      stopDots();
+      return map;
+    }
+
+    async function loadAllMembersFromWorker(){
+      const all = [];
+      let cursor = "";
+      let page = 0;
+
+      startDots(() => `Loading members (pages: ${page})`);
+
+      while (true){
+        page += 1;
+        const res = await fetchJSON(endpoint(`/groupMembers?groupId=${GROUP_ID}&cursor=${encodeURIComponent(cursor)}&t=${Date.now()}`));
+        if (!res.ok || !res.body){
+          stopDots();
+          throw new Error("Failed to load members: HTTP " + res.status);
+        }
+        const raw = Array.isArray(res.body.data) ? res.body.data : [];
+        for (const entry of raw){
+          const u = entry && entry.user ? entry.user : {};
+          const userId = Number(u.userId || 0);
+          if (!userId) continue;
+          all.push({
+            userId,
+            username: String(u.username || ""),
+            displayName: String(u.displayName || ""),
+            created: ""
+          });
+        }
+
+        cursor = String(res.body.nextPageCursor || "");
+        if (!cursor) break;
+
+        // Safety limit (prevents infinite loops)
+        if (page > 250) break;
+      }
+
+      stopDots();
+      return all;
+    }
+
+    function computeOldestNewestForList(list){
+      const withDates = list
+        .map(m => m.created || "")
+        .filter(c => c && isFinite(Date.parse(c)))
+        .sort((a,b) => Date.parse(a) - Date.parse(b));
+
+      if (withDates.length){
+        const oldest = withDates[0];
+        const newest = withDates[withDates.length - 1];
+        showEdge(els.oldestInfo, "Oldest creation date: " + fmtDate(oldest) + " (" + oldest + ")");
+        showEdge(els.newestInfo, "Newest creation date: " + fmtDate(newest) + " (" + newest + ")");
+      } else {
+        showEdge(els.oldestInfo, "");
+        showEdge(els.newestInfo, "");
+      }
+    }
+
+    async function renderPage(){
+      const list = filteredMembers();
+      updatePager();
+
+      const start = _pageIndex * PAGE_SIZE;
+      const slice = list.slice(start, start + PAGE_SIZE);
+
+      clearMembers();
+      for (const m of slice){
+        addRow(m.displayName, m.username, m.userId);
+      }
+
+      // Thumbs for slice only
+      const ids = slice.map(m => m.userId);
+      await ensureThumbsFor(ids);
+      applyThumbs();
+
+      const hiddenCount = Math.max(0, _allMembersSorted.length - list.length);
+      setStatus(
+        `Loaded ${list.length} members total (globally sorted oldest → newest). Showing ${slice.length} on this page.`
+        + (hiddenCount ? ` (${hiddenCount} hidden <30d)` : "")
+      );
+    }
+
+    async function refresh(){
+      const base = getWorkerBase();
+      if (!base){ showCfg(true); return; }
+
+      els.refreshBtn.disabled = true;
+      els.recentBtn.disabled = true;
+      els.hideRecentBtn.disabled = true;
+
+      stopDots();
+      clearMembers();
+      showEdge(els.oldestInfo, "");
+      showEdge(els.newestInfo, "");
+
+      // Group info
+      setStatus("Loading group info...");
+      const info = await fetchJSON(endpoint(`/groupInfo?groupId=${GROUP_ID}&t=${Date.now()}`));
+      if (info.ok && info.body && info.body.name){
+        els.groupTitle.textContent = String(info.body.name) + " — Members";
+      } else {
+        els.groupTitle.textContent = "Group Members";
+      }
+      if (info.ok && info.body && info.body.memberCount != null){
+        els.countText.textContent = String(info.body.memberCount);
+      } else {
+        els.countText.textContent = "—";
+      }
+
+      // Members (all pages)
+      let members = [];
+      try{
+        members = await loadAllMembersFromWorker();
+      }catch(e){
+        setStatus(String(e?.message || e));
+        els.refreshBtn.disabled = false;
+        els.recentBtn.disabled = false;
+        els.hideRecentBtn.disabled = false;
+        return;
+      }
+
+      // Created dates (all members)
+      const ids = members.map(m => m.userId);
+      const createdMap = await fetchCreatedMap(ids);
+      for (const m of members) m.created = createdMap[String(m.userId)] || "";
+
+      // Global sort oldest -> newest, unknown at the end
+      members.sort((a, b) => {
+        const ta = Date.parse(a.created || "");
+        const tb = Date.parse(b.created || "");
+        const va = isFinite(ta) ? ta : Number.POSITIVE_INFINITY;
+        const vb = isFinite(tb) ? tb : Number.POSITIVE_INFINITY;
+        return va - vb;
+      });
+
+      _allMembersSorted = members;
+      _pageIndex = 0;
+
+      computeOldestNewestForList(_allMembersSorted);
+      await renderPage();
+
+      els.refreshBtn.disabled = false;
+      els.recentBtn.disabled = false;
+      els.hideRecentBtn.disabled = false;
+    }
+
+    // Recent (last 30 days) modal (GLOBAL list, not just page)
+    if (els.recentBtn) els.recentBtn.onclick = async () => {
+      const now = Date.now();
+      const cutoff = now - (30 * 24 * 60 * 60 * 1000);
+      const recent = (_allMembersSorted || []).filter(m => {
+        const t = Date.parse(m.created || "");
+        return isFinite(t) && t >= cutoff;
+      });
+      const ids = recent.map(m => String(m.userId));
+      if (els.recentTitle) els.recentTitle.textContent = `Recent accounts (last 30 days) — total`;
+      if (els.recentCount) els.recentCount.textContent = String(recent.length);
+      if (els.recentIds) els.recentIds.value = ids.join("
+");
+      showRecent(true);
+    };
+
+    if (els.hideRecentBtn) els.hideRecentBtn.onclick = async () => {
+      _hideRecent = !_hideRecent;
+      updateHideRecentBtn();
+      _pageIndex = 0;
+      await renderPage();
+    };
+
+    if (els.prevPageBtn) els.prevPageBtn.onclick = async () => {
+      _pageIndex = Math.max(0, _pageIndex - 1);
+      await renderPage();
+    };
+    if (els.nextPageBtn) els.nextPageBtn.onclick = async () => {
+      _pageIndex = Math.min(_totalPages - 1, _pageIndex + 1);
+      await renderPage();
+    };
+
+    // Config modal
+    els.cfgCancel.onclick = () => showCfg(false);
+    els.cfgSave.onclick = () => {
+      const v = (els.cfgUrl.value || "").trim();
+      if (v){ setWorkerBase(v); showCfg(false); }
+    };
+
+    // Theme
+    els.themeLight.onclick = () => applyTheme("light");
+    els.themeDark.onclick  = () => applyTheme("dark");
+    els.themeAuto.onclick  = () => applyTheme("auto");
+
+    // Init
+    initTooltips();
     applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
+    updateWhoAmI();
+    updateWhoPfp();
+    updateHideRecentBtn();
 
     if (!getWorkerBase()) showCfg(true);
   </script>
+
 
 
 </body>
