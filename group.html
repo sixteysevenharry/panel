@@ -1034,6 +1034,10 @@
       els.hideRecentBtn.disabled = false;
     }
 
+    // Wire refresh button
+    if (els.refreshBtn) els.refreshBtn.onclick = refresh;
+
+
     // Recent (last 30 days) modal (GLOBAL list, not just page)
     if (els.recentBtn) els.recentBtn.onclick = async () => {
       const now = Date.now();
