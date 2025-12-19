@@ -181,20 +181,22 @@ export default {
         await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
 
         // Shared moderation history (all users)
-        const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
-        log.unshift({
-          id,
-          createdAt: now,
-          action,
-          userId,
-          reason,
-          by,
-          status: "pending"
-        });
-        if (log.length > MAX_LOG) log.length = MAX_LOG;
-        await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
-
-        return json({ ok: true, id });
+        // NOTE: we do NOT log 'unban' actions (unbans still execute)
+        if (action !== "unban") {
+          const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+          log.unshift({
+            id,
+            createdAt: now,
+            action,
+            userId,
+            reason,
+            by,
+            status: "pending"
+          });
+          if (log.length > MAX_LOG) log.length = MAX_LOG;
+          await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
+        }
+return json({ ok: true, id });
       }
 
       /* =====================================================
@@ -348,6 +350,17 @@ await env.LIVE.delete(MOD_LOG_KEY);
           log[idx].ackedAt = Date.now();
           await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
         }
+
+        // If an UNBAN was successfully applied, remove ALL BAN history entries
+        // for that user from the shared log (keeps history clean for everyone).
+        if (ok && action === "unban" && userId > 0) {
+          const log2 = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+          const filtered = log2.filter((x) => !(Number(x?.userId || 0) === userId && String(x?.action || "") === "ban"));
+          if (filtered.length !== log2.length) {
+            await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(filtered));
+          }
+        }
+
 
         // Update ACTIVE bans only when Roblox confirms
         if (ok && userId > 0 && (action === "ban" || action === "unban")) {
