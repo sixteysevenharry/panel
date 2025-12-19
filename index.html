@@ -644,9 +644,7 @@ function showModerationOverlay(show, subText){
     let selectedActiveUserId = null;
     let selectedLogId = null;
     let uiLocked = false;
-
-    const pendingHidden = new Set();
-
+    // pendingHidden removed: we never optimistically hide players during moderation
     let refreshCooldownUntil = 0;
     let refreshCooldownTimer = null;
 
@@ -754,8 +752,7 @@ function showModerationOverlay(show, subText){
       }
 
       for (const p of list){
-        if (pendingHidden.has(Number(p.userId))) continue;
-        const staff = isStaff(p.userId);
+const staff = isStaff(p.userId);
         const div = document.createElement("div");
         div.className =
           "card" +
@@ -895,9 +892,7 @@ async function fetchPlayers(){
       activePlayers = Array.isArray(data.players) ? data.players : [];
       try{ for (const p of activePlayers) cacheNameFrom(p); } catch {}
       els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
-      renderActive();
-      updateButtons();
-      setStatus("ok","OK");
+setStatus("ok","OK");
       return activePlayers;
     }
 
@@ -1092,15 +1087,12 @@ async function refreshUi(){
       return true;
     }
   }
-
-  pendingHidden.add(userId);
-  renderActive();
-  updateButtons();
-  updateOverlay("Preparing…");
+updateOverlay("Preparing…");
 
   if (!(await isStillHere())){
     setModerationProgress(100, "Already gone");
-    pendingHidden.delete(userId);
+    await fetchPlayers();
+    await fetchLogs();
     renderActive();
     updateButtons();
     return { ok:true, id: "" };
@@ -1133,17 +1125,21 @@ async function refreshUi(){
       const st = String(logItem.status || "").toLowerCase();
       if (st === "applied"){
         setModerationProgress(100, "Success");
-        pendingHidden.delete(userId);
+        await fetchPlayers();
+        await fetchLogs();
         renderActive();
         updateButtons();
-        return { ok:true, id: String(logItem.id || lastId || "") };
+
+return { ok:true, id: String(logItem.id || lastId || "") };
       }
       if (st === "failed"){
         setModerationProgress(100, "Not successful");
-        pendingHidden.delete(userId);
+        await fetchPlayers();
+        await fetchLogs();
         renderActive();
         updateButtons();
-        return { ok:false, id: String(logItem.id || lastId || ""), message: "failed" };
+
+return { ok:false, id: String(logItem.id || lastId || ""), message: "failed" };
       }
     }
 
@@ -1156,27 +1152,23 @@ async function refreshUi(){
       window.__goneStreak[keyGone] = (window.__goneStreak[keyGone] || 0) + 1;
       if (window.__goneStreak[keyGone] >= 3){
         setModerationProgress(100, "Success");
-        pendingHidden.delete(userId);
+        await fetchPlayers();
+        await fetchLogs();
         renderActive();
         updateButtons();
-        return { ok:true, id: String(lastId || "") };
+
+return { ok:true, id: String(lastId || "") };
       }
     } else {
       window.__goneStreak[keyGone] = 0;
     }
 
-setStage("Moderating in progress…");
-await new Promise(r => setTimeout(r, checkEveryMs));
-
-// Optional hint for the operator, but NOT the source of truth:
-// if they disappear, we still wait for log confirmation.
+    setStage("Moderating in progress…");
+    await new Promise(r => setTimeout(r, checkEveryMs));
   }
 
   setModerationProgress(100, "Timed out");
-  pendingHidden.delete(userId);
-  renderActive();
-  updateButtons();
-  return { ok:false, timeout:true, message: "Timed out (kept retrying)." };
+return { ok:false, timeout:true, message: "Server did not respond in time." };
 }
 
     function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
