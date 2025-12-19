@@ -292,11 +292,13 @@ body{ padding-bottom: 74px; }
 
 
 .whoPfp{
-  width:22px;height:22px;border-radius:999px;
+  width:26px;height:26px;border-radius:999px;
   display:inline-block;object-fit:cover;
   border:1px solid var(--border2);
   background: var(--surface2);
   margin-right:8px;
+  cursor:pointer;
+  flex: 0 0 auto;
 }
 .miniBtn{
   padding: 6px 10px !important;
@@ -335,10 +337,9 @@ body{ padding-bottom: 74px; }
           <button id="themeAuto" type="button" aria-pressed="false" data-tip="Auto">🖥️</button>
         </div>
         <span class="pillStatus" style="align-self:center">
-  <img id="whoPfp" class="whoPfp" alt="" referrerpolicy="no-referrer" />
+  <img id="whoPfp" class="whoPfp" alt="" referrerpolicy="no-referrer" tabindex="0" data-tip="PROFILE — Click to change your profile picture" />
   <span class="small">👤</span>
   <span class="small" id="whoami">—</span>
-  <button id="pfpBtn" type="button" class="ghostBtn miniBtn" data-tip="PROFILE — Upload a profile picture shown in logs">🖼️</button>
 </span>
 <input id="pfpUpload" type="file" accept="image/*" style="display:none" />
 <button id="logout" type="button" class="ghostBtn" data-tip="Log out">🚪 Logout</button>
@@ -505,7 +506,6 @@ body{ padding-bottom: 74px; }
 
       
       whoPfp: document.getElementById("whoPfp"),
-      pfpBtn: document.getElementById("pfpBtn"),
       pfpUpload: document.getElementById("pfpUpload"),
 status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
@@ -613,6 +613,24 @@ function showModerationOverlay(show, subText){
     }
     function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
 
+
+function defaultAvatarSvg(name){
+  const n = String(name || "").trim();
+  const ch = (n ? n[0] : "?").toUpperCase();
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#6b7280"/>
+          <stop offset="1" stop-color="#111827"/>
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="32" fill="url(#g)"/>
+      <text x="32" y="40" text-anchor="middle" font-family="system-ui,Segoe UI,Roboto,Arial" font-size="28" fill="#ffffff" font-weight="700">${ch}</text>
+    </svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
 let pfpBust = 0;
 function pfpSrc(user){
   const u = normalizeUser(user);
@@ -624,11 +642,12 @@ function pfpSrc(user){
 function updateWhoPfp(){
   if (!els.whoPfp) return;
   const u = String(getLoginUser() || "").trim();
-  if (!u){ els.whoPfp.style.display = "none"; return; }
-  const s = pfpSrc(u);
-  if (!s){ els.whoPfp.style.display = "none"; return; }
   els.whoPfp.style.display = "inline-block";
-  els.whoPfp.onerror = () => { els.whoPfp.style.display = "none"; };
+  els.whoPfp.src = defaultAvatarSvg(u || "?");
+  if (!u) return;
+  const s = pfpSrc(u);
+  if (!s) return;
+  els.whoPfp.onerror = () => { els.whoPfp.src = defaultAvatarSvg(u); };
   els.whoPfp.src = s;
 }
 
@@ -713,15 +732,16 @@ function updateWhoPfp(){
       toast("ok","Saved","Your profile picture is now visible in logs");
     }
 
-    if (els.pfpBtn && els.pfpUpload){
-      els.pfpBtn.onclick = () => els.pfpUpload.click();
-      els.pfpUpload.onchange = async () => {
-        const f = els.pfpUpload.files && els.pfpUpload.files[0];
-        els.pfpUpload.value = "";
-        if (!f) return;
-        try{ await uploadPfp(f); }catch(e){ toast("err","Upload failed", String(e?.message || e)); }
-      };
-    }
+    if (els.whoPfp && els.pfpUpload){
+  els.whoPfp.onclick = () => els.pfpUpload.click();
+  els.whoPfp.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.pfpUpload.click(); } };
+  els.pfpUpload.onchange = async () => {
+    const f = els.pfpUpload.files && els.pfpUpload.files[0];
+    els.pfpUpload.value = "";
+    if (!f) return;
+    try{ await uploadPfp(f); }catch(e){ toast("err","Upload failed", String(e?.message || e)); }
+  };
+}
 
 els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
 
