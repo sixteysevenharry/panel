@@ -586,8 +586,6 @@ await env.LIVE.delete(MOD_LOG_KEY);
 
         const mime = dataUrl.slice(5, dataUrl.indexOf(";")) || "image/png";
         const b64 = dataUrl.split("base64,")[1] || "";
-
-        // Basic base64 sanity
         if (!b64 || b64.length < 20) return json({ error: "Invalid image" }, 400);
 
         const key = `profile_v1:${user}`;
