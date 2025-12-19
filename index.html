@@ -1044,6 +1044,39 @@ async function enforceAndVerify(action, user, reason){
     _stage = msg;
     updateOverlay(msg);
   }
+
+  function normStr(v){ return String(v || "").trim(); }
+  function findLogById(id){
+    if (!id) return null;
+    return logs.find(e => String(e && e.id) === String(id)) || null;
+  }
+  function findLogBySignature(){
+    // Fallback if we never received an id (network glitch / duplicate sends)
+    const targetAction = normStr(action).toLowerCase();
+    const targetUserId = Number(userId) || 0;
+    const targetBy = normStr(by);
+    const targetReason = normStr(reason);
+
+    let best = null;
+    for (const e of logs){
+      if (!e) continue;
+      if (normStr(e.action).toLowerCase() !== targetAction) continue;
+      if (Number(e.userId || 0) !== targetUserId) continue;
+      if (targetBy && normStr(e.by) !== targetBy) continue;
+      if (targetReason && normStr(e.reason) !== targetReason) continue;
+
+      const t = Number(e.createdAt || e.ackedAt || 0) || 0;
+      if (t < started - 1500) continue; // must be created after we started (with small buffer)
+
+      if (!best) best = e;
+      else {
+        const bt = Number(best.createdAt || best.ackedAt || 0) || 0;
+        if (t > bt) best = e;
+      }
+    }
+    return best;
+  }
+
 async function refreshUi(){
     try{
       await fetchPlayers();
@@ -1091,31 +1124,52 @@ async function refreshUi(){
 
     // Prefer server-confirmed log status (applied/failed) over player presence.
     // This avoids "stuck checking player list" when the user already left or appears in another place.
-    const logItem = lastId ? logs.find(e => String(e.id) === String(lastId)) : null;
-    if (logItem && String(logItem.status||"").toLowerCase() === "applied"){
-      setModerationProgress(100, "Done");
-      pendingHidden.delete(userId);
-      renderActive();
-      updateButtons();
-      return { ok:true, id: lastId };
-    }
-    if (logItem && String(logItem.status||"").toLowerCase() === "failed"){
-      setModerationProgress(100, "Failed");
-      pendingHidden.delete(userId);
-      renderActive();
-      updateButtons();
-      return { ok:false, id: lastId, message: "failed" };
+    // Prefer server-confirmed log status (applied/failed) over player presence.
+    // Track by command id when available; otherwise match by signature (action/user/reason/by) created after start.
+    let logItem = findLogById(lastId);
+    if (!logItem) logItem = findLogBySignature();
+
+    if (logItem){
+      const st = String(logItem.status || "").toLowerCase();
+      if (st === "applied"){
+        setModerationProgress(100, "Success");
+        pendingHidden.delete(userId);
+        renderActive();
+        updateButtons();
+        return { ok:true, id: String(logItem.id || lastId || "") };
+      }
+      if (st === "failed"){
+        setModerationProgress(100, "Not successful");
+        pendingHidden.delete(userId);
+        renderActive();
+        updateButtons();
+        return { ok:false, id: String(logItem.id || lastId || ""), message: "failed" };
+      }
     }
 
-    setStage("Moderating in progress…");
-    await new Promise(r => setTimeout(r, checkEveryMs));
-
-    // Optional hint for the operator, but NOT the source of truth:
-    // if they disappear, we still wait for log confirmation.
+    // Fallback (kick/ban only): if the player is consistently gone from the live player list,
+    // treat it as success even if ACK/log is delayed.
+    if (!window.__goneStreak) window.__goneStreak = {};
+    const keyGone = String(action) + ":" + String(userId);
     const still = await isStillHere();
-    if (!still){
-      setStage("Moderating in progress…");
+    if (!still && (String(action||"").toLowerCase() === "kick" || String(action||"").toLowerCase() === "ban")){
+      window.__goneStreak[keyGone] = (window.__goneStreak[keyGone] || 0) + 1;
+      if (window.__goneStreak[keyGone] >= 3){
+        setModerationProgress(100, "Success");
+        pendingHidden.delete(userId);
+        renderActive();
+        updateButtons();
+        return { ok:true, id: String(lastId || "") };
+      }
+    } else {
+      window.__goneStreak[keyGone] = 0;
     }
+
+setStage("Moderating in progress…");
+await new Promise(r => setTimeout(r, checkEveryMs));
+
+// Optional hint for the operator, but NOT the source of truth:
+// if they disappear, we still wait for log confirmation.
   }
 
   setModerationProgress(100, "Timed out");
