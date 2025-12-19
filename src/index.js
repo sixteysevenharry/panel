@@ -560,6 +560,128 @@ await env.LIVE.delete(MOD_LOG_KEY);
         return json({ ok: true, data: out });
       }
 
+      
+      /* =====================================================
+         WEBSITE -> PROFILE PFP UPLOAD (shared)
+         POST /profile/pfp  (requires x-admin-key)
+         Body: { user: "name", dataUrl: "data:image/png;base64,..." }
+         ===================================================== */
+      if (url.pathname === "/profile/pfp" && request.method === "POST") {
+        const adminKey = request.headers.get("x-admin-key") || "";
+        if (!env.ADMIN_KEY || adminKey !== env.ADMIN_KEY) return json({ error: "Unauthorized" }, 401);
+
+        let body;
+        try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+
+        const user = String(body.user || "").trim().toLowerCase();
+        const dataUrl = String(body.dataUrl || "");
+
+        if (!user) return json({ error: "Missing user" }, 400);
+        if (!dataUrl.startsWith("data:image/") || dataUrl.indexOf("base64,") === -1) {
+          return json({ error: "Invalid image" }, 400);
+        }
+
+        // Size guard (base64 string length)
+        if (dataUrl.length > 600000) return json({ error: "Image too large" }, 413);
+
+        const mime = dataUrl.slice(5, dataUrl.indexOf(";")) || "image/png";
+        const b64 = dataUrl.split("base64,")[1] || "";
+
+        // Basic base64 sanity
+        if (!b64 || b64.length < 20) return json({ error: "Invalid image" }, 400);
+
+        const key = `profile_v1:${user}`;
+        const payload = { user, mime, b64, updatedAt: Date.now() };
+
+        await env.LIVE.put(key, JSON.stringify(payload));
+        return json({ ok: true });
+      }
+
+      /* =====================================================
+         WEBSITE -> GET PROFILE (json)
+         GET /profile?user=name
+         ===================================================== */
+      if (url.pathname === "/profile" && request.method === "GET") {
+        const user = String(url.searchParams.get("user") || "").trim().toLowerCase();
+        if (!user) return json({ ok: true, user: "", hasPfp: false });
+
+        const raw = await env.LIVE.get(`profile_v1:${user}`);
+        if (!raw) return json({ ok: true, user, hasPfp: false });
+
+        let obj = null;
+        try { obj = JSON.parse(raw); } catch { obj = null; }
+        const hasPfp = !!(obj && obj.b64 && obj.mime);
+
+        return json({
+          ok: true,
+          user,
+          hasPfp,
+          updatedAt: Number(obj?.updatedAt || 0),
+          pfpUrl: hasPfp ? (new URL(request.url).origin + `/pfp?user=${encodeURIComponent(user)}`) : ""
+        });
+      }
+
+      /* =====================================================
+         WEBSITE -> BATCH PROFILE LOOKUP (json)
+         GET /profiles?users=a,b,c
+         ===================================================== */
+      if (url.pathname === "/profiles" && request.method === "GET") {
+        const rawUsers = String(url.searchParams.get("users") || "");
+        const users = rawUsers.split(",")
+          .map(s => String(s || "").trim().toLowerCase())
+          .filter(Boolean)
+          .slice(0, 120);
+
+        const out = {};
+        const origin = new URL(request.url).origin;
+
+        for (const u of users) {
+          const raw = await env.LIVE.get(`profile_v1:${u}`);
+          if (!raw) continue;
+          try {
+            const obj = JSON.parse(raw);
+            if (obj && obj.b64 && obj.mime) {
+              out[u] = { pfpUrl: origin + `/pfp?user=${encodeURIComponent(u)}`, updatedAt: Number(obj.updatedAt || 0) };
+            }
+          } catch {}
+        }
+
+        return json({ ok: true, items: out });
+      }
+
+      /* =====================================================
+         WEBSITE -> PFP IMAGE (binary)
+         GET /pfp?user=name
+         ===================================================== */
+      if (url.pathname === "/pfp" && request.method === "GET") {
+        const user = String(url.searchParams.get("user") || "").trim().toLowerCase();
+        if (!user) return new Response("Not found", { status: 404, headers: cors });
+
+        const raw = await env.LIVE.get(`profile_v1:${user}`);
+        if (!raw) return new Response("Not found", { status: 404, headers: cors });
+
+        let obj = null;
+        try { obj = JSON.parse(raw); } catch { obj = null; }
+        if (!obj || !obj.b64) return new Response("Not found", { status: 404, headers: cors });
+
+        const mime = String(obj.mime || "image/png");
+        const b64 = String(obj.b64 || "");
+
+        // base64 -> bytes
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+        return new Response(bytes, {
+          status: 200,
+          headers: {
+            "content-type": mime,
+            "cache-control": "public, max-age=300",
+            ...cors
+          }
+        });
+      }
+
       return new Response("Not found", { status: 404, headers: cors });
     } catch (e) {
       return json({ error: "Worker exception", message: String(e?.message || e) }, 500);
