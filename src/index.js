@@ -480,7 +480,10 @@ await env.LIVE.delete(MOD_LOG_KEY);
 
         if (!ids.length) return json({ error: "Missing userIds" }, 400);
 
-        const cacheKey = `thumbs:${ids.join(",")}:${size}:${format}:${isCircular}`;
+        const rawKey = `${ids.join(",")}|${size}|${format}|${isCircular}`;
+        const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
+        const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,"0")).join("");
+        const cacheKey = `thumbs:${hashHex}`;
         const cached = await env.LIVE.get(cacheKey);
         if (cached) {
           try { return json(JSON.parse(cached)); } catch {}
