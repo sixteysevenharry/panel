@@ -1023,7 +1023,7 @@ async function enforceAndVerify(action, user, reason){
 
   const started = Date.now();
   const hardTimeoutMs = 60000;
-  const resendEveryMs = 1200;
+  const resendEveryMs = 500;
   const checkEveryMs  = 400;
   const refreshUiEveryMs = 700;
 
@@ -1037,7 +1037,14 @@ async function enforceAndVerify(action, user, reason){
   let lastUiAt = 0;
   let lastId = "";
 
-  async function refreshUi(){
+  
+  let _stage = "";
+  function setStage(msg){
+    if (_stage === msg) return;
+    _stage = msg;
+    updateOverlay(msg);
+  }
+async function refreshUi(){
     try{
       await fetchPlayers();
       await fetchLogs();
@@ -1078,7 +1085,7 @@ async function enforceAndVerify(action, user, reason){
 
     if (now - lastUiAt >= refreshUiEveryMs){
       lastUiAt = now;
-      updateOverlay("Refreshing player list & logs…");
+      setStage("Moderating in progress…");
       await refreshUi();
     }
 
@@ -1100,14 +1107,14 @@ async function enforceAndVerify(action, user, reason){
       return { ok:false, id: lastId, message: "failed" };
     }
 
-    updateOverlay("Waiting for server confirmation…");
+    setStage("Moderating in progress…");
     await new Promise(r => setTimeout(r, checkEveryMs));
 
     // Optional hint for the operator, but NOT the source of truth:
     // if they disappear, we still wait for log confirmation.
     const still = await isStillHere();
     if (!still){
-      updateOverlay("Player left — waiting for confirmation…");
+      setStage("Moderating in progress…");
     }
   }
 
