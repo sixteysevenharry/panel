@@ -303,16 +303,13 @@
 
 
 .whoPfp{
-  width:22px;height:22px;border-radius:999px;
+  width:26px;height:26px;border-radius:999px;
   display:inline-block;object-fit:cover;
   border:1px solid var(--border2);
   background: var(--surface2);
   margin-right:8px;
-}
-.miniBtn{
-  padding: 6px 10px !important;
-  border-radius: 999px !important;
-  margin-left: 8px;
+  cursor:pointer;
+  flex: 0 0 auto;
 }
 
 </style>
@@ -335,10 +332,9 @@
         <button class="btn" id="recentBtn" data-tip="RECENT — Shows members on this page created within the last 30 days">🕒 Recent</button>
         <button class="btn" id="hideRecentBtn" data-tip="HIDE — Hides members created in the last 30 days (only removes them from this list)">🧹 Hide &lt;30d</button>
         <span class="pillStatus" style="align-self:center">
-          <img id="whoPfp" class="whoPfp" alt="" referrerpolicy="no-referrer" />
+          <img id="whoPfp" class="whoPfp" alt="" referrerpolicy="no-referrer" tabindex="0" data-tip="PROFILE — Click to change your profile picture" />
           <span class="small">👤</span>
           <span class="small" id="whoami">—</span>
-          <button id="pfpBtn" type="button" class="ghostBtn miniBtn" data-tip="PROFILE — Upload a profile picture shown in logs">🖼️</button>
         </span>
         <input id="pfpUpload" type="file" accept="image/*" style="display:none" />
       </div>
@@ -417,6 +413,20 @@
     function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
     function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
 
+    function defaultAvatarSvg(name){
+      const n = String(name || "").trim();
+      const ch = (n ? n[0] : "?").toUpperCase();
+      const svg =
+        `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\">`
+        + `<defs><linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">`
+        + `<stop offset=\"0\" stop-color=\"#6b7280\"/><stop offset=\"1\" stop-color=\"#111827\"/>`
+        + `</linearGradient></defs>`
+        + `<rect width=\"64\" height=\"64\" rx=\"32\" fill=\"url(#g)\"/>`
+        + `<text x=\"32\" y=\"40\" text-anchor=\"middle\" font-family=\"system-ui,Segoe UI,Roboto,Arial\" font-size=\"28\" fill=\"#ffffff\" font-weight=\"700\">${ch}</text>`
+        + `</svg>`;
+      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    }
+
     let pfpBust = 0;
     function pfpSrc(user){
       const u = normalizeUser(user);
@@ -433,11 +443,12 @@
     function updateWhoPfp(){
       if (!els.whoPfp) return;
       const u = String(getLoginUser() || "").trim();
-      if (!u){ els.whoPfp.style.display = "none"; return; }
-      const s = pfpSrc(u);
-      if (!s){ els.whoPfp.style.display = "none"; return; }
       els.whoPfp.style.display = "inline-block";
-      els.whoPfp.onerror = () => { els.whoPfp.style.display = "none"; };
+      els.whoPfp.src = defaultAvatarSvg(u || "?");
+      if (!u) return;
+      const s = pfpSrc(u);
+      if (!s) return;
+      els.whoPfp.onerror = () => { els.whoPfp.src = defaultAvatarSvg(u); };
       els.whoPfp.src = s;
     }
 
@@ -478,7 +489,6 @@
       
       whoami: document.getElementById("whoami"),
       whoPfp: document.getElementById("whoPfp"),
-      pfpBtn: document.getElementById("pfpBtn"),
       pfpUpload: document.getElementById("pfpUpload"),
       hideRecentBtn: document.getElementById("hideRecentBtn"),
 recentBtn: document.getElementById("recentBtn"),
@@ -709,9 +719,10 @@ recentBtn: document.getElementById("recentBtn"),
       const createdMap = await fetchCreatedMap(ids);
 
       
+      
       for (const m of members){ m.created = createdMap[String(m.userId)] || ""; }
-
       _membersAllPage = members.slice();
+for (const m of members){ m.created = createdMap[String(m.userId)] || ""; }
 const nowMs = Date.now();
       const cutoff = nowMs - (30 * 24 * 60 * 60 * 1000);
       let view = members;
@@ -766,7 +777,7 @@ const nowMs = Date.now();
       _pageIndex = pageIndex;
       updatePager();
 
-      setStatus(`Loaded ${view.length} members on this page (sorted oldest → newest).` + (hiddenCount ? ` (${hiddenCount} hidden <30d)` : "") + ` Press Refresh to update.`);
+      setStatus(`Loaded ${members.length} members on this page (sorted oldest → newest). Press Refresh to update.`);
       els.refreshBtn.disabled = false;
     }
 
@@ -936,9 +947,7 @@ els.refreshBtn.onclick = refresh;
 if (els.hideRecentBtn) els.hideRecentBtn.onclick = async () => {
   _hideRecent = !_hideRecent;
   updateHideRecentBtn();
-  // Re-render current page using cached created dates
-  if (!_membersAllPage || !_membersAllPage.length){ return; }
-  // Fake a page reload render without fetching members again
+  if (!_membersAllPage || !_membersAllPage.length) return;
   const members = _membersAllPage.slice();
   const nowMs = Date.now();
   const cutoff = nowMs - (30 * 24 * 60 * 60 * 1000);
@@ -982,7 +991,10 @@ if (els.hideRecentBtn) els.hideRecentBtn.onclick = async () => {
     els.themeDark.onclick  = () => applyTheme("dark");
     els.themeAuto.onclick  = () => applyTheme("auto");
 
-    
+    updateWhoAmI();
+    updateWhoPfp();
+    updateHideRecentBtn();
+
     async function uploadPfp(file){
       const u = String(getLoginUser() || "").trim();
       if (!u) return;
@@ -1023,8 +1035,9 @@ if (els.hideRecentBtn) els.hideRecentBtn.onclick = async () => {
       setStatus("Saved profile picture.");
     }
 
-    if (els.pfpBtn && els.pfpUpload){
-      els.pfpBtn.onclick = () => els.pfpUpload.click();
+    if (els.whoPfp && els.pfpUpload){
+      els.whoPfp.onclick = () => els.pfpUpload.click();
+      els.whoPfp.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.pfpUpload.click(); } };
       els.pfpUpload.onchange = async () => {
         const f = els.pfpUpload.files && els.pfpUpload.files[0];
         els.pfpUpload.value = "";
@@ -1033,10 +1046,7 @@ if (els.hideRecentBtn) els.hideRecentBtn.onclick = async () => {
       };
     }
 
-updateWhoAmI();
-    updateWhoPfp();
-    updateHideRecentBtn();
-    initTooltips();
+initTooltips();
     applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
 
     if (!getWorkerBase()) showCfg(true);
