@@ -368,10 +368,9 @@
   </div>
 
   
+  
   <script>
     const GROUP_ID = 466852954;
-
-    
 
     // Require login from index.html
     function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
@@ -380,22 +379,28 @@
       rememberReturn();
       location.replace("index.html");
     }
-const els = {
+
+    const PAGE_SIZE = 100;
+
+    const els = {
       groupTitle: document.getElementById("groupTitle"),
       countText: document.getElementById("countText"),
       status: document.getElementById("status"),
       list: document.getElementById("membersMount"),
       oldestInfo: document.getElementById("oldestInfo"),
       newestInfo: document.getElementById("newestInfo"),
-            pagerRow: document.getElementById("pagerRow"),
+
+      refreshBtn: document.getElementById("refreshBtn"),
+      pagerRow: document.getElementById("pagerRow"),
       prevPageBtn: document.getElementById("prevPageBtn"),
       nextPageBtn: document.getElementById("nextPageBtn"),
       pageInfo: document.getElementById("pageInfo"),
-refreshBtn: document.getElementById("refreshBtn"),
+
       cfg: document.getElementById("cfg"),
       cfgUrl: document.getElementById("cfgUrl"),
       cfgCancel: document.getElementById("cfgCancel"),
       cfgSave: document.getElementById("cfgSave"),
+
       themeLight: document.getElementById("themeLight"),
       themeDark: document.getElementById("themeDark"),
       themeAuto: document.getElementById("themeAuto"),
@@ -417,32 +422,29 @@ refreshBtn: document.getElementById("refreshBtn"),
       const base0 = (typeof getBase === "function") ? String(getBase() || "") : String(getBase || "");
       setStatus(base0 + ".");
     }
-function getWorkerBase() {
+
+    function getWorkerBase(){
       return (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
     }
-    function setWorkerBase(v) {
+    function setWorkerBase(v){
       localStorage.setItem("worker_base_v1", String(v||"").trim().replace(/\/+$/,""));
     }
-    function endpoint(path) {
+    function endpoint(path){
       const base = getWorkerBase();
       return base ? (base + path) : path;
     }
-
-    async function fetchJSON(url, opts={}) {
+    async function fetchJSON(url, opts={}){
       const r = await fetch(url, { cache: "no-store", ...opts });
       const text = await r.text();
       let body = null;
-      try { body = text ? JSON.parse(text) : null; } catch { body = null; }
+      try{ body = text ? JSON.parse(text) : null; }catch{ body = null; }
       return { ok: r.ok, status: r.status, body };
     }
 
-    function clearMembers() {
-      els.list.innerHTML = "";
-    }
-
-    function showEdge(el, text) {
+    function clearMembers(){ els.list.innerHTML = ""; }
+    function showEdge(el, text){
       if (!el) return;
-      if (text) {
+      if (text){
         el.textContent = text;
         el.classList.add("show");
       } else {
@@ -450,63 +452,13 @@ function getWorkerBase() {
         el.classList.remove("show");
       }
     }
-
-    
-    const PAGE_SIZE = 100;
-    let _membersAll = [];
-    let _pageIndex = 0;
-    let _thumbCache = {}; // userId -> imageUrl
-
-    function totalPages(){
-      return Math.max(1, Math.ceil((_membersAll.length || 0) / PAGE_SIZE));
+    function fmtDate(iso){
+      const d = new Date(iso);
+      if (!isFinite(d.getTime())) return "";
+      return d.toLocaleString(undefined, { year:"numeric", month:"short", day:"2-digit" });
     }
 
-    function updatePager(){
-      if (!els.pagerRow || !els.pageInfo || !els.prevPageBtn || !els.nextPageBtn) return;
-      const tp = totalPages();
-      const show = (_membersAll.length > PAGE_SIZE);
-      els.pagerRow.classList.toggle("show", show);
-      els.pageInfo.textContent = "Page " + String(_pageIndex + 1) + " / " + String(tp);
-
-      // Only required: Next page. Prev included for convenience.
-      els.prevPageBtn.disabled = (_pageIndex <= 0);
-      els.nextPageBtn.disabled = (_pageIndex >= tp - 1);
-    }
-
-    async function ensureThumbsFor(ids){
-      const need = [];
-      for (const id of ids){
-        const k = String(id);
-        if (!_thumbCache[k]) need.push(id);
-      }
-      if (!need.length) return;
-      try{
-        const map = await fetchThumbMap(need);
-        for (const k in map) _thumbCache[k] = map[k];
-      }catch{}
-    }
-
-    async function renderPage(){
-      clearMembers();
-      const start = _pageIndex * PAGE_SIZE;
-      const slice = _membersAll.slice(start, start + PAGE_SIZE);
-
-      const ids = [];
-      for (const m of slice){
-        addRow(m.displayName, m.username, m.userId);
-        ids.push(m.userId);
-      }
-
-      updatePager();
-
-      setStatus("Loading avatars...");
-      await ensureThumbsFor(ids);
-      applyThumbs(_thumbCache);
-
-      setStatus("Showing " + String(slice.length) + " of " + String(_membersAll.length) + " members. Press Refresh to update.");
-    }
-
-function addRow(displayName, username, userId) {
+    function addRow(displayName, username, userId){
       const row = document.createElement("div");
       row.className = "memberCard";
 
@@ -518,13 +470,7 @@ function addRow(displayName, username, userId) {
       img.referrerPolicy = "no-referrer";
       img.dataset.userid = String(userId || "");
       img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
-
-      // Fallback if thumbnail fails
-      img.onerror = () => {
-        img.onerror = null;
-        img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
-      };
-
+      img.onerror = () => { img.onerror = null; img.src = "data:image/gif;base64,R0lGODlhAQABAAAAACw="; };
       row.appendChild(img);
 
       const t = document.createElement("div");
@@ -550,17 +496,35 @@ function addRow(displayName, username, userId) {
       els.list.appendChild(row);
     }
 
-    async function fetchThumbMap(userIds) {
+    // ---- Cursor-based pagination state ----
+    let _pageIndex = 0;
+    let _cursorHistory = [""]; // cursor to fetch for each page index
+    let _nextCursor = "";      // next cursor returned from API for current page
+    let _thumbCache = {};      // userId -> imageUrl (cache across pages)
+
+    function updatePager(){
+      if (!els.pagerRow) return;
+      const hasPrev = _pageIndex > 0;
+      const hasNext = !!_nextCursor;
+      els.pagerRow.classList.toggle("show", hasPrev || hasNext);
+      if (els.pageInfo) els.pageInfo.textContent = "Page " + String(_pageIndex + 1);
+      if (els.prevPageBtn) els.prevPageBtn.disabled = !hasPrev;
+      if (els.nextPageBtn) els.nextPageBtn.disabled = !hasNext;
+      if (els.nextPageBtn) els.nextPageBtn.style.display = hasNext ? "" : "none";
+      if (els.prevPageBtn) els.prevPageBtn.style.display = hasPrev ? "" : "none";
+    }
+
+    async function fetchThumbMap(userIds){
       const chunks = [];
       const uniq = Array.from(new Set(userIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
-      for (let i = 0; i < uniq.length; i += 100) chunks.push(uniq.slice(i, i + 100));
+      for (let i=0;i<uniq.length;i+=100) chunks.push(uniq.slice(i,i+100));
 
       const map = {};
-      for (const chunk of chunks) {
+      for (const chunk of chunks){
         const res = await fetchJSON(endpoint(`/thumbs?userIds=${encodeURIComponent(chunk.join(","))}&size=420x420&format=Png&isCircular=false&t=${Date.now()}`));
         if (!res.ok || !res.body || !Array.isArray(res.body.data)) continue;
-        for (const it of res.body.data) {
-          if (it && it.targetId != null && it.imageUrl) {
+        for (const it of res.body.data){
+          if (it && it.targetId != null && it.imageUrl){
             map[String(it.targetId)] = String(it.imageUrl);
           }
         }
@@ -568,96 +532,92 @@ function addRow(displayName, username, userId) {
       return map;
     }
 
-    function applyThumbs(map) {
+    async function ensureThumbsFor(ids){
+      const need = [];
+      for (const id of ids){
+        const k = String(id);
+        if (!_thumbCache[k]) need.push(id);
+      }
+      if (!need.length) return;
+      try{
+        const map = await fetchThumbMap(need);
+        for (const k in map) _thumbCache[k] = map[k];
+      }catch{}
+    }
+
+    function applyThumbs(map){
       const imgs = els.list.querySelectorAll("img.avatar[data-userid]");
-      for (const im of imgs) {
+      for (const im of imgs){
         const id = im.dataset.userid || "";
         const u = map[id];
         if (u) im.src = u;
       }
     }
 
-    async function fetchCreatedMap(userIds) {
+    async function fetchCreatedMap(userIds){
       const uniq = Array.from(new Set(userIds.filter(Boolean).map(n => Number(n)).filter(n => n > 0)));
       const chunks = [];
-      for (let i = 0; i < uniq.length; i += 80) chunks.push(uniq.slice(i, i + 80));
+      for (let i=0;i<uniq.length;i+=80) chunks.push(uniq.slice(i,i+80));
 
-      
+      const map = {};
       const prog = { i: 0, n: chunks.length };
       startDots(() => `Loading account creation dates (${prog.i}/${prog.n})`);
-const map = {};
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
+
+      for (let i=0;i<chunks.length;i++){
         prog.i = i + 1;
-const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent(chunk.join(","))}&t=${Date.now()}`));
+        const chunk = chunks[i];
+        const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent(chunk.join(","))}&t=${Date.now()}`));
         if (!res.ok || !res.body || !Array.isArray(res.body.data)) continue;
-        for (const it of res.body.data) {
+        for (const it of res.body.data){
           if (it && it.userId && it.created) map[String(it.userId)] = String(it.created);
         }
       }
+
+      stopDots();
       return map;
     }
 
-    function fmtDate(iso) {
-      const d = new Date(iso);
-      if (!isFinite(d.getTime())) return "";
-      return d.toLocaleString(undefined, { year:"numeric", month:"short", day:"2-digit" });
-    }
-
-    async function refresh() {
+    async function loadPage(cursor, pageIndex){
       const base = getWorkerBase();
-      if (!base) { showCfg(true); return; }
+      if (!base){ showCfg(true); return; }
 
       els.refreshBtn.disabled = true;
+      if (els.prevPageBtn) els.prevPageBtn.disabled = true;
+      if (els.nextPageBtn) els.nextPageBtn.disabled = true;
+
       clearMembers();
       showEdge(els.oldestInfo, "");
       showEdge(els.newestInfo, "");
-      els.countText.textContent = "—";
-      setStatus("Loading group info...");
+      setStatus("Loading members...");
 
-      const info = await fetchJSON(endpoint(`/groupInfo?groupId=${GROUP_ID}&t=${Date.now()}`));
-      if (info.ok && info.body && info.body.name) {
-        els.groupTitle.textContent = String(info.body.name) + " — Members";
-      } else {
-        els.groupTitle.textContent = "Group Members";
+      const res = await fetchJSON(endpoint(`/groupMembers?groupId=${GROUP_ID}&cursor=${encodeURIComponent(cursor || "")}&t=${Date.now()}`));
+      if (!res.ok || !res.body){
+        setStatus("Failed: HTTP " + res.status);
+        els.refreshBtn.disabled = false;
+        updatePager();
+        return;
       }
 
-      setStatus("Loading members...");
+      const data = res.body;
+      _nextCursor = String(data.nextPageCursor || "");
+
+      const raw = Array.isArray(data.data) ? data.data : [];
       const members = [];
-      let cursor = "";
-
-      for (let page = 0; page < 200; page++) {
-        const url = endpoint(`/groupMembers?groupId=${GROUP_ID}&cursor=${encodeURIComponent(cursor)}&t=${Date.now()}`);
-        const res = await fetchJSON(url);
-        if (!res.ok || !res.body) {
-          setStatus("Failed: HTTP " + res.status);
-          els.refreshBtn.disabled = false;
-          return;
-        }
-
-        const data = res.body;
-        const items = Array.isArray(data.data) ? data.data : [];
-        for (const entry of items) {
-          const u = entry && entry.user ? entry.user : {};
-          const userId = Number(u.userId || 0);
-          if (!userId) continue;
-          members.push({
-            userId,
-            username: String(u.username || ""),
-            displayName: String(u.displayName || "")
-          });
-        }
-
-        cursor = String(data.nextPageCursor || "");
-        if (!cursor) break;
+      for (const entry of raw){
+        const u = entry && entry.user ? entry.user : {};
+        const userId = Number(u.userId || 0);
+        if (!userId) continue;
+        members.push({
+          userId,
+          username: String(u.username || ""),
+          displayName: String(u.displayName || "")
+        });
       }
 
       const ids = members.map(m => m.userId);
-      els.countText.textContent = String(members.length);
 
-      // Fetch created dates (via Worker proxy) and sort oldest -> newest
+      // Only load creation dates for THIS page and sort THIS page
       const createdMap = await fetchCreatedMap(ids);
-      stopDots();
 
       members.sort((a, b) => {
         const ca = createdMap[String(a.userId)] || "";
@@ -669,36 +629,74 @@ const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent
         return va - vb;
       });
 
-      // Oldest / newest labels
+      // Oldest/newest for this page
       const withDates = members
-        .map(m => ({ id: m.userId, created: createdMap[String(m.userId)] || "" }))
+        .map(m => ({ created: createdMap[String(m.userId)] || "" }))
         .filter(x => x.created && isFinite(Date.parse(x.created)))
         .sort((a,b) => Date.parse(a.created) - Date.parse(b.created));
 
-      if (withDates.length) {
+      if (withDates.length){
         const oldest = withDates[0].created;
         const newest = withDates[withDates.length - 1].created;
-        showEdge(els.oldestInfo, "Oldest account creation date: " + fmtDate(oldest) + " (" + oldest + ")");
-        showEdge(els.newestInfo, "Newest account creation date: " + fmtDate(newest) + " (" + newest + ")");
+        showEdge(els.oldestInfo, "Oldest creation date (this page): " + fmtDate(oldest) + " (" + oldest + ")");
+        showEdge(els.newestInfo, "Newest creation date (this page): " + fmtDate(newest) + " (" + newest + ")");
       } else {
         showEdge(els.oldestInfo, "");
         showEdge(els.newestInfo, "");
       }
 
-      // Render members in sorted order
-      stopDots();
-      _membersAll = members;
-      _pageIndex = 0;
+      // Render this page
+      setStatus("Rendering...");
+      clearMembers();
+      for (const m of members){
+        addRow(m.displayName, m.username, m.userId);
+      }
+
+      // Avatars for this page only
+      setStatus("Loading avatars...");
+      await ensureThumbsFor(ids);
+      applyThumbs(_thumbCache);
+
+      _pageIndex = pageIndex;
       updatePager();
-      await renderPage();
+
+      setStatus(`Loaded ${members.length} members on this page (sorted oldest → newest). Press Refresh to update.`);
       els.refreshBtn.disabled = false;
-}
+    }
+
+    async function refresh(){
+      const base = getWorkerBase();
+      if (!base){ showCfg(true); return; }
+
+      els.refreshBtn.disabled = true;
+      stopDots();
+
+      _pageIndex = 0;
+      _cursorHistory = [""];
+      _nextCursor = "";
+      updatePager();
+
+      setStatus("Loading group info...");
+      const info = await fetchJSON(endpoint(`/groupInfo?groupId=${GROUP_ID}&t=${Date.now()}`));
+      if (info.ok && info.body && info.body.name){
+        els.groupTitle.textContent = String(info.body.name) + " — Members";
+      } else {
+        els.groupTitle.textContent = "Group Members";
+      }
+      if (info.ok && info.body && info.body.memberCount != null){
+        els.countText.textContent = String(info.body.memberCount);
+      } else {
+        els.countText.textContent = "—";
+      }
+
+      await loadPage("", 0);
+    }
 
     // ===== Styled tooltips =====
     let _uiTipEl = null;
     let _uiTipTarget = null;
 
-    function ensureTip() {
+    function ensureTip(){
       if (_uiTipEl) return _uiTipEl;
       _uiTipEl = document.createElement("div");
       _uiTipEl.className = "uiTip";
@@ -706,7 +704,7 @@ const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent
       document.body.appendChild(_uiTipEl);
       return _uiTipEl;
     }
-    function setTipContent(text) {
+    function setTipContent(text){
       const el = ensureTip();
       const titleEl = el.querySelector("#uiTipTitle");
       const bodyEl  = el.querySelector("#uiTipBody");
@@ -717,7 +715,7 @@ const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent
       if (titleEl) titleEl.textContent = t || "Info";
       if (bodyEl) bodyEl.textContent = b || "";
     }
-    function positionTip(x, y) {
+    function positionTip(x, y){
       const el = ensureTip();
       const pad = 12;
       const vw = window.innerWidth || 0;
@@ -733,22 +731,22 @@ const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent
       el.style.left = left + "px";
       el.style.top  = top + "px";
     }
-    function showTipFor(target, x, y) {
+    function showTipFor(target, x, y){
       const text = target.getAttribute("data-tip") || "";
       if (!text) return;
       _uiTipTarget = target;
       setTipContent(text);
       positionTip(x, y);
     }
-    function hideTip() {
+    function hideTip(){
       if (!_uiTipEl) return;
       _uiTipEl.classList.remove("show");
       _uiTipTarget = null;
     }
-    function initTooltips() {
+    function initTooltips(){
       ensureTip();
       const nodes = Array.from(document.querySelectorAll("[data-tip]"));
-      for (const el of nodes) {
+      for (const el of nodes){
         el.addEventListener("mouseenter", (e) => showTipFor(e.currentTarget, e.clientX, e.clientY));
         el.addEventListener("mousemove", (e) => { if (_uiTipTarget === e.currentTarget) positionTip(e.clientX, e.clientY); });
         el.addEventListener("mouseleave", hideTip);
@@ -763,16 +761,16 @@ const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent
     }
 
     // ===== Theme (shared with index) =====
-    function applyTheme(mode) {
+    function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
       if (els.themeLight) els.themeLight.setAttribute("aria-pressed", mode === "light");
       if (els.themeDark)  els.themeDark.setAttribute("aria-pressed", mode === "dark");
       if (els.themeAuto)  els.themeAuto.setAttribute("aria-pressed", mode === "auto");
-      if (mode === "auto") { document.documentElement.removeAttribute("data-theme"); return; }
+      if (mode === "auto"){ document.documentElement.removeAttribute("data-theme"); return; }
       document.documentElement.setAttribute("data-theme", mode);
     }
 
-    function showCfg(on) {
+    function showCfg(on){
       if (!els.cfg) return;
       if (on) els.cfg.classList.add("show");
       else els.cfg.classList.remove("show");
@@ -781,10 +779,22 @@ const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent
     els.cfgCancel.onclick = () => showCfg(false);
     els.cfgSave.onclick = () => {
       const v = (els.cfgUrl.value || "").trim();
-      if (v) { setWorkerBase(v); showCfg(false); }
+      if (v){ setWorkerBase(v); showCfg(false); }
     };
 
     els.refreshBtn.onclick = refresh;
+
+    if (els.nextPageBtn) els.nextPageBtn.onclick = async () => {
+      if (!_nextCursor) return;
+      const nextIndex = _pageIndex + 1;
+      _cursorHistory[nextIndex] = _nextCursor;
+      await loadPage(_nextCursor, nextIndex);
+    };
+    if (els.prevPageBtn) els.prevPageBtn.onclick = async () => {
+      const prevIndex = Math.max(0, _pageIndex - 1);
+      const c = _cursorHistory[prevIndex] || "";
+      await loadPage(c, prevIndex);
+    };
 
     els.themeLight.onclick = () => applyTheme("light");
     els.themeDark.onclick  = () => applyTheme("dark");
@@ -795,6 +805,7 @@ const res = await fetchJSON(endpoint(`/usersCreated?userIds=${encodeURIComponent
 
     if (!getWorkerBase()) showCfg(true);
   </script>
+
 
 </body>
 </html>
