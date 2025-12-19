@@ -968,37 +968,27 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
 
     function renderLockState(){
       const locked = !!lockState.locked;
+
       if (els.lockBtn){
+        // Icon only (no text next to it)
         els.lockBtn.textContent = locked ? "🔓" : "🔒";
-      
-      
-      if (els.lockBtn){
+
         const who = (lockState.by || "").trim();
         const when = lockState.at ? fmtWhen(lockState.at) : "";
         const stateText = locked ? "LOCKED" : "UNLOCKED";
         const byText = who ? (" by " + who) : "";
         const atText = when ? (" • " + when) : "";
-        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+        const actionHint = locked
+          ? "Click to unlock (teleport players to main place)."
+          : "Click to lock (send joiners + players to lock place).";
+
         els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
-      }
-if (els.lockBtn){
-        const who = (lockState.by || "").trim();
-        const when = lockState.at ? fmtWhen(lockState.at) : "";
-        const stateText = locked ? "LOCKED" : "UNLOCKED";
-        const byText = who ? (" by " + who) : "";
-        const atText = when ? (" • " + when) : "";
-        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
-        }
-}
-else{
-          els.lockMeta.textContent = locked ? "Locked" : "Unlocked";
-        }
       }
     }
 
     async function fetchLockState(){
       try{
-        const res = await fetch(endpoint("/lockState") + (endpoint("/lockState").includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
+        const res = await fetch(endpoint("/lockState") + "?t=" + Date.now(), { cache: "no-store" });
         const body = await res.json().catch(()=>null);
         if (res.ok && body && body.ok){
           lockState = { locked: !!body.locked, by: String(body.by||""), at: Number(body.at||0) };
