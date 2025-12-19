@@ -312,6 +312,16 @@
   flex: 0 0 auto;
 }
 
+
+.listActions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:center;
+  padding: 14px 10px 8px;
+}
+
 </style>
 </head>
 <body>
@@ -328,10 +338,7 @@
           <button id="themeDark" type="button" aria-pressed="true" data-tip="THEME — Dark mode">🌙</button>
           <button id="themeAuto" type="button" aria-pressed="false" data-tip="THEME — Follow system theme">🖥️</button>
         </div>
-        <button class="btn" id="refreshBtn" data-tip="REFRESH — Loads group members (only when pressed)">⟳ Refresh</button>
-        <button class="btn" id="recentBtn" data-tip="RECENT — Shows members on this page created within the last 30 days">🕒 Recent</button>
-        <button class="btn" id="hideRecentBtn" data-tip="HIDE — Hides members created in the last 30 days (only removes them from this list)">🧹 Hide &lt;30d</button>
-        <span class="pillStatus" style="align-self:center">
+<span class="pillStatus" style="align-self:center">
           <img id="whoPfp" class="whoPfp" alt="" referrerpolicy="no-referrer" tabindex="0" data-tip="PROFILE — Click to change your profile picture" />
           <span class="small">👤</span>
           <span class="small" id="whoami">—</span>
@@ -356,6 +363,12 @@
           <button class="btn" id="prevPageBtn">← Prev</button>
           <div class="pageInfo" id="pageInfo">Page 1</div>
           <button class="btn" id="nextPageBtn">Next page →</button>
+        </div>
+        
+        <div class="listActions" id="listActions">
+          <button class="btn" id="refreshBtn" data-tip="REFRESH — Loads group members (only when pressed)">⟳ Refresh</button>
+          <button class="btn" id="recentBtn" data-tip="RECENT — Shows members on this page created within the last 30 days">🕒 Recent</button>
+          <button class="btn" id="hideRecentBtn" data-tip="HIDE — Hides members created in the last 30 days (only removes them from this list)">🧹 Hide &lt;30d</button>
         </div>
       </div>
     </div>
@@ -707,24 +720,20 @@ recentBtn: document.getElementById("recentBtn"),
         members.push({
           userId,
           username: String(u.username || ""),
-          displayName: String(u.displayName || "")
+          displayName: String(u.displayName || ""),
+          created: ""
         });
       }
 
       const ids = members.map(m => m.userId);
 
-      const viewIds = view.map(m => m.userId);
-
-      // Only load creation dates for THIS page and sort THIS page
+      // Only load creation dates for THIS page
       const createdMap = await fetchCreatedMap(ids);
-
-      
-      
       for (const m of members){ m.created = createdMap[String(m.userId)] || ""; }
       _membersAllPage = members.slice();
-for (const m of members){ m.created = createdMap[String(m.userId)] || ""; }
-const nowMs = Date.now();
-      const cutoff = nowMs - (30 * 24 * 60 * 60 * 1000);
+
+      // Hide <30d is only a list filter
+      const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
       let view = members;
       if (_hideRecent){
         view = members.filter(m => {
@@ -734,19 +743,18 @@ const nowMs = Date.now();
       }
       const hiddenCount = Math.max(0, members.length - view.length);
 
+      // Sort visible list oldest -> newest (within this page)
       view.sort((a, b) => {
-        const ca = createdMap[String(a.userId)] || "";
-        const cb = createdMap[String(b.userId)] || "";
-        const ta = Date.parse(ca);
-        const tb = Date.parse(cb);
+        const ta = Date.parse(a.created || "");
+        const tb = Date.parse(b.created || "");
         const va = isFinite(ta) ? ta : Number.POSITIVE_INFINITY;
         const vb = isFinite(tb) ? tb : Number.POSITIVE_INFINITY;
         return va - vb;
       });
 
-      // Oldest/newest for this page
+      // Oldest/newest indicators for this page (visible list)
       const withDates = view
-        .map(m => ({ created: createdMap[String(m.userId)] || "" }))
+        .map(m => ({ created: m.created || "" }))
         .filter(x => x.created && isFinite(Date.parse(x.created)))
         .sort((a,b) => Date.parse(a.created) - Date.parse(b.created));
 
@@ -760,24 +768,24 @@ const nowMs = Date.now();
         showEdge(els.newestInfo, "");
       }
 
-      // Render this page
+      // Render visible list
       setStatus("Rendering...");
       clearMembers();
       for (const m of view){
         addRow(m.displayName, m.username, m.userId);
       }
 
-      // Avatars for this page only
+      // Avatars only for visible list
       setStatus("Loading avatars...");
+      const viewIds = view.map(m => m.userId);
       await ensureThumbsFor(viewIds);
       applyThumbs(_thumbCache);
 
-      _membersPage = view;
-
       _pageIndex = pageIndex;
+      _membersPage = view;
       updatePager();
 
-      setStatus(`Loaded ${members.length} members on this page (sorted oldest → newest). Press Refresh to update.`);
+      setStatus(`Loaded ${view.length} members on this page (sorted oldest → newest).` + (hiddenCount ? ` (${hiddenCount} hidden <30d)` : "") + ` Press Refresh to update.`);
       els.refreshBtn.disabled = false;
     }
 
