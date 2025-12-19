@@ -107,8 +107,8 @@ export default {
       if (url.pathname === "/players" && request.method === "GET") {
         const index = safeParseObj(await env.LIVE.get("server_index"));
 
-        const combined = [];
-        const seen = new Set();
+        // Dedup by userId across multiple places/servers: keep the MOST RECENT snapshot entry per user
+        const byUser = {}; // userId -> {userId, username, displayName, team, placeId, _snapAt}
 
         for (const serverKey in index) {
           const raw = await env.LIVE.get(serverKey);
@@ -117,29 +117,39 @@ export default {
           try {
             const snap = JSON.parse(raw);
             const pid = Number(snap.placeId || 0);
+            const snapAt = Number(snap.updatedAt || 0);
 
             for (const p of snap.players || []) {
-              const id = Number(p.userId);
-              if (!id) continue;
+              const userId = Number(p.userId);
+              if (!userId) continue;
 
-              const unique = `${id}:${pid}`;
-              if (seen.has(unique)) continue;
-              seen.add(unique);
+              const key = String(userId);
+              const cur = byUser[key];
+              if (cur && Number(cur._snapAt || 0) >= snapAt) continue;
 
-              combined.push({
-                userId: Number(p.userId),
+              byUser[key] = {
+                userId,
                 username: String(p.username || ""),
                 displayName: String(p.displayName || ""),
                 team: p.team ? String(p.team) : "",
-                placeId: pid
-              });
+                placeId: pid,
+                _snapAt: snapAt
+              };
             }
           } catch {}
         }
 
-        combined.sort((a, b) =>
-          String(a.displayName || a.username).localeCompare(String(b.displayName || b.username))
-        );
+        const combined = Object.values(byUser)
+          .map((x) => ({
+            userId: Number(x.userId),
+            username: String(x.username || ""),
+            displayName: String(x.displayName || ""),
+            team: x.team ? String(x.team) : "",
+            placeId: Number(x.placeId || 0)
+          }))
+          .sort((a, b) =>
+            String(a.displayName || a.username).localeCompare(String(b.displayName || b.username))
+          );
 
         return json({
           updatedAt: new Date().toISOString(),
