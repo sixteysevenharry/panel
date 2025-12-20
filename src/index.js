@@ -50,8 +50,126 @@ export default {
         );
       }
 
+      
       /* =====================================================
+         ROBLOX -> SYNC (ONE CALL): update snapshot + send pending ACKs + receive commands
+         Body: { placeId, jobId, players:[], acks:[{id,action,userId,ok}], wantCommands:true }
+         ===================================================== */
+      if (url.pathname === "/sync" && request.method === "POST") {
+        const key = request.headers.get("x-api-key") || "";
+        if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
+
+        let body;
+        try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+
+        const placeId = Number(body.placeId || 0);
+        let jobId = String(body.jobId || "");
+        const players = Array.isArray(body.players) ? body.players : null;
+        const acks = Array.isArray(body.acks) ? body.acks : [];
+        const wantCommands = body.wantCommands === true;
+
+        if (!jobId) jobId = "studio-" + crypto.randomUUID();
+
+        // ---- Update snapshot (optional but recommended) ----
+        if (placeId && players) {
+          const now = Date.now();
+          const serverKey = `srv:${placeId}:${jobId}`;
+
+          const snapshot = {
+            placeId,
+            jobId,
+            updatedAt: now,
+            players: players.map((p) => ({
+              userId: Number(p.userId),
+              username: String(p.username || ""),
+              displayName: String(p.displayName || ""),
+              team: p.team ? String(p.team) : ""
+            }))
+          };
+
+          try {
+            await env.LIVE.put(serverKey, JSON.stringify(snapshot), { expirationTtl: 180 });
+
+            const INDEX_KEY = "server_index_v2";
+            const indexArr = safeParseArr(await env.LIVE.get(INDEX_KEY));
+            if (!indexArr.includes(serverKey)) {
+              indexArr.push(serverKey);
+              await env.LIVE.put(INDEX_KEY, JSON.stringify(indexArr));
+            }
+          } catch (e) {
+            // If KV is rate-limiting, still continue with commands so moderation doesn't "stall"
+          }
+        }
+
+        // ---- Process ACKs in batch (reduces KV writes) ----
+        if (acks.length) {
+          const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
+          const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+          const state = safeParseObj(await env.LIVE.get(BAN_STATE_KEY));
+
+          for (const a of acks) {
+            const id = String(a?.id || "");
+            if (!id) continue;
+
+            const action = String(a?.action || "");
+            const userId = Number(a?.userId || 0);
+            const ok = a?.ok === true;
+
+            // delete cmd
+            try { await env.LIVE.delete(`cmd:${id}`); } catch {}
+
+            // remove from command_index (best effort)
+            if (cmdIndex && id in cmdIndex) delete cmdIndex[id];
+
+            // update log status
+            const idx = log.findIndex((x) => String(x?.id || "") === id);
+            if (idx >= 0) {
+              log[idx].status = ok ? "applied" : "failed";
+              log[idx].ackedAt = Date.now();
+            }
+
+            // update active ban state
+            if (ok && userId > 0 && (action === "ban" || action === "unban")) {
+              if (action === "ban") {
+                state[String(userId)] = {
+                  userId,
+                  reason: idx >= 0 ? String(log[idx]?.reason || "") : "",
+                  by: idx >= 0 ? String(log[idx]?.by || "") : "",
+                  bannedAt: Date.now(),
+                  lastId: id
+                };
+              } else if (action === "unban") {
+                delete state[String(userId)];
+              }
+            }
+          }
+
+          // Best-effort KV puts (avoid hard fail on 429)
+          try { await env.LIVE.put("command_index", JSON.stringify(cmdIndex)); } catch {}
+          try { await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log)); } catch {}
+          try { await env.LIVE.put(BAN_STATE_KEY, JSON.stringify(state)); } catch {}
+        }
+
+        // ---- Return commands (no KV writes on read) ----
+        let commands = [];
+        if (wantCommands) {
+          const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
+          for (const id in cmdIndex) {
+            const raw = await env.LIVE.get(`cmd:${id}`);
+            if (!raw) continue;
+            try { commands.push(JSON.parse(raw)); } catch {}
+          }
+        }
+
+        return json({ ok: true, commands });
+      }
+
+/* =====================================================
          ROBLOX -> UPDATE SERVER SNAPSHOT
+         ===================================================== */
+      
+      /* =====================================================
+         ROBLOX -> UPDATE SERVER SNAPSHOT (v2 index)
          ===================================================== */
       if (url.pathname === "/update" && request.method === "POST") {
         const key = request.headers.get("x-api-key") || "";
@@ -90,66 +208,70 @@ export default {
 
         await env.LIVE.put(serverKey, JSON.stringify(snapshot), { expirationTtl: 180 });
 
-        const index = safeParseObj(await env.LIVE.get("server_index"));
-        index[serverKey] = now;
-
-        for (const k in index) {
-          if (now - Number(index[k] || 0) > 180000) delete index[k];
+        // Index v2: store only server keys (no per-update writes unless a new server appears)
+        const INDEX_KEY = "server_index_v2";
+        const indexArr = safeParseArr(await env.LIVE.get(INDEX_KEY));
+        if (!indexArr.includes(serverKey)) {
+          indexArr.push(serverKey);
+          await env.LIVE.put(INDEX_KEY, JSON.stringify(indexArr));
         }
 
-        await env.LIVE.put("server_index", JSON.stringify(index));
         return json({ ok: true });
       }
+
 
       /* =====================================================
          WEBSITE -> GET ALL ACTIVE PLAYERS (with placeId)
          ===================================================== */
+      
+      /* =====================================================
+         WEBSITE -> GET ALL ACTIVE PLAYERS (v2 index)
+         ===================================================== */
       if (url.pathname === "/players" && request.method === "GET") {
-        const index = safeParseObj(await env.LIVE.get("server_index"));
+        const INDEX_KEY = "server_index_v2";
+        const indexArr = safeParseArr(await env.LIVE.get(INDEX_KEY));
 
-        // Dedup by userId across multiple places/servers: keep the MOST RECENT snapshot entry per user
-        const byUser = {}; // userId -> {userId, username, displayName, team, placeId, _snapAt}
+        const combined = [];
+        const seen = new Set();
+        const kept = [];
 
-        for (const serverKey in index) {
+        for (const serverKey of indexArr) {
           const raw = await env.LIVE.get(serverKey);
           if (!raw) continue;
+
+          kept.push(serverKey);
 
           try {
             const snap = JSON.parse(raw);
             const pid = Number(snap.placeId || 0);
-            const snapAt = Number(snap.updatedAt || 0);
 
             for (const p of snap.players || []) {
-              const userId = Number(p.userId);
-              if (!userId) continue;
+              const id = Number(p.userId);
+              if (!id) continue;
 
-              const key = String(userId);
-              const cur = byUser[key];
-              if (cur && Number(cur._snapAt || 0) >= snapAt) continue;
+              const unique = `${id}:${pid}`;
+              if (seen.has(unique)) continue;
+              seen.add(unique);
 
-              byUser[key] = {
-                userId,
+              combined.push({
+                userId: Number(p.userId),
                 username: String(p.username || ""),
                 displayName: String(p.displayName || ""),
                 team: p.team ? String(p.team) : "",
-                placeId: pid,
-                _snapAt: snapAt
-              };
+                placeId: pid
+              });
             }
           } catch {}
         }
 
-        const combined = Object.values(byUser)
-          .map((x) => ({
-            userId: Number(x.userId),
-            username: String(x.username || ""),
-            displayName: String(x.displayName || ""),
-            team: x.team ? String(x.team) : "",
-            placeId: Number(x.placeId || 0)
-          }))
-          .sort((a, b) =>
-            String(a.displayName || a.username).localeCompare(String(b.displayName || b.username))
-          );
+        // Prune dead servers occasionally (write only if changed)
+        if (kept.length !== indexArr.length) {
+          await env.LIVE.put(INDEX_KEY, JSON.stringify(kept));
+        }
+
+        combined.sort((a, b) =>
+          String(a.displayName || a.username).localeCompare(String(b.displayName || b.username))
+        );
 
         return json({
           updatedAt: new Date().toISOString(),
@@ -157,6 +279,7 @@ export default {
           players: combined
         });
       }
+
 
       /* =====================================================
          PANEL -> CREATE MODERATION COMMAND
@@ -304,29 +427,26 @@ await env.LIVE.delete(MOD_LOG_KEY);
       /* =====================================================
          ROBLOX -> GET MODERATION COMMANDS
          ===================================================== */
+      
+      /* =====================================================
+         ROBLOX -> GET MODERATION COMMANDS
+         ===================================================== */
       if (url.pathname === "/commands" && request.method === "GET") {
         const key = request.headers.get("x-api-key") || "";
         if (!env.API_KEY || key !== env.API_KEY) return json({ error: "Unauthorized" }, 401);
 
         const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
-        const now = Date.now();
         const commands = [];
 
         for (const id in cmdIndex) {
-          if (now - Number(cmdIndex[id] || 0) > 600000) {
-            delete cmdIndex[id];
-            continue;
-          }
-
           const raw = await env.LIVE.get(`cmd:${id}`);
           if (!raw) continue;
-
           try { commands.push(JSON.parse(raw)); } catch {}
         }
 
-        await env.LIVE.put("command_index", JSON.stringify(cmdIndex));
         return json({ ok: true, commands });
       }
+
 
       /* =====================================================
          ROBLOX -> ACK COMMAND (CONFIRMATION)
@@ -432,6 +552,137 @@ await env.LIVE.delete(MOD_LOG_KEY);
         let body;
         try { body = JSON.parse(bodyText); } catch { body = {}; }
 
+        // --- Suspicious group-join logging (no enforcement; logs only) ---
+        // We keep a lightweight "seen members" map per group so we can detect NEW joins.
+        // When a new member is detected, we optionally flag them as "Suspicious" based on:
+        //   - suspicious username/displayName patterns
+        //   - membership in groups whose names contain: Anti / Ruben / Hunters
+        //
+        // Notes:
+        // - This runs only when /groupMembers is fetched (e.g. when admins hit refresh / next page).
+        // - We de-duplicate per (groupId,userId) so it logs once per join.
+        const SUS_GROUP_WORDS = ["anti", "ruben", "hunters"];
+        const SUS_NAME_WORDS = [
+          "beam", "beamer", "cookie", "scam", "scammer", "hack", "hacker",
+          "exploit", "exploiter", "phish", "phisher", "steal", "stealer",
+          "dupe", "duper", "free robux", "robuxgenerator", "genrobux"
+        ];
+
+        const norm = (s) => String(s || "").toLowerCase();
+        const hasAnyWord = (s, words) => {
+          const t = norm(s);
+          if (!t) return false;
+          return words.some((w) => t.includes(w));
+        };
+
+        const getMemberUser = (m) => {
+          // Roblox group members API usually returns { user:{ userId, username, displayName }, role:{...} }
+          if (!m || typeof m !== "object") return null;
+          if (m.user && typeof m.user === "object") return m.user;
+          // fallback shapes
+          if ("userId" in m) return { userId: m.userId, username: m.username, displayName: m.displayName };
+          return null;
+        };
+
+        const seenKey = `grpseen:${groupId}`;
+        const seenObj = safeParseObj(await env.LIVE.get(seenKey)); // { "<userId>": 1 }
+        const seenSet = new Set(Object.keys(seenObj || {}));
+
+        const pageUsers = [];
+        for (const m of (body.data || [])) {
+          const u = getMemberUser(m);
+          const uid = u && u.userId != null ? String(u.userId) : "";
+          if (!uid || uid === "0") continue;
+          pageUsers.push({
+            userId: Number(uid),
+            username: String(u.username || ""),
+            displayName: String(u.displayName || "")
+          });
+        }
+
+        // detect new joins from this page
+        const newJoins = pageUsers.filter((u) => !seenSet.has(String(u.userId)));
+
+        // update seen (so even if they aren't suspicious we don't treat them as "new" again)
+        if (newJoins.length) {
+          for (const u of newJoins) seenObj[String(u.userId)] = 1;
+          await env.LIVE.put(seenKey, JSON.stringify(seenObj));
+        }
+
+        // Log only suspicious ones (and log once per (groupId,userId))
+        for (const u of newJoins) {
+          const uidStr = String(u.userId);
+          const dedupeKey = `suslogged:${groupId}:${uidStr}`;
+          if (await env.LIVE.get(dedupeKey)) continue;
+
+          const reasons = [];
+
+          if (hasAnyWord(u.username, SUS_NAME_WORDS) || hasAnyWord(u.displayName, SUS_NAME_WORDS)) {
+            reasons.push("Suspicious name");
+          }
+
+          let flaggedGroups = [];
+          try {
+            const gr = await fetch(`https://groups.roblox.com/v2/users/${uidStr}/groups/roles`, {
+              headers: { "user-agent": "panel-worker" }
+            });
+            if (gr.ok) {
+              const gj = await gr.json();
+              const arr = Array.isArray(gj?.data) ? gj.data : [];
+              for (const item of arr) {
+                const gname = String(item?.group?.name || "");
+                if (hasAnyWord(gname, SUS_GROUP_WORDS)) {
+                  flaggedGroups.push(gname);
+                }
+              }
+            }
+          } catch {}
+
+          if (flaggedGroups.length) {
+            const uniq = Array.from(new Set(flaggedGroups)).slice(0, 8);
+            reasons.push(`In flagged groups: ${uniq.join(", ")}`);
+          }
+
+          // Account-age flag (joined within last 30 days)
+          try {
+            const ur = await fetch(`https://users.roblox.com/v1/users/${uidStr}`, { headers: { "user-agent": "panel-worker" }});
+            if (ur.ok) {
+              const uj = await ur.json();
+              const created = String(uj?.created || "");
+              const createdMs = created ? Date.parse(created) : NaN;
+              if (Number.isFinite(createdMs)) {
+                const ageDays = (Date.now() - createdMs) / 86400000;
+                if (ageDays >= 0 && ageDays < 30) reasons.push("New account (<30d)");
+              }
+            }
+          } catch {}
+
+          if (!reasons.length) continue; // not suspicious -> do not add a log entry
+
+          const id = crypto.randomUUID();
+          const now = Date.now();
+
+          // Append to shared history log (same feed as kicks/bans)
+          const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+          log.unshift({
+            id,
+            createdAt: now,
+            action: "group",
+            userId: u.userId,
+            username: u.username,
+            displayName: u.displayName,
+            reason: reasons.join(" • "),
+            by: "system",
+            status: "applied",
+            tag: "Suspicious"
+          });
+          if (log.length > MAX_LOG) log.length = MAX_LOG;
+          await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
+
+          // De-dupe so we log it once per join
+          await env.LIVE.put(dedupeKey, "1", { expirationTtl: 60 * 60 * 24 * 14 }); // 14 days
+        }
+
         // short cache to reduce 429s
         await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 60 });
 
@@ -477,6 +728,137 @@ await env.LIVE.delete(MOD_LOG_KEY);
 
         let body;
         try { body = JSON.parse(bodyText); } catch { body = {}; }
+
+        // --- Suspicious group-join logging (no enforcement; logs only) ---
+        // We keep a lightweight "seen members" map per group so we can detect NEW joins.
+        // When a new member is detected, we optionally flag them as "Suspicious" based on:
+        //   - suspicious username/displayName patterns
+        //   - membership in groups whose names contain: Anti / Ruben / Hunters
+        //
+        // Notes:
+        // - This runs only when /groupMembers is fetched (e.g. when admins hit refresh / next page).
+        // - We de-duplicate per (groupId,userId) so it logs once per join.
+        const SUS_GROUP_WORDS = ["anti", "ruben", "hunters"];
+        const SUS_NAME_WORDS = [
+          "beam", "beamer", "cookie", "scam", "scammer", "hack", "hacker",
+          "exploit", "exploiter", "phish", "phisher", "steal", "stealer",
+          "dupe", "duper", "free robux", "robuxgenerator", "genrobux"
+        ];
+
+        const norm = (s) => String(s || "").toLowerCase();
+        const hasAnyWord = (s, words) => {
+          const t = norm(s);
+          if (!t) return false;
+          return words.some((w) => t.includes(w));
+        };
+
+        const getMemberUser = (m) => {
+          // Roblox group members API usually returns { user:{ userId, username, displayName }, role:{...} }
+          if (!m || typeof m !== "object") return null;
+          if (m.user && typeof m.user === "object") return m.user;
+          // fallback shapes
+          if ("userId" in m) return { userId: m.userId, username: m.username, displayName: m.displayName };
+          return null;
+        };
+
+        const seenKey = `grpseen:${groupId}`;
+        const seenObj = safeParseObj(await env.LIVE.get(seenKey)); // { "<userId>": 1 }
+        const seenSet = new Set(Object.keys(seenObj || {}));
+
+        const pageUsers = [];
+        for (const m of (body.data || [])) {
+          const u = getMemberUser(m);
+          const uid = u && u.userId != null ? String(u.userId) : "";
+          if (!uid || uid === "0") continue;
+          pageUsers.push({
+            userId: Number(uid),
+            username: String(u.username || ""),
+            displayName: String(u.displayName || "")
+          });
+        }
+
+        // detect new joins from this page
+        const newJoins = pageUsers.filter((u) => !seenSet.has(String(u.userId)));
+
+        // update seen (so even if they aren't suspicious we don't treat them as "new" again)
+        if (newJoins.length) {
+          for (const u of newJoins) seenObj[String(u.userId)] = 1;
+          await env.LIVE.put(seenKey, JSON.stringify(seenObj));
+        }
+
+        // Log only suspicious ones (and log once per (groupId,userId))
+        for (const u of newJoins) {
+          const uidStr = String(u.userId);
+          const dedupeKey = `suslogged:${groupId}:${uidStr}`;
+          if (await env.LIVE.get(dedupeKey)) continue;
+
+          const reasons = [];
+
+          if (hasAnyWord(u.username, SUS_NAME_WORDS) || hasAnyWord(u.displayName, SUS_NAME_WORDS)) {
+            reasons.push("Suspicious name");
+          }
+
+          let flaggedGroups = [];
+          try {
+            const gr = await fetch(`https://groups.roblox.com/v2/users/${uidStr}/groups/roles`, {
+              headers: { "user-agent": "panel-worker" }
+            });
+            if (gr.ok) {
+              const gj = await gr.json();
+              const arr = Array.isArray(gj?.data) ? gj.data : [];
+              for (const item of arr) {
+                const gname = String(item?.group?.name || "");
+                if (hasAnyWord(gname, SUS_GROUP_WORDS)) {
+                  flaggedGroups.push(gname);
+                }
+              }
+            }
+          } catch {}
+
+          if (flaggedGroups.length) {
+            const uniq = Array.from(new Set(flaggedGroups)).slice(0, 8);
+            reasons.push(`In flagged groups: ${uniq.join(", ")}`);
+          }
+
+          // Account-age flag (joined within last 30 days)
+          try {
+            const ur = await fetch(`https://users.roblox.com/v1/users/${uidStr}`, { headers: { "user-agent": "panel-worker" }});
+            if (ur.ok) {
+              const uj = await ur.json();
+              const created = String(uj?.created || "");
+              const createdMs = created ? Date.parse(created) : NaN;
+              if (Number.isFinite(createdMs)) {
+                const ageDays = (Date.now() - createdMs) / 86400000;
+                if (ageDays >= 0 && ageDays < 30) reasons.push("New account (<30d)");
+              }
+            }
+          } catch {}
+
+          if (!reasons.length) continue; // not suspicious -> do not add a log entry
+
+          const id = crypto.randomUUID();
+          const now = Date.now();
+
+          // Append to shared history log (same feed as kicks/bans)
+          const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+          log.unshift({
+            id,
+            createdAt: now,
+            action: "group",
+            userId: u.userId,
+            username: u.username,
+            displayName: u.displayName,
+            reason: reasons.join(" • "),
+            by: "system",
+            status: "applied",
+            tag: "Suspicious"
+          });
+          if (log.length > MAX_LOG) log.length = MAX_LOG;
+          await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
+
+          // De-dupe so we log it once per join
+          await env.LIVE.put(dedupeKey, "1", { expirationTtl: 60 * 60 * 24 * 14 }); // 14 days
+        }
 
         // short cache to reduce 429s
         await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 60 });
@@ -531,8 +913,139 @@ await env.LIVE.delete(MOD_LOG_KEY);
         let body;
         try { body = JSON.parse(bodyText); } catch { body = {}; }
 
+        // --- Suspicious group-join logging (no enforcement; logs only) ---
+        // We keep a lightweight "seen members" map per group so we can detect NEW joins.
+        // When a new member is detected, we optionally flag them as "Suspicious" based on:
+        //   - suspicious username/displayName patterns
+        //   - membership in groups whose names contain: Anti / Ruben / Hunters
+        //
+        // Notes:
+        // - This runs only when /groupMembers is fetched (e.g. when admins hit refresh / next page).
+        // - We de-duplicate per (groupId,userId) so it logs once per join.
+        const SUS_GROUP_WORDS = ["anti", "ruben", "hunters"];
+        const SUS_NAME_WORDS = [
+          "beam", "beamer", "cookie", "scam", "scammer", "hack", "hacker",
+          "exploit", "exploiter", "phish", "phisher", "steal", "stealer",
+          "dupe", "duper", "free robux", "robuxgenerator", "genrobux"
+        ];
+
+        const norm = (s) => String(s || "").toLowerCase();
+        const hasAnyWord = (s, words) => {
+          const t = norm(s);
+          if (!t) return false;
+          return words.some((w) => t.includes(w));
+        };
+
+        const getMemberUser = (m) => {
+          // Roblox group members API usually returns { user:{ userId, username, displayName }, role:{...} }
+          if (!m || typeof m !== "object") return null;
+          if (m.user && typeof m.user === "object") return m.user;
+          // fallback shapes
+          if ("userId" in m) return { userId: m.userId, username: m.username, displayName: m.displayName };
+          return null;
+        };
+
+        const seenKey = `grpseen:${groupId}`;
+        const seenObj = safeParseObj(await env.LIVE.get(seenKey)); // { "<userId>": 1 }
+        const seenSet = new Set(Object.keys(seenObj || {}));
+
+        const pageUsers = [];
+        for (const m of (body.data || [])) {
+          const u = getMemberUser(m);
+          const uid = u && u.userId != null ? String(u.userId) : "";
+          if (!uid || uid === "0") continue;
+          pageUsers.push({
+            userId: Number(uid),
+            username: String(u.username || ""),
+            displayName: String(u.displayName || "")
+          });
+        }
+
+        // detect new joins from this page
+        const newJoins = pageUsers.filter((u) => !seenSet.has(String(u.userId)));
+
+        // update seen (so even if they aren't suspicious we don't treat them as "new" again)
+        if (newJoins.length) {
+          for (const u of newJoins) seenObj[String(u.userId)] = 1;
+          await env.LIVE.put(seenKey, JSON.stringify(seenObj));
+        }
+
+        // Log only suspicious ones (and log once per (groupId,userId))
+        for (const u of newJoins) {
+          const uidStr = String(u.userId);
+          const dedupeKey = `suslogged:${groupId}:${uidStr}`;
+          if (await env.LIVE.get(dedupeKey)) continue;
+
+          const reasons = [];
+
+          if (hasAnyWord(u.username, SUS_NAME_WORDS) || hasAnyWord(u.displayName, SUS_NAME_WORDS)) {
+            reasons.push("Suspicious name");
+          }
+
+          let flaggedGroups = [];
+          try {
+            const gr = await fetch(`https://groups.roblox.com/v2/users/${uidStr}/groups/roles`, {
+              headers: { "user-agent": "panel-worker" }
+            });
+            if (gr.ok) {
+              const gj = await gr.json();
+              const arr = Array.isArray(gj?.data) ? gj.data : [];
+              for (const item of arr) {
+                const gname = String(item?.group?.name || "");
+                if (hasAnyWord(gname, SUS_GROUP_WORDS)) {
+                  flaggedGroups.push(gname);
+                }
+              }
+            }
+          } catch {}
+
+          if (flaggedGroups.length) {
+            const uniq = Array.from(new Set(flaggedGroups)).slice(0, 8);
+            reasons.push(`In flagged groups: ${uniq.join(", ")}`);
+          }
+
+          // Account-age flag (joined within last 30 days)
+          try {
+            const ur = await fetch(`https://users.roblox.com/v1/users/${uidStr}`, { headers: { "user-agent": "panel-worker" }});
+            if (ur.ok) {
+              const uj = await ur.json();
+              const created = String(uj?.created || "");
+              const createdMs = created ? Date.parse(created) : NaN;
+              if (Number.isFinite(createdMs)) {
+                const ageDays = (Date.now() - createdMs) / 86400000;
+                if (ageDays >= 0 && ageDays < 30) reasons.push("New account (<30d)");
+              }
+            }
+          } catch {}
+
+          if (!reasons.length) continue; // not suspicious -> do not add a log entry
+
+          const id = crypto.randomUUID();
+          const now = Date.now();
+
+          // Append to shared history log (same feed as kicks/bans)
+          const log = safeParseArr(await env.LIVE.get(MOD_LOG_KEY));
+          log.unshift({
+            id,
+            createdAt: now,
+            action: "group",
+            userId: u.userId,
+            username: u.username,
+            displayName: u.displayName,
+            reason: reasons.join(" • "),
+            by: "system",
+            status: "applied",
+            tag: "Suspicious"
+          });
+          if (log.length > MAX_LOG) log.length = MAX_LOG;
+          await env.LIVE.put(MOD_LOG_KEY, JSON.stringify(log));
+
+          // De-dupe so we log it once per join
+          await env.LIVE.put(dedupeKey, "1", { expirationTtl: 60 * 60 * 24 * 14 }); // 14 days
+        }
+
         // Cache (KV minimum 60s)
-        await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 300 });
+        await env.LIVE.put(cacheKey, JSON.stringify(body), { expirationTtl: 60 });
 
         return json(body);
       }
