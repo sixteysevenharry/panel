@@ -1163,24 +1163,22 @@ return { ok:false, id: String(logItem.id || lastId || ""), message: "failed" };
 
 return { ok:true, id: String(lastId || "") };
       }
-    } else {
-      window.__goneStreak[keyGone] = 0;
-    }
+} else {
+  window.__goneStreak[keyGone] = 0;
+}
 
-    setStage("Moderating in progress…");
-    await new Promise(r => setTimeout(r, checkEveryMs));
+setStage("Moderating in progress…");
 await new Promise(r => setTimeout(r, checkEveryMs));
 
-    // Optional hint for the operator, but NOT the source of truth:
-    // if they disappear, we still wait for log confirmation.
-    const stillHere = await isStillHere();
-    if (!stillHere){
-      setStage("Moderating in progress…");
-    }
+// Optional hint for the operator, but NOT the source of truth:
+// if they disappear, we still wait for log confirmation.
+if (!still){
+  setStage("Moderating in progress…");
+}
   }
 
-  setModerationProgress(100, "Timed out");
-return { ok:false, timeout:true, message: "Server did not respond. Please use khols admin to moderate this user." };
+  setModerationProgress(200, "Timed out");
+return { ok:false, timeout:true, message: "Issue on servers end, please use khols to moderate this user." };
 }
 
     function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
@@ -1424,8 +1422,8 @@ function initPanel(){
       els.workerBase.value = savedBase;
       els.adminKey.value = savedAdmin;
 
-      // Auto-load ONCE on first open (players + logs).
-      // After that, players are manual refresh; logs update live.
+      // Auto-load players + logs ONCE on page open.
+      // After that: players are manual refresh; logs update live for everyone.
       (async () => {
         try{
           setStatus("ok","Loading…");
@@ -1436,17 +1434,14 @@ function initPanel(){
         }
       })();
 
-      // Live log updates for everyone (logs only; does NOT refresh the active players list)
-      let _logsPollBusy = false;
+      let _logsBusy = false;
       setInterval(async () => {
         try{
-          if (_logsPollBusy) return;
-          _logsPollBusy = true;
-          await fetchLogs();
-          // fetchLogs renders logs + updates buttons
-          setCounts();
+          if (_logsBusy) return;
+          _logsBusy = true;
+          await fetchLogs(); // includes cache-buster + re-render
         } catch {} finally {
-          _logsPollBusy = false;
+          _logsBusy = false;
         }
       }, 3000);
     }
