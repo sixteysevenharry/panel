@@ -897,7 +897,7 @@ setStatus("ok","OK");
     }
 
     async function fetchLogs(){
-      const url = endpoint("/history");
+      const url = endpoint("/history") + (endpoint("/history").includes("?") ? "&" : "?") + "t=" + Date.now();
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Logs HTTP " + res.status);
       const data = await res.json();
@@ -1151,7 +1151,7 @@ return { ok:false, id: String(logItem.id || lastId || ""), message: "failed" };
     // treat it as success even if ACK/log is delayed.
     if (!window.__goneStreak) window.__goneStreak = {};
     const keyGone = String(action) + ":" + String(userId);
-    let still = await isStillHere();
+    const still = await isStillHere();
     if (!still && (String(action||"").toLowerCase() === "kick" || String(action||"").toLowerCase() === "ban")){
       window.__goneStreak[keyGone] = (window.__goneStreak[keyGone] || 0) + 1;
       if (window.__goneStreak[keyGone] >= 3){
@@ -1169,18 +1169,18 @@ return { ok:true, id: String(lastId || "") };
 
     setStage("Moderating in progress…");
     await new Promise(r => setTimeout(r, checkEveryMs));
-    await new Promise(r => setTimeout(r, checkEveryMs));
+await new Promise(r => setTimeout(r, checkEveryMs));
 
     // Optional hint for the operator, but NOT the source of truth:
     // if they disappear, we still wait for log confirmation.
-    still = await isStillHere();
-    if (!still){
+    const stillHere = await isStillHere();
+    if (!stillHere){
       setStage("Moderating in progress…");
     }
   }
 
   setModerationProgress(100, "Timed out");
-return { ok:false, timeout:true, message: "Timed out (kept retrying)." };
+return { ok:false, timeout:true, message: "Server did not respond. Please use khols admin to moderate this user." };
 }
 
     function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
@@ -1416,15 +1416,39 @@ function initPanel(){
       initTooltips();
       fetchLockState();
       setInterval(fetchLockState, 1500);
+
       updateWhoAmI();
+
       const savedBase = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
       const savedAdmin = localStorage.getItem("admin_key_v1") || "";
       els.workerBase.value = savedBase;
       els.adminKey.value = savedAdmin;
-      setStatus("ok","Ready (press Refresh)");
-      renderActive();
-      renderLogs();
-      updateButtons();
+
+      // Auto-load ONCE on first open (players + logs).
+      // After that, players are manual refresh; logs update live.
+      (async () => {
+        try{
+          setStatus("ok","Loading…");
+          await refreshAll();
+          setStatus("ok","Ready");
+        } catch (e){
+          setStatus("bad", String(e && e.message ? e.message : e));
+        }
+      })();
+
+      // Live log updates for everyone (logs only; does NOT refresh the active players list)
+      let _logsPollBusy = false;
+      setInterval(async () => {
+        try{
+          if (_logsPollBusy) return;
+          _logsPollBusy = true;
+          await fetchLogs();
+          // fetchLogs renders logs + updates buttons
+          setCounts();
+        } catch {} finally {
+          _logsPollBusy = false;
+        }
+      }, 3000);
     }
 
     if (isLoggedIn()){ showApp(); initPanel(); }
