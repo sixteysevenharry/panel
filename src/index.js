@@ -150,19 +150,58 @@ export default {
           try { await env.LIVE.put(BAN_STATE_KEY, JSON.stringify(state)); } catch {}
         }
 
-        // ---- Return commands (no KV writes on read) ----
+        // ---- Return commands + LIGHT GC (write rarely) ----
         let commands = [];
         if (wantCommands) {
+          const NOW = Date.now();
+          const MAX_AGE = 10 * 60 * 1000; // 10 minutes
+          const MAX_CMD = 1500;
+
           const cmdIndex = safeParseObj(await env.LIVE.get("command_index"));
-          for (const id in cmdIndex) {
+          const keys = Object.keys(cmdIndex || {});
+
+          // Read commands; track stale/missing
+          const stale = [];
+          for (const id of keys) {
+            const createdAt = Number(cmdIndex[id] || 0);
+            if (!createdAt || (NOW - createdAt) > MAX_AGE) {
+              stale.push(id);
+              continue;
+            }
             const raw = await env.LIVE.get(`cmd:${id}`);
-            if (!raw) continue;
+            if (!raw) {
+              stale.push(id);
+              continue;
+            }
             try { commands.push(JSON.parse(raw)); } catch {}
+          }
+
+          // Rare write-back GC: only if index is getting big or there are stale items,
+          // and only once per ~30s to avoid KV PUT spam.
+          const needGc = stale.length > 0 || keys.length > MAX_CMD;
+          if (needGc) {
+            const lastGc = Number(await env.LIVE.get("command_index_gc_at") || 0);
+            if ((NOW - lastGc) > 30_000) {
+              // delete stale
+              for (const id of stale) delete cmdIndex[id];
+
+              // cap size by oldest
+              const pairs = Object.entries(cmdIndex).map(([id, t]) => [id, Number(t || 0)]);
+              pairs.sort((a,b) => a[1] - b[1]); // oldest first
+              const overflow = pairs.length - MAX_CMD;
+              if (overflow > 0) {
+                for (let i = 0; i < overflow; i++) delete cmdIndex[pairs[i][0]];
+              }
+
+              try { await env.LIVE.put("command_index", JSON.stringify(cmdIndex)); } catch {}
+              try { await env.LIVE.put("command_index_gc_at", String(NOW)); } catch {}
+            }
           }
         }
 
         return json({ ok: true, commands });
       }
+
 
 /* =====================================================
          ROBLOX -> UPDATE SERVER SNAPSHOT
