@@ -194,6 +194,15 @@
   background: var(--ring);
   transition: width .2s ease;
 }
+
+  .logSus{
+    border-color: rgba(255,193,7,.42) !important;
+    background: linear-gradient(180deg, rgba(255,193,7,.10) 0%, var(--surface2) 100%) !important;
+  }
+  [data-theme="dark"] .logSus{
+    border-color: rgba(255,193,7,.42) !important;
+    background: linear-gradient(180deg, rgba(255,193,7,.12) 0%, rgba(18,23,34,.6) 100%) !important;
+  }
   .logOk{
   border-color: rgba(11,122,59,.35) !important;
   background: linear-gradient(180deg, rgba(11,122,59,.10) 0%, var(--surface2) 100%) !important;
@@ -290,39 +299,6 @@
 }
 body{ padding-bottom: 74px; }
 
-
-.whoPfp{
-  width:26px;height:26px;border-radius:999px;
-  display:inline-block;object-fit:cover;
-  border:1px solid var(--border2);
-  background: var(--surface2);
-  margin-right:8px;
-  cursor:pointer;
-  flex: 0 0 auto;
-}
-.miniBtn{
-  padding: 6px 10px !important;
-  border-radius: 999px !important;
-  margin-left: 8px;
-}
-.pfpSm{
-  width:16px;height:16px;border-radius:999px;
-  object-fit:cover;
-  border:1px solid var(--border2);
-  background: var(--surface2);
-  margin-right:8px;
-  vertical-align: -3px;
-}
-.byPill{
-  display:inline-flex;align-items:center;
-}
-
-
-    .logTitle{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
-    .trackHint{font-size:12px;color:var(--muted)}
-    .pillWarn{border-color:rgba(255,200,0,.35);background:rgba(255,200,0,.12)}
-    .logWarn{border-color:rgba(255,200,0,.45);box-shadow:0 0 0 1px rgba(255,200,0,.12) inset}
-
 </style>
 </head>
 <body>
@@ -343,11 +319,9 @@ body{ padding-bottom: 74px; }
           <button id="themeAuto" type="button" aria-pressed="false" data-tip="Auto">🖥️</button>
         </div>
         <span class="pillStatus" style="align-self:center">
-  <img id="whoPfp" class="whoPfp" alt="" referrerpolicy="no-referrer" tabindex="0" data-tip="PROFILE — Click to change your profile picture" />
   <span class="small">👤</span>
   <span class="small" id="whoami">—</span>
 </span>
-<input id="pfpUpload" type="file" accept="image/*" style="display:none" />
 <button id="logout" type="button" class="ghostBtn" data-tip="Log out">🚪 Logout</button>
       </div>
     </div>
@@ -385,10 +359,8 @@ body{ padding-bottom: 74px; }
 
       <div class="col">
         <div class="colTitle">
-          <div class="logTitle">
-            <span>Logs</span>
-            <span class="trackHint">Tracking: Group, Accounts, Bans, Kicks</span>
-          </div>
+          <span>Logs</span>
+          <span class="small" style="margin-left:auto;color:var(--muted);font-size:12px;opacity:.95">Tracking: Group, Accounts, Bans, Kicks</span>
           <span class="countPill" id="logCount">0</span>
         </div>
         <div class="scroll" id="logList"></div>
@@ -513,10 +485,7 @@ body{ padding-bottom: 74px; }
       logout: document.getElementById("logout"),
       whoami: document.getElementById("whoami"),
 
-      
-      whoPfp: document.getElementById("whoPfp"),
-      pfpUpload: document.getElementById("pfpUpload"),
-status: document.getElementById("status"),
+      status: document.getElementById("status"),
       statusDot: document.getElementById("statusDot"),
       meta: document.getElementById("meta"),
 
@@ -622,45 +591,6 @@ function showModerationOverlay(show, subText){
     }
     function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
 
-
-function defaultAvatarSvg(name){
-  const n = String(name || "").trim();
-  const ch = (n ? n[0] : "?").toUpperCase();
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#6b7280"/>
-          <stop offset="1" stop-color="#111827"/>
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="32" fill="url(#g)"/>
-      <text x="32" y="40" text-anchor="middle" font-family="system-ui,Segoe UI,Roboto,Arial" font-size="28" fill="#ffffff" font-weight="700">${ch}</text>
-    </svg>`;
-  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-}
-
-let pfpBust = 0;
-function pfpSrc(user){
-  const u = normalizeUser(user);
-  if (!u) return "";
-  const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
-  const v = pfpBust ? ("&v=" + encodeURIComponent(String(pfpBust))) : "";
-  return (base ? (base + "/pfp?user=") : "/pfp?user=") + encodeURIComponent(u) + v;
-}
-function updateWhoPfp(){
-  if (!els.whoPfp) return;
-  const u = String(getLoginUser() || "").trim();
-  els.whoPfp.style.display = "inline-block";
-  els.whoPfp.src = defaultAvatarSvg(u || "?");
-  if (!u) return;
-  const s = pfpSrc(u);
-  if (!s) return;
-  els.whoPfp.onerror = () => { els.whoPfp.src = defaultAvatarSvg(u); };
-  els.whoPfp.src = s;
-}
-
-
     function updateWhoAmI(){
       if (!els.whoami) return;
       const u = String(getLoginUser() || "").trim();
@@ -692,67 +622,12 @@ function updateWhoPfp(){
       setLoggedIn(u);
       toast("ok","Logged in","Welcome");
       showApp();
-      updateWhoAmI();
-      updateWhoPfp();
       initPanel();
     }
 
     els.loginBtn.onclick = attemptLogin;
     els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
-    
-    async function uploadPfp(file){
-      const u = String(getLoginUser() || "").trim();
-      if (!u) return;
-      const base = (localStorage.getItem("worker_base_v1") || "").trim().replace(/\/+$/,"");
-      if (!base){ toast("err","Missing Worker URL","Set your Worker URL first"); return; }
-
-      const adminKey = localStorage.getItem("admin_key_v1") || "";
-      if (!adminKey){ toast("err","Missing Admin Key","Enter your admin key"); return; }
-
-      const toDataUrl = (f) => new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result || ""));
-        r.onerror = reject;
-        r.readAsDataURL(f);
-      });
-
-      const dataUrl = await toDataUrl(file);
-      if (!dataUrl.startsWith("data:image/")){ toast("err","Invalid file","Choose an image"); return; }
-
-      toast("ok","Uploading","Saving your profile picture...");
-      const res = await fetch(base + "/profile/pfp", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-admin-key": adminKey },
-        body: JSON.stringify({ user: u, dataUrl })
-      });
-
-      const text = await res.text();
-      let body = null;
-      try{ body = JSON.parse(text); }catch{ body = null; }
-
-      if (!res.ok){
-        toast("err","Upload failed", (body && body.error) ? String(body.error) : ("HTTP " + res.status));
-        return;
-      }
-
-      pfpBust = Date.now();
-      updateWhoPfp();
-      renderLogs();
-      toast("ok","Saved","Your profile picture is now visible in logs");
-    }
-
-    if (els.whoPfp && els.pfpUpload){
-  els.whoPfp.onclick = () => els.pfpUpload.click();
-  els.whoPfp.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.pfpUpload.click(); } };
-  els.pfpUpload.onchange = async () => {
-    const f = els.pfpUpload.files && els.pfpUpload.files[0];
-    els.pfpUpload.value = "";
-    if (!f) return;
-    try{ await uploadPfp(f); }catch(e){ toast("err","Upload failed", String(e?.message || e)); }
-  };
-}
-
-els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
+    els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
 
     function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
@@ -765,60 +640,21 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
     let activePlayers = [];
     let logs = [];
     function mergeLogs(items){
-      const buckets = new Map();
-
-      function statusRank(s){
-        const st = String(s || "").toLowerCase();
-        if (st === "applied") return 3;   // success
-        if (st === "failed")  return 2;   // failure
-        if (st === "pending") return 1;   // pending
-        return 0;
-      }
-
-      function logKey(e){
-        const action = String(e && e.action || "").toLowerCase();
-        const userId = String(Number(e && e.userId || 0));
-        const by = String(e && e.by || "");
-        const reason = String(e && e.reason || "");
-        return action + "|" + userId + "|" + by + "|" + reason;
-      }
-
+      // Keep ALL log entries (no dedupe). Newest first.
+      const arr = Array.isArray(items) ? items.slice() : [];
       function createdAtNum(e){
-        const n = Number(e && e.createdAt);
+        const v = e && (e.createdAt ?? e.ackedAt ?? e.time ?? 0);
+        const n = Number(v);
         return Number.isFinite(n) ? n : 0;
       }
-
-      for (const e of (Array.isArray(items) ? items : [])){
-        if (!e) continue;
-        const key = logKey(e);
-        const prev = buckets.get(key);
-        if (!prev){
-          buckets.set(key, e);
-          continue;
-        }
-
-        const rNew = statusRank(e.status);
-        const rOld = statusRank(prev.status);
-        const tNew = createdAtNum(e);
-        const tOld = createdAtNum(prev);
-
-        // Prefer better status; if same status, prefer newest.
-        if (rNew > rOld || (rNew === rOld && tNew >= tOld)){
-          buckets.set(key, e);
-        }
-      }
-
-      const merged = Array.from(buckets.values());
-      merged.sort((a,b) => createdAtNum(b) - createdAtNum(a));
-      return merged;
+      arr.sort((a,b) => createdAtNum(b) - createdAtNum(a));
+      return arr;
     }
 
     let selectedActiveUserId = null;
     let selectedLogId = null;
     let uiLocked = false;
-
-    const pendingHidden = new Set();
-
+    // pendingHidden removed: we never optimistically hide players during moderation
     let refreshCooldownUntil = 0;
     let refreshCooldownTimer = null;
 
@@ -858,8 +694,8 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
 
     function setCounts(){
       els.activeCount.textContent = String(activePlayers.length || 0);
-      els.logCount.textContent = String(logs.length || 0);
-    }
+      els.logCount.textContent = String(logs.filter(e => String(e.status||"").toLowerCase() !== "pending").length || 0);
+}
 
     function matchSearch(p){
       const q = normalizeUser(els.search.value);
@@ -887,11 +723,9 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
   const resolved = resolveName(e.userId, e.username, e.displayName);
   const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
   const handle = esc(resolved.username || "");
-  const action = esc(String(e.action || "").toUpperCase());
-  const byRaw = String(e.by || "");
-  const byNorm = normalizeUser(byRaw);
-  const by = esc(byRaw || "");
-  const byImg = byNorm ? `<img class="pfpSm" src="${pfpSrc(byNorm)}" onerror="this.style.display='none'">` : "";
+  const actionRaw = String(e.action || "");
+  const action = esc(actionRaw.toUpperCase());
+  const by = esc(e.by || "");
   const reason = esc(e.reason || "");
   const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
 
@@ -899,26 +733,34 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
   const statusText =
     st === "applied" ? "SUCCESS" :
     st === "failed"  ? "NOT SUCCESSFUL" :
-    st === "pending" ? "PENDING" :
-    (st ? st.toUpperCase() : "");
+    "";
+
+  const tag = String(e.tag || "");
+  const flags = Array.isArray(e.flags) ? e.flags : [];
+  const groups = Array.isArray(e.flagGroups) ? e.flagGroups : [];
+
+  const suspicious = (tag.toLowerCase() === "suspicious") || (String(actionRaw).toLowerCase() === "suspicious");
 
   const statusPill = statusText ? `<span class="pill">${esc(statusText)}</span>` : "";
+  const tagPill = suspicious ? `<span class="pill" style="border-color:rgba(255,193,7,.55)">SUSPICIOUS</span>` : (tag ? `<span class="pill">${esc(tag)}</span>` : "");
 
-  const tagText = String(e.tag || "");
-  const tagPill = tagText ? `<span class="pill pillWarn">${esc(tagText)}</span>` : "";
+  const flagsPill = flags.length ? `<span class="pill">Flags: ${esc(flags.join(", "))}</span>` : "";
+  const groupsPill = groups.length ? `<span class="pill">Groups: ${esc(groups.join(", "))}</span>` : "";
 
   const pills = [
     action ? `<span class="pill">${action}</span>` : "",
     tagPill,
     statusPill,
-    by ? `<span class="pill byPill">${byImg}<span>By: ${by}</span></span>` : "",
-    when ? `<span class="pill">${esc(when)}</span>` : ""
+    by ? `<span class="pill">By: ${by}</span>` : "",
+    when ? `<span class="pill">${esc(when)}</span>` : "",
+    flagsPill,
+    groupsPill,
   ].filter(Boolean).join(" ");
 
   return `
     <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${pills}</div>
     <div class="small">UserId: ${Number(e.userId) || ""}</div>
-    ${reason ? `<div class="small">Reason: ${reason}</div>` : ""}
+    ${reason ? `<div class="small">Note: ${reason}</div>` : ""}
   `;
 }
 
@@ -933,8 +775,7 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
       }
 
       for (const p of list){
-        if (pendingHidden.has(Number(p.userId))) continue;
-        const staff = isStaff(p.userId);
+const staff = isStaff(p.userId);
         const div = document.createElement("div");
         div.className =
           "card" +
@@ -950,21 +791,19 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
   els.logList.innerHTML = "";
   setCounts();
 
-  const list = logs.filter(matchSearch);
-  if (!list.length){
+  const list = logs.filter(matchSearch).filter(e => String(e.status||"").toLowerCase() !== "pending");
+if (!list.length){
     els.logList.innerHTML = "<div class='small'>No logs.</div>";
     return;
   }
 
   for (const e of list){
     const st = String(e.status || "").toLowerCase();
-    const tag = String(e.tag || "").toLowerCase();
+    const suspicious = (String(e.tag||"").toLowerCase() === "suspicious") || (String(e.action||"").toLowerCase() === "suspicious");
     const extra =
-      tag === "suspicious" ? " logWarn" :
+      suspicious ? " logSus" :
       st === "applied" ? " logOk" :
-      st === "failed"  ? " logFail" : "";
-
-    const div = document.createElement("div");
+      st === "failed"  ? " logFail" : "";const div = document.createElement("div");
     div.className = "card" + extra + (String(e.id) === String(selectedLogId) ? " selected" : "");
     div.innerHTML = makeLogCardHTML(e);
     if (!uiLocked) div.onclick = () => { selectedLogId = String(e.id); selectedActiveUserId = null; renderActive(); renderLogs(); updateButtons(); };
@@ -1001,29 +840,23 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
       try { return new Date(Number(ms)).toLocaleString(); } catch { return ""; }
     }
 
-    function renderLockState(){
-      const locked = !!lockState.locked;
-
-      if (els.lockBtn){
-        // Icon only (no text next to it)
-        els.lockBtn.textContent = locked ? "🔒" : "🔓";
-
-        const who = (lockState.by || "").trim();
-        const when = lockState.at ? fmtWhen(lockState.at) : "";
-        const stateText = locked ? "LOCKED" : "UNLOCKED";
-        const byText = who ? (" by " + who) : "";
-        const atText = when ? (" • " + when) : "";
-        const actionHint = locked
-          ? "Click to unlock (teleport players to main place)."
-          : "Click to lock (send joiners + players to lock place).";
-
-        els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
-      }
-    }
+function renderLockState(){
+  const locked = !!lockState.locked;
+  if (els.lockBtn){
+    els.lockBtn.textContent = locked ? "🔓" : "🔒";
+    const who = (lockState.by || "").trim();
+    const when = lockState.at ? fmtWhen(lockState.at) : "";
+    const stateText = locked ? "LOCKED" : "UNLOCKED";
+    const byText = who ? (" by " + who) : "";
+    const atText = when ? (" • " + when) : "";
+    const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+    els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
+  }
+}
 
     async function fetchLockState(){
       try{
-        const res = await fetch(endpoint("/lockState") + "?t=" + Date.now(), { cache: "no-store" });
+        const res = await fetch(endpoint("/lockState") + (endpoint("/lockState").includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
         const body = await res.json().catch(()=>null);
         if (res.ok && body && body.ok){
           lockState = { locked: !!body.locked, by: String(body.by||""), at: Number(body.at||0) };
@@ -1074,8 +907,7 @@ els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); 
     }
 
 async function fetchPlayers(){
-      const base = endpoint("/players");
-      const url = base + (base.includes("?") ? "&" : "?") + "t=" + Date.now();
+      const url = endpoint("/players");
       setStatus("loading","Loading players...");
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Players HTTP " + res.status);
@@ -1083,15 +915,12 @@ async function fetchPlayers(){
       activePlayers = Array.isArray(data.players) ? data.players : [];
       try{ for (const p of activePlayers) cacheNameFrom(p); } catch {}
       els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
-      renderActive();
-      updateButtons();
-      setStatus("ok","OK");
+setStatus("ok","OK");
       return activePlayers;
     }
 
     async function fetchLogs(){
-      const base = endpoint("/history");
-      const url = base + (base.includes("?") ? "&" : "?") + "t=" + Date.now();
+      const url = endpoint("/history") + (endpoint("/history").includes("?") ? "&" : "?") + "t=" + Date.now();
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Logs HTTP " + res.status);
       const data = await res.json();
@@ -1211,10 +1040,10 @@ async function enforceAndVerify(action, user, reason){
   if (!userId) return { ok:false, message: "missing userId" };
 
   const started = Date.now();
-  const hardTimeoutMs = 120000;
-  const resendEveryMs = 1200;
-  const checkEveryMs  = 700;
-  const refreshUiEveryMs = 1200;
+  const hardTimeoutMs = 60000;
+  const resendEveryMs = 500;
+  const checkEveryMs  = 400;
+  const refreshUiEveryMs = 700;
 
   function updateOverlay(step){
     const pct = Math.min(99, Math.floor(((Date.now() - started) / hardTimeoutMs) * 100));
@@ -1226,10 +1055,54 @@ async function enforceAndVerify(action, user, reason){
   let lastUiAt = 0;
   let lastId = "";
 
-  async function refreshUi(){
+  
+  let _stage = "";
+  function setStage(msg){
+    if (_stage === msg) return;
+    _stage = msg;
+    updateOverlay(msg);
+  }
+
+  function normStr(v){ return String(v || "").trim(); }
+  function findLogById(id){
+    if (!id) return null;
+    return logs.find(e => String(e && e.id) === String(id)) || null;
+  }
+  function findLogBySignature(){
+    // Fallback if we never received an id (network glitch / duplicate sends)
+    const targetAction = normStr(action).toLowerCase();
+    const targetUserId = Number(userId) || 0;
+    const targetBy = normStr(by);
+    const targetReason = normStr(reason);
+
+    let best = null;
+    for (const e of logs){
+      if (!e) continue;
+      if (normStr(e.action).toLowerCase() !== targetAction) continue;
+      if (Number(e.userId || 0) !== targetUserId) continue;
+      if (targetBy && normStr(e.by) !== targetBy) continue;
+      if (targetReason && normStr(e.reason) !== targetReason) continue;
+
+      const t = Number(e.createdAt || e.ackedAt || 0) || 0;
+      if (t < started - 1500) continue; // must be created after we started (with small buffer)
+
+      if (!best) best = e;
+      else {
+        const bt = Number(best.createdAt || best.ackedAt || 0) || 0;
+        if (t > bt) best = e;
+      }
+    }
+    return best;
+  }
+
+async function refreshUi(){
     try{
       await fetchPlayers();
       await fetchLogs();
+      renderActive();
+      renderLogs();
+      setCounts();
+      updateButtons();
     } catch {}
   }
 
@@ -1241,15 +1114,12 @@ async function enforceAndVerify(action, user, reason){
       return true;
     }
   }
-
-  pendingHidden.add(userId);
-  renderActive();
-  updateButtons();
-  updateOverlay("Preparing…");
+updateOverlay("Preparing…");
 
   if (!(await isStillHere())){
     setModerationProgress(100, "Already gone");
-    pendingHidden.delete(userId);
+    await fetchPlayers();
+    await fetchLogs();
     renderActive();
     updateButtons();
     return { ok:true, id: "" };
@@ -1258,7 +1128,7 @@ async function enforceAndVerify(action, user, reason){
   while (Date.now() - started < hardTimeoutMs){
     const now = Date.now();
 
-    if (now - lastSendAt >= resendEveryMs){
+    if (!lastId && (now - lastSendAt >= resendEveryMs)) {
       updateOverlay("Sending request to server…");
       const sent = await sendModeration(act, user, reason || "");
       lastSendAt = now;
@@ -1267,27 +1137,71 @@ async function enforceAndVerify(action, user, reason){
 
     if (now - lastUiAt >= refreshUiEveryMs){
       lastUiAt = now;
-      updateOverlay("Refreshing player list & logs…");
+      setStage("Moderating in progress…");
       await refreshUi();
     }
 
-    updateOverlay("Waiting for action to apply…");
-    await new Promise(r => setTimeout(r, checkEveryMs));
-    const still = await isStillHere();
-    if (!still){
-      setModerationProgress(100, "Done");
-      pendingHidden.delete(userId);
-      renderActive();
-      updateButtons();
-      return { ok:true, id: lastId };
+    // Prefer server-confirmed log status (applied/failed) over player presence.
+    // This avoids "stuck checking player list" when the user already left or appears in another place.
+    // Prefer server-confirmed log status (applied/failed) over player presence.
+    // Track by command id when available; otherwise match by signature (action/user/reason/by) created after start.
+    let logItem = findLogById(lastId);
+    if (!logItem) logItem = findLogBySignature();
+
+    if (logItem){
+      const st = String(logItem.status || "").toLowerCase();
+      if (st === "applied"){
+        setModerationProgress(100, "Success");
+        await fetchPlayers();
+        await fetchLogs();
+        renderActive();
+        updateButtons();
+
+return { ok:true, id: String(logItem.id || lastId || "") };
+      }
+      if (st === "failed"){
+        setModerationProgress(100, "Not successful");
+        await fetchPlayers();
+        await fetchLogs();
+        renderActive();
+        updateButtons();
+
+return { ok:false, id: String(logItem.id || lastId || ""), message: "failed" };
+      }
     }
+
+    // Fallback (kick/ban only): if the player is consistently gone from the live player list,
+    // treat it as success even if ACK/log is delayed.
+    if (!window.__goneStreak) window.__goneStreak = {};
+    const keyGone = String(action) + ":" + String(userId);
+    const still = await isStillHere();
+    if (!still && (String(action||"").toLowerCase() === "kick" || String(action||"").toLowerCase() === "ban")){
+      window.__goneStreak[keyGone] = (window.__goneStreak[keyGone] || 0) + 1;
+      if (window.__goneStreak[keyGone] >= 3){
+        setModerationProgress(100, "Success");
+        await fetchPlayers();
+        await fetchLogs();
+        renderActive();
+        updateButtons();
+
+return { ok:true, id: String(lastId || "") };
+      }
+} else {
+  window.__goneStreak[keyGone] = 0;
+}
+
+setStage("Moderating in progress…");
+await new Promise(r => setTimeout(r, checkEveryMs));
+
+// Optional hint for the operator, but NOT the source of truth:
+// if they disappear, we still wait for log confirmation.
+if (!still){
+  setStage("Moderating in progress…");
+}
   }
 
-  setModerationProgress(100, "Timed out");
-  pendingHidden.delete(userId);
-  renderActive();
-  updateButtons();
-  return { ok:false, timeout:true, message: "Timed out (kept retrying)." };
+  setModerationProgress(200, "Timed out");
+return { ok:false, timeout:true, message: "Issue on servers end. Please try using khols to moderate this user." };
 }
 
     function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
@@ -1296,6 +1210,10 @@ async function enforceAndVerify(action, user, reason){
     async function refreshAll(){
       await fetchPlayers();
       await fetchLogs();
+      renderActive();
+      renderLogs();
+      setCounts();
+      updateButtons();
     }
 
     els.search.addEventListener("input", () => { renderActive(); renderLogs(); updateButtons(); });
@@ -1527,36 +1445,24 @@ function initPanel(){
       els.workerBase.value = savedBase;
       els.adminKey.value = savedAdmin;
 
-      // Auto-load once after login
+      // Auto-load players + logs ONCE on page open.
+      // After that: players are manual refresh; logs update live for everyone.
       (async () => {
         try{
-          setStatus("loading","Loading…");
+          setStatus("ok","Loading…");
           await refreshAll();
-          setStatus("ok","Live (auto-updating)");
+          setStatus("ok","Ready");
         } catch (e){
           setStatus("bad", String(e && e.message ? e.message : e));
         }
       })();
 
-      // Auto-update players + logs (lock-style polling feel, but not too spammy)
-      let _playersBusy = false;
       let _logsBusy = false;
-
-      setInterval(async () => {
-        try{
-          if (_playersBusy) return;
-          _playersBusy = true;
-          await fetchPlayers();
-        } catch {} finally {
-          _playersBusy = false;
-        }
-      }, 3000);
-
       setInterval(async () => {
         try{
           if (_logsBusy) return;
           _logsBusy = true;
-          await fetchLogs();
+          await fetchLogs(); // includes cache-buster + re-render
         } catch {} finally {
           _logsBusy = false;
         }
