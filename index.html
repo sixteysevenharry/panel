@@ -1,424 +1,860 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
   <title>Roblox Panel</title>
   <style>
     :root{
-      --bg:#f7f7fb; --surface:#ffffff; --surface2:#fbfbfd;
-      --text:#111318; --muted:#5c6370;
-      --border:#e6e8ee; --border2:#d9dde6; --ring:#111318;
-      --btn:#ffffff; --btnText:#111318; --btnBorder:#d9dde6; --btnHover:#f3f4f7;
-      --danger:#b00020; --ok:#0b7a3b;
-      --radius:16px; --radius2:14px;
-      --shadow: 0 10px 30px rgba(17,19,24,.08);
-      --focus: 0 0 0 4px rgba(17,19,24,.12);
+      --bg0:#070A12;
+      --bg1:#0B1020;
+      --surface:#0f172a;
+      --surface2:#0b1224;
+      --surface3:#0a1020;
+      --card:#0f162d;
+      --text:#e7eefc;
+      --muted:#9aa8c7;
+      --muted2:#6f7ea6;
+      --border:rgba(255,255,255,.10);
+      --border2:rgba(255,255,255,.16);
+      --shadow: 0 18px 55px rgba(0,0,0,.48);
+      --shadow2: 0 10px 30px rgba(0,0,0,.38);
+      --ring: 0 0 0 4px rgba(170,196,255,.18);
+      --accent:#7c6cff;
+      --accent2:#4fd1c5;
+      --ok:#22c55e;
+      --warn:#fbbf24;
+      --danger:#fb7185;
+
+      --radius:18px;
+      --radius2:14px;
+      --radius3:12px;
+
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
     }
-    [data-theme="dark"]{
-      --bg:#0c0f14; --surface:#121722; --surface2:#0f1420;
-      --text:#e9edf6; --muted:#a9b2c3;
-      --border:#202a3a; --border2:#2a3750; --ring:#e9edf6;
-      --btn:#141b29; --btnText:#e9edf6; --btnBorder:#2a3750; --btnHover:#1a2436;
-      --danger:#ff4d6d; --ok:#3ddc84;
-      --shadow: 0 14px 40px rgba(0,0,0,.45);
-      --focus: 0 0 0 4px rgba(233,237,246,.16);
+
+    [data-theme="light"]{
+      --bg0:#f6f7ff;
+      --bg1:#eef2ff;
+      --surface:#ffffff;
+      --surface2:#f8fafc;
+      --surface3:#f1f5f9;
+      --card:#ffffff;
+      --text:#0b1224;
+      --muted:#51607a;
+      --muted2:#6b7a95;
+      --border:rgba(17,24,39,.10);
+      --border2:rgba(17,24,39,.16);
+      --shadow: 0 18px 55px rgba(17,24,39,.10);
+      --shadow2: 0 10px 30px rgba(17,24,39,.10);
+      --ring: 0 0 0 4px rgba(124,108,255,.18);
+      --accent:#5b4bff;
+      --accent2:#0ea5e9;
+      --ok:#16a34a;
+      --warn:#d97706;
+      --danger:#e11d48;
     }
-    *{box-sizing:border-box}
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
     body{
-      font-family:system-ui,Arial; margin:0; color:var(--text); background:var(--bg);
-      transition: background .25s ease, color .25s ease;
-      min-height:100vh; display:flex; justify-content:center; align-items:center; padding:24px;
+      margin:0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% 10%, rgba(124,108,255,.18), transparent 55%),
+        radial-gradient(900px 600px at 80% 20%, rgba(79,209,197,.14), transparent 55%),
+        radial-gradient(1200px 900px at 50% 100%, rgba(251,113,133,.08), transparent 65%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      min-height:100vh;
+      display:flex;
+      align-items:stretch;
+      justify-content:center;
+      padding: 18px;
     }
-    .app{width:min(1200px, 100%); margin:0 auto;}
-    .top{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;}
-    h1{margin:0; font-size:34px; letter-spacing:-.5px; display:flex; align-items:center; gap:10px;}
-    .pillStatus{
-      display:inline-flex; align-items:center; gap:8px; padding:6px 10px;
-      border:1px solid var(--border); border-radius:999px;
-      background:rgba(255,255,255,.6); backdrop-filter: blur(8px);
+
+    a{ color:inherit; }
+    .wrap{
+      width:min(1320px, 100%);
+      display:flex;
+      gap: 16px;
+      align-items:stretch;
     }
-    [data-theme="dark"] .pillStatus{background:rgba(18,23,34,.6)}
-    .dot{width:8px;height:8px;border-radius:50%; background:var(--muted);}
-    .dot.ok{background:var(--ok)}
-    .dot.err{background:var(--danger)}
-    .dot.load{background:var(--muted); animation:pulse 1.2s ease-in-out infinite}
-    @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
-    .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+    .shell{
+      flex:1;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) + 4px);
+      background: rgba(15, 23, 42, .55);
+      background: color-mix(in oklab, var(--surface) 72%, transparent);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+      backdrop-filter: blur(12px);
+    }
+    [data-theme="light"] .shell{
+      background: color-mix(in oklab, var(--surface) 82%, transparent);
+      backdrop-filter: blur(10px);
+    }
+
+    .topbar{
+      padding: 14px 14px 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 14px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      min-width: 220px;
+    }
+    .logo{
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      background:
+        radial-gradient(18px 18px at 30% 30%, rgba(255,255,255,.25), transparent 60%),
+        linear-gradient(135deg, rgba(124,108,255,.95), rgba(79,209,197,.90));
+      box-shadow: 0 10px 25px rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex:0 0 auto;
+    }
+    .logo svg{ width: 22px; height: 22px; opacity:.96; }
+    .brand h1{
+      margin:0;
+      font-size: 18px;
+      letter-spacing: -.2px;
+      line-height:1.2;
+    }
+    .brand .sub{
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .statusPill{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: color-mix(in oklab, var(--surface2) 60%, transparent);
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(10px);
+      flex-wrap:wrap;
+    }
+    .dot{
+      width: 10px; height: 10px;
+      border-radius: 999px;
+      background: var(--muted2);
+      box-shadow: 0 0 0 5px rgba(255,255,255,.03);
+    }
+    .dot.ok{ background: var(--ok); }
+    .dot.err{ background: var(--danger); }
+    .dot.load{
+      background: var(--warn);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse{ 0%,100%{opacity:.35} 50%{opacity:1} }
+
+    .topActions{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
     .seg{
-      display:flex; border:1px solid var(--border); border-radius:999px; overflow:hidden;
-      background:var(--surface); box-shadow: var(--shadow);
+      display:flex;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      overflow:hidden;
+      background: color-mix(in oklab, var(--surface2) 75%, transparent);
+      box-shadow: var(--shadow2);
     }
-    .seg button{border:0;border-right:1px solid var(--border);border-radius:0;padding:8px 10px;background:transparent;color:var(--muted)}
-    .seg button:last-child{border-right:0}
-    .seg button[aria-pressed="true"]{background:var(--btnHover);color:var(--text)}
-    .grid{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:18px;}
-    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
-    .col{
-      border:1px solid var(--border); border-radius:var(--radius); padding:16px;
-      background:var(--surface); box-shadow: var(--shadow);
+    .seg button{
+      border:0;
+      padding: 8px 10px;
+      background: transparent;
+      color: var(--muted);
+      cursor:pointer;
+      transition: background .15s ease, color .15s ease;
     }
-    .colTitle{font-size:22px; margin:0 0 12px; display:flex; align-items:center; justify-content:space-between; gap:12px;}
-    .countPill{font-size:12px;opacity:.9;padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--muted);background:var(--surface2)}
-    .scroll{height:420px; overflow:auto; border-top:1px solid var(--border); padding-top:12px; padding-right:6px;}
-    .card{
-      border:1px solid var(--border); border-radius:var(--radius2);
-      padding:12px 14px; margin:10px 0; cursor:pointer; user-select:none;
-      background:linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
-      transition: transform .15s ease, border-color .15s ease, background .2s ease;
-      transform: translateZ(0);
+    .seg button + button{ border-left:1px solid var(--border); }
+    .seg button[aria-pressed="true"]{
+      background: color-mix(in oklab, var(--accent) 20%, transparent);
+      color: var(--text);
     }
-    .card:hover{border-color:var(--border2);transform:translateY(-1px)}
-    .selected{outline:3px solid var(--ring);outline-offset:0;transform:translateY(-1px) scale(1.01)}
-    .row{display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin-top:18px;}
-    .field{min-width:220px; flex:1 1 220px;}
-    input{
-      width:100%; padding:11px 12px; border:1px solid var(--border2); border-radius:12px;
-      background:var(--surface); color:var(--text);
-      transition:border-color .15s ease, box-shadow .15s ease, background .2s ease;
-      outline:none;
+
+    button, input{
+      font-family: inherit;
     }
-    input:focus{box-shadow:var(--focus);border-color:var(--border2)}
-    button{
-      padding:10px 12px; border:1px solid var(--btnBorder); border-radius:12px;
-      background:var(--btn); color:var(--btnText); cursor:pointer;
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface2) 70%, transparent);
+      color: var(--text);
+      cursor:pointer;
       transition: transform .12s ease, background .15s ease, border-color .15s ease, opacity .15s ease;
-      outline:none; display:inline-flex; align-items:center; gap:8px;
+      user-select:none;
+      white-space:nowrap;
     }
-    button:hover{background:var(--btnHover)}
-    button:active{transform:translateY(1px)}
-    button:disabled{opacity:.45;cursor:not-allowed;transform:none}
-    .btns{display:flex;gap:10px;flex-wrap:wrap}
-    .divider{height:1px;background:var(--border);margin:14px 0}
-    .meta{opacity:.9;margin-top:10px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .small{font-size:12px;opacity:.88;color:var(--muted)}
-    .error{color:var(--danger);opacity:1}
-    .label{font-size:12px;opacity:.9;margin-bottom:6px;color:var(--muted)}
+    .btn:hover{ background: color-mix(in oklab, var(--surface2) 86%, transparent); border-color: var(--border2); }
+    .btn:active{ transform: translateY(1px); }
+    .btn:focus{ outline:none; box-shadow: var(--ring); }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
+
+    .btn.primary{
+      border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+      background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 52%, transparent), color-mix(in oklab, var(--accent2) 30%, transparent));
+    }
+    .btn.primary:hover{ filter: brightness(1.03); }
+    .btn.danger{
+      border-color: color-mix(in oklab, var(--danger) 40%, var(--border));
+      background: color-mix(in oklab, var(--danger) 20%, transparent);
+    }
+    .btn.ghost{
+      background: transparent;
+    }
+
     .pill{
-      display:inline-block; padding:3px 8px; border:1px solid var(--border);
-      border-radius:999px; margin-left:8px; font-size:12px; color:var(--muted); background:var(--surface2);
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface2) 66%, transparent);
+      color: var(--muted);
+      font-size: 12px;
     }
-    .staffPill{border-color:var(--border2);opacity:.95}
-    .staffCard{opacity:.55;cursor:not-allowed;filter:grayscale(1)}
+    .pill strong{ color: var(--text); font-weight: 700; }
+    .who{
+      display:inline-flex; align-items:center; gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface2) 65%, transparent);
+      box-shadow: var(--shadow2);
+    }
+    .who .k{ color: var(--muted); font-size:12px; }
+    .who .v{ font-weight:700; font-size:12px; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    .content{
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+      padding: 14px;
+    }
+    @media (max-width: 1020px){
+      .content{ grid-template-columns: 1fr; }
+    }
+
+    .panel{
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: color-mix(in oklab, var(--surface) 78%, transparent);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+    }
+    .panelHead{
+      padding: 12px 12px 10px 12px;
+      border-bottom: 1px solid var(--border);
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .panelHead h2{
+      margin:0;
+      font-size: 14px;
+      letter-spacing: .2px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .panelHead .hint{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+      max-width: 52ch;
+    }
+
+    .panelBody{
+      padding: 12px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .label{
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .label .mono{ font-family: var(--mono); font-size: 11px; color: var(--muted2); }
+    input{
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface2) 80%, transparent);
+      color: var(--text);
+      outline:none;
+      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    input:focus{
+      border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
+      box-shadow: var(--ring);
+      background: color-mix(in oklab, var(--surface2) 92%, transparent);
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    @media (max-width: 520px){
+      .grid2{ grid-template-columns: 1fr; }
+    }
+
+    .meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap: 10px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .main{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items:stretch;
+    }
+    @media (max-width: 980px){
+      .main{ grid-template-columns: 1fr; }
+    }
+
+    .listHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 12px 12px 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface2) 55%, transparent);
+    }
+    .listHead .left{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .listHead h3{
+      margin:0;
+      font-size: 14px;
+      letter-spacing: .2px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .count{
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: color-mix(in oklab, var(--surface2) 70%, transparent);
+    }
+
+    .scroll{
+      height: 520px;
+      overflow:auto;
+      padding: 10px;
+    }
+    @media (max-width: 980px){
+      .scroll{ height: 420px; }
+    }
+
+    .card{
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      background: linear-gradient(180deg, color-mix(in oklab, var(--card) 80%, transparent), color-mix(in oklab, var(--surface2) 60%, transparent));
+      padding: 12px 12px;
+      margin: 10px 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,.22);
+      transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+      cursor:pointer;
+      user-select:none;
+    }
+    .card:hover{
+      border-color: var(--border2);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 26px rgba(0,0,0,.28);
+    }
+    .card.selected{
+      outline: 3px solid color-mix(in oklab, var(--accent) 55%, transparent);
+      outline-offset: 0;
+      transform: translateY(-1px);
+      border-color: color-mix(in oklab, var(--accent) 38%, var(--border2));
+    }
+
+    .chipRow{
+      display:flex;
+      gap: 8px;
+      flex-wrap:wrap;
+      margin-top: 8px;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface2) 68%, transparent);
+      color: var(--muted);
+    }
+    .chip.ok{ border-color: color-mix(in oklab, var(--ok) 30%, var(--border)); background: color-mix(in oklab, var(--ok) 15%, transparent); }
+    .chip.fail{ border-color: color-mix(in oklab, var(--danger) 28%, var(--border)); background: color-mix(in oklab, var(--danger) 14%, transparent); }
+    .chip.warn{ border-color: color-mix(in oklab, var(--warn) 30%, var(--border)); background: color-mix(in oklab, var(--warn) 16%, transparent); }
+    .chip.accent{ border-color: color-mix(in oklab, var(--accent) 30%, var(--border)); background: color-mix(in oklab, var(--accent) 16%, transparent); color: color-mix(in oklab, var(--text) 92%, var(--muted)); }
+
+    .staffCard{
+      opacity: .55;
+      cursor: not-allowed;
+      filter: grayscale(.9);
+    }
+
+    .logSus{ border-color: color-mix(in oklab, var(--warn) 44%, var(--border2)) !important; }
+    .logOk{ border-color: color-mix(in oklab, var(--ok) 42%, var(--border2)) !important; }
+    .logFail{ border-color: color-mix(in oklab, var(--danger) 42%, var(--border2)) !important; }
+
+    .empty{
+      padding: 18px 14px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align:center;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius2);
+      margin: 10px 0;
+      background: color-mix(in oklab, var(--surface2) 64%, transparent);
+    }
+
+    .actionDock{
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px;
+      background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--surface3) 88%, transparent) 22%, color-mix(in oklab, var(--surface3) 92%, transparent));
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      z-index: 10;
+    }
+    .dockRow{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .dockRow .left{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .dockRow .right{
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .dockHint{
+      color: var(--muted);
+      font-size: 12px;
+      max-width: 70ch;
+    }
+
     .toastWrap{
-      position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
-      z-index:9999; pointer-events:none; display:flex; flex-direction:column; gap:8px;
-      width:min(560px, calc(100% - 24px));
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 9999;
+      width: min(420px, calc(100% - 36px));
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      pointer-events:none;
     }
     .toast{
-      pointer-events:auto; border:1px solid var(--border);
-      background:rgba(255,255,255,.72); backdrop-filter: blur(10px);
-      box-shadow: var(--shadow); border-radius:14px; padding:10px 12px;
-      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
-      animation: toastIn .18s ease-out;
+      pointer-events:auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: color-mix(in oklab, var(--surface2) 72%, transparent);
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(14px);
+      padding: 10px 12px;
+      display:flex;
+      gap: 10px;
+      align-items:flex-start;
+      justify-content:space-between;
+      animation: toastIn .16s ease-out;
     }
-    [data-theme="dark"] .toast{background:rgba(18,23,34,.72)}
-    @keyframes toastIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
-    .toast .tTitle{font-weight:700}
-    .toast .tBody{font-size:12px;color:var(--muted);margin-top:2px}
-    .toast .x{border:0;background:transparent;padding:4px 6px;border-radius:10px}
-    .toast .x:hover{background:var(--btnHover)}
-    .toast.ok{border-color:rgba(11,122,59,.35)}
-    .toast.err{border-color:rgba(176,0,32,.35)}
-    [data-theme="dark"] .toast.ok{border-color:rgba(61,220,132,.35)}
-    [data-theme="dark"] .toast.err{border-color:rgba(255,77,109,.35)}
+    @keyframes toastIn{ from{ opacity:0; transform: translateY(10px);} to{ opacity:1; transform: translateY(0);} }
+    .toast .tTitle{ font-weight: 800; font-size: 13px; }
+    .toast .tBody{ margin-top: 2px; font-size: 12px; color: var(--muted); }
+    .toast .x{
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 12px;
+      padding: 6px 8px;
+      cursor:pointer;
+    }
+    .toast .x:hover{ color: var(--text); border-color: var(--border2); }
+
     .overlay{
-      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:24px;
-      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.08), transparent 55%), rgba(0,0,0,.22);
-      backdrop-filter: blur(8px); z-index:9998;
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      background:
+        radial-gradient(1100px 700px at 50% 20%, rgba(124,108,255,.18), transparent 55%),
+        rgba(0,0,0,.55);
+      backdrop-filter: blur(14px);
+      z-index: 10000;
     }
-    [data-theme="dark"] .overlay{
-      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.10), transparent 55%), rgba(0,0,0,.55);
+    [data-theme="light"] .overlay{
+      background:
+        radial-gradient(1100px 700px at 50% 20%, rgba(124,108,255,.16), transparent 55%),
+        rgba(0,0,0,.20);
+      backdrop-filter: blur(10px);
     }
     .loginCard{
-      width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
-      background:var(--surface); box-shadow: var(--shadow); padding:18px; animation: toastIn .18s ease-out;
+      width: min(520px, 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      box-shadow: var(--shadow);
+      padding: 16px;
     }
-    .loginTitle{font-size:22px;margin:0 0 8px}
-    .loginHint{margin:0 0 14px;color:var(--muted);font-size:13px}
-    .loginRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-    .loginRow .field{flex:1 1 240px; min-width:240px}
-    .loginFoot{margin-top:10px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
-    .dangerBtn{border:1px solid var(--border2);background:var(--danger);color:#fff;padding:10px 12px;border-radius:12px;cursor:pointer}
-.dangerBtn:hover{filter:brightness(.95)}
+    .loginCard h2{
+      margin: 0 0 6px 0;
+      font-size: 18px;
+      letter-spacing: -.2px;
+    }
+    .loginCard p{
+      margin: 0 0 14px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .loginRow{
+      display:flex;
+      gap: 10px;
+      align-items:flex-end;
+      flex-wrap:wrap;
+    }
+    .loginRow .field{ flex:1 1 260px; margin:0; }
+    .loginFoot{
+      margin-top: 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap:wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
 
-.ghostBtn{border:1px solid var(--border);background:transparent}
-    .ghostBtn:hover{background:var(--btnHover)}
-    @media (prefers-reduced-motion: reduce){ *{transition:none !important} .dot.load{animation:none !important} .spinner{animation: spin 1s linear infinite !important} }
-  .modOverlay{
-  position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px;
-  background: rgba(0,0,0,.22);
-  backdrop-filter: blur(10px);
-  z-index:10000;
-}
-[data-theme="dark"] .modOverlay{ background: rgba(0,0,0,.55); }
-.modCard{
-  width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
-  background:var(--surface); box-shadow: var(--shadow); padding:18px;
-  animation: toastIn .18s ease-out;
-}
-.modTitle{font-size:20px;margin:0 0 6px}
-.modHint{margin:0;color:var(--muted);font-size:13px}
-.spinRow{display:flex;align-items:center;gap:12px;margin-top:14px}
-.spinner{
-  width:34px;height:34px;border-radius:50%;
-  border:3px solid rgba(128,128,128,.25);
-  border-top-color: var(--ring);
-  animation: spin 1s linear infinite;
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-.modProgress{
-  margin-top: 14px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.modProgressTop{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-.progressBar{
-  width:100%;
-  height:10px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:rgba(128,128,128,.10);
-  overflow:hidden;
-}
-.progressFill{
-  height:100%;
-  width:0%;
-  border-radius:999px;
-  background: var(--ring);
-  transition: width .2s ease;
-}
+    .modOverlay{ display:none; }
+    .modCard{
+      width:min(520px, 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: color-mix(in oklab, var(--surface) 90%, transparent);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .modTitle{ margin:0 0 6px 0; font-size: 18px; letter-spacing: -.2px; }
+    .modHint{ margin:0; color: var(--muted); font-size: 13px; line-height: 1.35; }
+    .spinRow{ display:flex; align-items:center; gap: 12px; margin-top: 14px; }
+    .spinner{
+      width: 34px; height: 34px;
+      border-radius: 999px;
+      border: 3px solid rgba(128,128,128,.25);
+      border-top-color: color-mix(in oklab, var(--accent) 60%, var(--text));
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin{ to { transform: rotate(360deg); } }
 
-  .logSus{
-    border-color: rgba(255,193,7,.42) !important;
-    background: linear-gradient(180deg, rgba(255,193,7,.10) 0%, var(--surface2) 100%) !important;
-  }
-  [data-theme="dark"] .logSus{
-    border-color: rgba(255,193,7,.42) !important;
-    background: linear-gradient(180deg, rgba(255,193,7,.12) 0%, rgba(18,23,34,.6) 100%) !important;
-  }
-  .logOk{
-  border-color: rgba(11,122,59,.35) !important;
-  background: linear-gradient(180deg, rgba(11,122,59,.10) 0%, var(--surface2) 100%) !important;
-}
-.logFail{
-  border-color: rgba(176,0,32,.35) !important;
-  background: linear-gradient(180deg, rgba(176,0,32,.10) 0%, var(--surface2) 100%) !important;
-}
-[data-theme="dark"] .logOk{
-  border-color: rgba(61,220,132,.35) !important;
-  background: linear-gradient(180deg, rgba(61,220,132,.10) 0%, rgba(18,23,34,.6) 100%) !important;
-}
-[data-theme="dark"] .logFail{
-  border-color: rgba(255,77,109,.35) !important;
-  background: linear-gradient(180deg, rgba(255,77,109,.10) 0%, rgba(18,23,34,.6) 100%) !important;
-}
-  
-    /* ===== Custom tooltips (styled, not browser default) ===== */
+    .modProgress{ margin-top: 14px; display:flex; flex-direction:column; gap: 8px; }
+    .modProgressTop{ display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+    .progressBar{
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface2) 70%, transparent);
+      overflow:hidden;
+    }
+    .progressFill{
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 90%, transparent), color-mix(in oklab, var(--accent2) 70%, transparent));
+      transition: width .2s ease;
+    }
+
     .uiTip{
       position: fixed;
       z-index: 999999;
-      max-width: 320px;
+      max-width: 340px;
       padding: 10px 12px;
       border: 1px solid var(--border2);
-      background: var(--surface);
+      background: color-mix(in oklab, var(--surface) 90%, transparent);
       color: var(--text);
-      border-radius: 12px;
-      box-shadow: var(--shadow);
+      border-radius: 14px;
+      box-shadow: var(--shadow2);
       font-size: 13px;
       line-height: 1.25;
       opacity: 0;
       transform: translateY(6px);
       transition: opacity .12s ease, transform .12s ease;
-      pointer-events: none;
-      user-select: none;
+      pointer-events:none;
+      user-select:none;
       white-space: normal;
+      backdrop-filter: blur(12px);
     }
-    .uiTip.show{
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .uiTip .tTitle{
-      font-weight: 700;
-      margin: 0 0 6px 0;
-      font-size: 13px;
-    }
-    .uiTip .tBody{
-      margin: 0;
+    .uiTip.show{ opacity: 1; transform: translateY(0); }
+    .uiTip .tTitle{ font-weight: 900; margin: 0 0 6px 0; font-size: 13px; }
+    .uiTip .tBody{ margin: 0; color: var(--muted); font-size: 12.5px; }
+
+    details summary{
+      cursor:pointer;
       color: var(--muted);
-      font-size: 12.5px;
+      font-size: 12px;
+      user-select:none;
     }
-    
+    details summary:hover{ color: var(--text); }
+    details .detailsBody{
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: color-mix(in oklab, var(--surface2) 60%, transparent);
+    }
 
-/* ===== Page nav ===== */
-.pageNav{
-  position: fixed;
-  left: 0; right: 0; bottom: 14px;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 9998;
-}
-.pageNav .navWrap{
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border: 1px solid var(--border2);
-  background: var(--surface);
-  border-radius: 999px;
-  box-shadow: var(--shadow);
-}
-.pageNav a, .pageNav span{
-  font-size: 14px;
-  color: var(--text);
-}
-.pageNav a{
-  text-decoration: none;
-  padding: 6px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border2);
-  background: var(--btn);
-}
-.pageNav a:hover{ background: var(--btnHover); }
-.pageNav a.disabled{
-  pointer-events: none;
-  opacity: .45;
-}
-.pageNav .num{
-  min-width: 24px;
-  text-align: center;
-  font-weight: 800;
-}
-body{ padding-bottom: 74px; }
-
-</style>
+    @media (prefers-reduced-motion: reduce){
+      *{ transition:none !important; animation:none !important; }
+    }
+  </style>
 </head>
 <body>
-  <div class="app" id="app" style="display:none">
-    <div class="top">
-      <h1>
-        Players in-game
-        <span class="pillStatus">
+  <div class="wrap">
+    <div class="shell">
+      <div class="topbar">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M7.8 3h8.4c1 0 1.8.8 1.8 1.8v8.4c0 1-.8 1.8-1.8 1.8H7.8c-1 0-1.8-.8-1.8-1.8V4.8C6 3.8 6.8 3 7.8 3Z" stroke="rgba(255,255,255,.92)" stroke-width="1.6"/>
+              <path d="M9.1 8.3h5.8v5.8H9.1V8.3Z" fill="rgba(255,255,255,.9)" opacity=".13"/>
+            </svg>
+          </div>
+          <div>
+            <h1>Roblox Panel</h1>
+            <div class="sub">Manage players, locks, and enforcement logs</div>
+          </div>
+        </div>
+
+        <div class="statusPill" aria-live="polite">
           <span class="dot" id="statusDot"></span>
-          <span class="small" id="status"></span>
-        </span>
-      </h1>
-
-      <div class="toolbar">
-        <div class="seg" role="group" aria-label="Theme">
-          <button id="themeLight" type="button" aria-pressed="false" data-tip="Light">☀️</button>
-          <button id="themeDark" type="button" aria-pressed="true" data-tip="Dark">🌙</button>
-          <button id="themeAuto" type="button" aria-pressed="false" data-tip="Auto">🖥️</button>
+          <span style="font-size:12px;color:var(--muted);" id="status">—</span>
+          <span class="pill"><span style="opacity:.8">Updated</span> <strong id="meta">—</strong></span>
         </div>
-        <span class="pillStatus" style="align-self:center">
-  <span class="small">👤</span>
-  <span class="small" id="whoami">—</span>
-</span>
-<button id="logout" type="button" class="ghostBtn" data-tip="Log out">🚪 Logout</button>
-      </div>
-    </div>
 
-    <div class="row">
-      <div class="field">
-        <div class="label">Worker Base URL</div>
-        <input id="workerBase" placeholder="https://panel.example.workers.dev" />
-      </div>
-      <div class="field">
-        <div class="label">Admin Key</div>
-        <input id="adminKey" placeholder="ADMIN_KEY (stored in your browser)" />
-      </div>
-      <div class="field">
-        <div class="label">Search</div>
-        <input id="search" placeholder="Search name / display / id" />
-      </div>
-      <div class="btns" style="margin-top:18px">
-        <button id="save" type="button" data-tip="Save settings (Worker URL + Admin key) to your browser">💾 Save</button>
-        <button id="lockBtn" type="button" class="ghostBtn" data-tip="Lock / Unlock">🔒</button>
-<button id="refresh" type="button" data-tip="Refresh players + logs from the Worker">🔄 Refresh</button>
-      </div>
-    </div>
+        <div class="topActions">
+          <div class="seg" role="group" aria-label="Theme">
+            <button id="themeLight" type="button" aria-pressed="false" data-tip="Theme — Light">☀️</button>
+            <button id="themeDark" type="button" aria-pressed="true" data-tip="Theme — Dark">🌙</button>
+            <button id="themeAuto" type="button" aria-pressed="false" data-tip="Theme — Auto (system)">🖥️</button>
+          </div>
 
-    <div class="meta" id="meta">Updated: ?</div>
+          <div class="who" data-tip="Session — Logged in username (local only)">
+            <span class="k">👤</span>
+            <span class="v" id="whoami">—</span>
+          </div>
 
-    <div class="grid">
-      <div class="col">
-        <div class="colTitle">
-          <span>Active Users</span>
-          <span class="countPill" id="activeCount">0</span>
+          <button id="refresh" class="btn" type="button" data-tip="Refresh — Reload players + logs from your Worker">↻ Refresh</button>
+          <button id="lockBtn" class="btn ghost" type="button" data-tip="Lock — Toggle lock state">🔓</button>
+          <button id="logout" class="btn ghost" type="button" data-tip="Logout — End this session on this device">🚪 Logout</button>
         </div>
-        <div class="scroll" id="activeList"></div>
       </div>
 
-      <div class="col">
-        <div class="colTitle">
-          <span>Logs</span>
-          <span class="small" style="margin-left:auto;color:var(--muted);font-size:12px;opacity:.95">We’re now logging any new group members who have suspicious usernames or are affiliated with suspicious groups. Bots may appear in these logs, please ignore them.</span>
-          <span class="countPill" id="logCount">0</span>
+      <div class="content" id="app" style="display:none">
+        <div class="panel">
+          <div class="panelHead">
+            <div>
+              <h2>Settings</h2>
+              <div class="hint">These are stored in your browser (localStorage). Your Worker validates actions using <span style="font-family:var(--mono)">ADMIN_KEY</span>.</div>
+            </div>
+            <button id="save" class="btn primary" type="button" data-tip="Save — Store Worker URL + Admin Key in this browser">💾 Save</button>
+          </div>
+
+          <div class="panelBody">
+            <div class="field">
+              <div class="label">
+                <span>Worker Base URL</span>
+                <span class="mono">e.g. https://panel.example.workers.dev</span>
+              </div>
+              <input id="workerBase" placeholder="https://panel.example.workers.dev" autocomplete="off" />
+            </div>
+
+            <div class="field">
+              <div class="label">
+                <span>Admin Key</span>
+                <span class="mono">stored locally</span>
+              </div>
+              <input id="adminKey" placeholder="ADMIN_KEY (stored in your browser)" autocomplete="off" />
+            </div>
+
+            <div class="field">
+              <div class="label">
+                <span>Search</span>
+                <span class="mono">name / display / id / by</span>
+              </div>
+              <input id="search" placeholder="Search name / display / id" autocomplete="off" />
+            </div>
+
+            <details>
+              <summary>About logs (suspicious flags)</summary>
+              <div class="detailsBody">
+                We log new group members that have suspicious usernames or are in suspicious groups. Bots may appear — ignore them.
+              </div>
+            </details>
+
+            <div class="meta">
+              <span class="pill" data-tip="Tips — Quick shortcuts">⌨️ <strong>Enter</strong> to login • <strong>Refresh</strong> has a cooldown</span>
+              <span class="pill" data-tip="Privacy — Data stays in your browser">🛡️ <strong>Local</strong> settings only</span>
+            </div>
+          </div>
         </div>
-        <div class="scroll" id="logList"></div>
+
+        <div class="main">
+          <div class="panel">
+            <div class="listHead">
+              <div class="left">
+                <h3>Active users</h3>
+                <span class="count" id="activeCount">0</span>
+              </div>
+              <span class="pill" data-tip="Selection — Click a user card to enable actions">🧭 <strong>Select</strong> a user</span>
+            </div>
+            <div class="scroll" id="activeList"></div>
+          </div>
+
+          <div class="panel">
+            <div class="listHead">
+              <div class="left">
+                <h3>Logs</h3>
+                <span class="count" id="logCount">0</span>
+              </div>
+              <span class="pill" data-tip="Unban — Select a BAN log entry to enable unban buttons">📜 <strong>Select</strong> a log</span>
+            </div>
+            <div class="scroll" id="logList"></div>
+          </div>
+
+          <div class="actionDock" style="grid-column: 1 / -1;">
+            <div class="dockRow">
+              <div class="left">
+                <button id="kick" class="btn" type="button" data-tip="Kick — Kick selected active user">👢 Kick</button>
+                <button id="kickReason" class="btn" type="button" data-tip="Kick w/ reason — Prompts for a reason">📝 Kick w/ reason</button>
+                <button id="ban" class="btn danger" type="button" data-tip="Ban — Ban selected active user">⛔ Ban</button>
+                <button id="banReason" class="btn danger" type="button" data-tip="Ban w/ reason — Prompts for a reason">🧾 Ban w/ reason</button>
+              </div>
+              <div class="right">
+                <button id="unban" class="btn primary" type="button" data-tip="Unban — Select a BAN log entry to unban">✅ Unban</button>
+                <button id="unbanReason" class="btn primary" type="button" data-tip="Unban w/ note — Prompts for a note">🗒️ Unban w/ note</button>
+              </div>
+            </div>
+            <div class="dockHint" id="dockHint">Select an active user to kick/ban. Select a BAN log entry to unban.</div>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="btns">
-      <button id="kick" type="button">👢 Kick</button>
-      <button id="kickReason" type="button">📝 Kick With Reason</button>
-      <button id="ban" type="button">⛔ Ban</button>
-      <button id="banReason" type="button">🧾 Ban With Reason</button>
-      <button id="unban" type="button">✅ Unban</button>
-      <button id="unbanReason" type="button">🗒️ Unban With Note</button>
     </div>
   </div>
 
   <div class="overlay" id="loginOverlay" style="display:none">
     <div class="loginCard">
-      <h2 class="loginTitle">Panel Login</h2>
-      <p class="loginHint">Enter your panel username to continue.</p>
-
+      <h2>Panel Login</h2>
+      <p>Enter your panel username to continue. Usernames are case-insensitive.</p>
       <div class="loginRow">
         <div class="field">
-          <div class="label">Username</div>
+          <div class="label"><span>Username</span></div>
           <input id="loginUser" placeholder="e.g. Username" autocomplete="off" />
         </div>
-        <button id="loginBtn" type="button">🔓 Login</button>
+        <button id="loginBtn" class="btn primary" type="button">🔓 Login</button>
       </div>
-
       <div class="loginFoot">
-        <span class="small" id="loginStatus"></span>
-        <span class="small">Tip: usernames are case-insensitive</span>
+        <span id="loginStatus"></span>
+        <span>Tip: Press <span style="font-family:var(--mono)">Enter</span></span>
       </div>
     </div>
   </div>
 
-<div class="modOverlay" id="modOverlay" style="display:none">
-  <div class="modCard">
-    <h2 class="modTitle">Moderating User</h2>
-    <p class="modHint">This may take some time. Please keep this tab open.</p>
-    <div class="spinRow">
-      <div class="spinner" aria-hidden="true"></div>
-      <div class="small" id="modOverlaySub">Applying action…</div>
-    </div>
+  <div class="overlay modOverlay" id="modOverlay" style="display:none">
+    <div class="modCard">
+      <h2 class="modTitle">Moderating user</h2>
+      <p class="modHint">This may take some time. Please keep this tab open.</p>
 
-<div class="modProgress" aria-label="Moderation progress">
-  <div class="modProgressTop">
-    <span class="small" id="modStep">Starting…</span>
-    <span class="small" id="modPct">0%</span>
+      <div class="spinRow">
+        <div class="spinner" aria-hidden="true"></div>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+          <div style="font-size:12px;color:var(--muted)" id="modOverlaySub">Applying action…</div>
+          <div class="modProgress" aria-label="Moderation progress">
+            <div class="modProgressTop">
+              <span style="font-size:12px;color:var(--muted)" id="modStep">Starting…</span>
+              <span style="font-size:12px;color:var(--muted)" id="modPct">0%</span>
+            </div>
+            <div class="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="progressFill" id="modFill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-    <div class="progressFill" id="modFill"></div>
-  </div>
-</div>
-  </div>
-</div>
 
   <div class="toastWrap" id="toasts"></div>
 
@@ -426,8 +862,6 @@ body{ padding-bottom: 74px; }
     const ALLOWED_USERNAMES = new Set(["eagla","nebula","specimen","arrow","damage","caprie"]);
     const STAFF_IDS = new Set([8007453710,4976035348,154251360,9930928180,485280430]);
 
-
-    // ===== Name cache (so Enforcement Logs show names even if older entries lacked them) =====
     const NAME_CACHE_KEY = "panel_name_cache_v1";
 
     function loadNameCache(){
@@ -449,7 +883,6 @@ body{ padding-bottom: 74px; }
       const username = String(user.username || "");
       const displayName = String(user.displayName || "");
       if (!username && !displayName) return;
-
       const cache = loadNameCache();
       cache[String(id)] = { username, displayName, at: Date.now() };
       saveNameCache(cache);
@@ -460,14 +893,12 @@ body{ padding-bottom: 74px; }
       const d = String(displayName || "");
       if (u || d) return { username: u, displayName: d };
 
-      // Try active list
       const found = activePlayers && activePlayers.find(p => Number(p.userId) === Number(userId));
       if (found && (found.username || found.displayName)){
         cacheNameFrom(found);
         return { username: String(found.username || ""), displayName: String(found.displayName || "") };
       }
 
-      // Try cache
       const cache = loadNameCache();
       const hit = cache[String(Number(userId))];
       if (hit && (hit.username || hit.displayName)){
@@ -476,6 +907,7 @@ body{ padding-bottom: 74px; }
 
       return { username: "", displayName: "" };
     }
+
     const els = {
       app: document.getElementById("app"),
       loginOverlay: document.getElementById("loginOverlay"),
@@ -528,7 +960,7 @@ body{ padding-bottom: 74px; }
       const div = document.createElement("div");
       div.className = "toast " + (kind || "");
       div.innerHTML = `
-        <div>
+        <div style="min-width:0">
           <div class="tTitle">${esc(title || "")}</div>
           ${body ? `<div class="tBody">${esc(body)}</div>` : ""}
         </div>
@@ -541,37 +973,46 @@ body{ padding-bottom: 74px; }
 
     function setStatus(state, text){
       els.status.textContent = text || "";
-      els.status.className = "small" + (state === "error" ? " error" : "");
-      els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
+      if (state === "ok"){
+        els.statusDot.className = "dot ok";
+      } else if (state === "error"){
+        els.statusDot.className = "dot err";
+      } else if (state === "loading"){
+        els.statusDot.className = "dot load";
+      } else {
+        els.statusDot.className = "dot";
+      }
     }
 
-function setModerationProgress(pct, stepText){
-  const p = Math.max(0, Math.min(100, Math.floor(Number(pct) || 0)));
-  if (els.modFill) els.modFill.style.width = p + "%";
-  if (els.modPct) els.modPct.textContent = p + "%";
-  if (els.modStep) els.modStep.textContent = stepText || "";
-  const bar = els.modOverlay ? els.modOverlay.querySelector(".progressBar") : null;
-  if (bar) bar.setAttribute("aria-valuenow", String(p));
-}
+    function setModerationProgress(pct, stepText){
+      const p = Math.max(0, Math.min(100, Math.floor(Number(pct) || 0)));
+      if (els.modFill) els.modFill.style.width = p + "%";
+      if (els.modPct) els.modPct.textContent = p + "%";
+      if (els.modStep) els.modStep.textContent = stepText || "";
+      const bar = els.modOverlay ? els.modOverlay.querySelector(".progressBar") : null;
+      if (bar) bar.setAttribute("aria-valuenow", String(p));
+    }
 
-function showModerationOverlay(show, subText){
-  if (!els.modOverlay) return;
-  if (show){
-    if (els.modOverlaySub) els.modOverlaySub.textContent = subText || "Applying action…";
-    setModerationProgress(0, "Starting…");
-    els.modOverlay.style.display = "flex";
-  } else {
-    els.modOverlay.style.display = "none";
-  }
-}
-
+    function showModerationOverlay(show, subText){
+      if (!els.modOverlay) return;
+      if (show){
+        if (els.modOverlaySub) els.modOverlaySub.textContent = subText || "Applying action…";
+        setModerationProgress(0, "Starting…");
+        els.modOverlay.style.display = "flex";
+      } else {
+        els.modOverlay.style.display = "none";
+      }
+    }
 
     function applyTheme(mode){
       localStorage.setItem("panel_theme_mode", mode);
       els.themeLight.setAttribute("aria-pressed", mode === "light");
       els.themeDark.setAttribute("aria-pressed", mode === "dark");
       els.themeAuto.setAttribute("aria-pressed", mode === "auto");
-      if (mode === "auto"){ document.documentElement.removeAttribute("data-theme"); return; }
+      if (mode === "auto"){
+        document.documentElement.removeAttribute("data-theme");
+        return;
+      }
       document.documentElement.setAttribute("data-theme", mode);
     }
     applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
@@ -592,13 +1033,12 @@ function showModerationOverlay(show, subText){
     function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
 
     function updateWhoAmI(){
-      if (!els.whoami) return;
       const u = String(getLoginUser() || "").trim();
       els.whoami.textContent = u ? u : "—";
     }
 
     function showLogin(){
-      if (els.whoami) els.whoami.textContent = "—";
+      els.whoami.textContent = "—";
       els.app.style.display = "none";
       els.loginOverlay.style.display = "flex";
       els.loginStatus.textContent = "";
@@ -607,27 +1047,36 @@ function showModerationOverlay(show, subText){
     }
     function showApp(){
       els.loginOverlay.style.display = "none";
-      els.app.style.display = "block";
+      els.app.style.display = "grid";
     }
 
     function attemptLogin(){
       const u = normalizeUser(els.loginUser.value);
-      if (!u){ els.loginStatus.textContent = "Enter a username."; els.loginStatus.className = "small error"; return; }
+      if (!u){
+        els.loginStatus.textContent = "Enter a username.";
+        toast("err", "Login", "Enter a username.");
+        return;
+      }
       if (!ALLOWED_USERNAMES.has(u)){
         els.loginStatus.textContent = "Invalid username.";
-        els.loginStatus.className = "small error";
-        toast("err","Login denied","That username is not allowed");
+        toast("err","Login denied","That username is not allowed.");
         return;
       }
       setLoggedIn(u);
-      toast("ok","Logged in","Welcome");
+      updateWhoAmI();
+      toast("ok","Logged in","Welcome.");
       showApp();
       initPanel();
     }
 
     els.loginBtn.onclick = attemptLogin;
     els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
-    els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
+    els.logout.onclick = () => {
+      if (!confirm("Log out?")) return;
+      clearLoggedIn();
+      toast("ok","Logged out","");
+      showLogin();
+    };
 
     function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
 
@@ -639,8 +1088,8 @@ function showModerationOverlay(show, subText){
 
     let activePlayers = [];
     let logs = [];
+
     function mergeLogs(items){
-      // Keep ALL log entries (no dedupe). Newest first.
       const arr = Array.isArray(items) ? items.slice() : [];
       function createdAtNum(e){
         const v = e && (e.createdAt ?? e.ackedAt ?? e.time ?? 0);
@@ -654,8 +1103,6 @@ function showModerationOverlay(show, subText){
     let selectedActiveUserId = null;
     let selectedLogId = null;
     let uiLocked = false;
-    // pendingHidden removed: we never optimistically hide players during moderation
-    let refreshCooldownUntil = 0;
     let refreshCooldownTimer = null;
 
     function startCooldown(btn, seconds, label){
@@ -684,7 +1131,7 @@ function showModerationOverlay(show, subText){
       renderActive();
       renderLogs();
       updateButtons();
-      setStatus("loading","Verifying...");
+      setStatus("loading","Verifying…");
     }
     function endVerifyLock(){
       uiLocked = false;
@@ -694,8 +1141,9 @@ function showModerationOverlay(show, subText){
 
     function setCounts(){
       els.activeCount.textContent = String(activePlayers.length || 0);
-      els.logCount.textContent = String(logs.filter(e => String(e.status||"").toLowerCase() !== "pending").length || 0);
-}
+      const nonPending = logs.filter(e => String(e.status||"").toLowerCase() !== "pending").length;
+      els.logCount.textContent = String(nonPending || 0);
+    }
 
     function matchSearch(p){
       const q = normalizeUser(els.search.value);
@@ -710,59 +1158,69 @@ function showModerationOverlay(show, subText){
     function makePlayerCardHTML(p){
       const name = esc(p.displayName || p.username || ("User " + p.userId));
       const handle = esc(p.username || "");
-      const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
-      const place = p.placeId ? `<span class="pill">Place ${esc(p.placeId)}</span>` : "";
-      const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
+      const team = p.team ? `<span class="chip accent">🏷️ ${esc(p.team)}</span>` : "";
+      const place = p.placeId ? `<span class="chip">📍 ${esc(p.placeId)}</span>` : "";
+      const staff = isStaff(p.userId) ? `<span class="chip warn">🛡️ STAFF</span>` : "";
       return `
-        <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${team} ${place} ${staff}</div>
-        <div class="small">UserId: ${Number(p.userId) || ""}</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div style="min-width:0">
+            <div style="font-weight:850;letter-spacing:-.1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${handle ? "@" + handle : ""}</div>
+          </div>
+          <div class="chipRow" style="justify-content:flex-end;margin-top:0">
+            ${staff}
+          </div>
+        </div>
+        <div class="chipRow">
+          <span class="chip">🆔 ${Number(p.userId) || ""}</span>
+          ${team}
+          ${place}
+        </div>
       `;
     }
 
     function makeLogCardHTML(e){
-  const resolved = resolveName(e.userId, e.username, e.displayName);
-  const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
-  const handle = esc(resolved.username || "");
-  const actionRaw = String(e.action || "");
-  const action = esc(actionRaw.toUpperCase());
-  const by = esc(e.by || "");
-  const reason = esc(e.reason || "");
-  const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
+      const resolved = resolveName(e.userId, e.username, e.displayName);
+      const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
+      const handle = esc(resolved.username || "");
+      const actionRaw = String(e.action || "");
+      const action = esc(actionRaw.toUpperCase());
+      const by = esc(e.by || "");
+      const reason = esc(e.reason || "");
+      const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
 
-  const st = String(e.status || "").toLowerCase();
-  const statusText =
-    st === "applied" ? "SUCCESS" :
-    st === "failed"  ? "NOT SUCCESSFUL" :
-    "";
+      const st = String(e.status || "").toLowerCase();
+      const statusText = st === "applied" ? "SUCCESS" : st === "failed" ? "NOT SUCCESSFUL" : "";
 
-  const tag = String(e.tag || "");
-  const flags = Array.isArray(e.flags) ? e.flags : [];
-  const groups = Array.isArray(e.flagGroups) ? e.flagGroups : [];
+      const tag = String(e.tag || "");
+      const flags = Array.isArray(e.flags) ? e.flags : [];
+      const groups = Array.isArray(e.flagGroups) ? e.flagGroups : [];
+      const suspicious = (tag.toLowerCase() === "suspicious") || (String(actionRaw).toLowerCase() === "suspicious");
 
-  const suspicious = (tag.toLowerCase() === "suspicious") || (String(actionRaw).toLowerCase() === "suspicious");
+      const chips = [];
+      if (action) chips.push(`<span class="chip accent">⚡ ${action}</span>`);
+      if (suspicious) chips.push(`<span class="chip warn">⚠️ SUSPICIOUS</span>`);
+      else if (tag) chips.push(`<span class="chip">🏷️ ${esc(tag)}</span>`);
+      if (statusText) chips.push(`<span class="chip ${st === "applied" ? "ok" : "fail"}">${st === "applied" ? "✅" : "❌"} ${esc(statusText)}</span>`);
+      if (by) chips.push(`<span class="chip">🧑 ${by}</span>`);
+      if (when) chips.push(`<span class="chip">🕒 ${esc(when)}</span>`);
+      if (flags.length) chips.push(`<span class="chip warn">🚩 ${esc(flags.join(", "))}</span>`);
+      if (groups.length) chips.push(`<span class="chip warn">👥 ${esc(groups.join(", "))}</span>`);
 
-  const statusPill = statusText ? `<span class="pill">${esc(statusText)}</span>` : "";
-  const tagPill = suspicious ? `<span class="pill" style="border-color:rgba(255,193,7,.55)">SUSPICIOUS</span>` : (tag ? `<span class="pill">${esc(tag)}</span>` : "");
-
-  const flagsPill = flags.length ? `<span class="pill">Flags: ${esc(flags.join(", "))}</span>` : "";
-  const groupsPill = groups.length ? `<span class="pill">Groups: ${esc(groups.join(", "))}</span>` : "";
-
-  const pills = [
-    action ? `<span class="pill">${action}</span>` : "",
-    tagPill,
-    statusPill,
-    by ? `<span class="pill">By: ${by}</span>` : "",
-    when ? `<span class="pill">${esc(when)}</span>` : "",
-    flagsPill,
-    groupsPill,
-  ].filter(Boolean).join(" ");
-
-  return `
-    <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${pills}</div>
-    <div class="small">UserId: ${Number(e.userId) || ""}</div>
-    ${reason ? `<div class="small">Note: ${reason}</div>` : ""}
-  `;
-}
+      return `
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div style="min-width:0">
+            <div style="font-weight:850;letter-spacing:-.1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${handle ? "@" + handle : ""}</div>
+          </div>
+        </div>
+        <div class="chipRow">${chips.join("")}</div>
+        <div class="chipRow">
+          <span class="chip">🆔 ${Number(e.userId) || ""}</span>
+          ${reason ? `<span class="chip">📝 ${reason}</span>` : ""}
+        </div>
+      `;
+    }
 
     function renderActive(){
       els.activeList.innerHTML = "";
@@ -770,46 +1228,60 @@ function showModerationOverlay(show, subText){
 
       const list = activePlayers.filter(matchSearch);
       if (!list.length){
-        els.activeList.innerHTML = "<div class='small'>No players match.</div>";
+        els.activeList.innerHTML = `<div class="empty">No players match.</div>`;
         return;
       }
 
       for (const p of list){
-const staff = isStaff(p.userId);
+        const staff = isStaff(p.userId);
         const div = document.createElement("div");
-        div.className =
-          "card" +
+        div.className = "card" +
           (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
           (staff ? " staffCard" : "");
         div.innerHTML = makePlayerCardHTML(p);
-        if (!staff && !uiLocked) div.onclick = () => { selectedActiveUserId = Number(p.userId); selectedLogId = null; renderActive(); renderLogs(); updateButtons(); };
+        if (!staff && !uiLocked){
+          div.onclick = () => {
+            selectedActiveUserId = Number(p.userId);
+            selectedLogId = null;
+            renderActive();
+            renderLogs();
+            updateButtons();
+          };
+        }
         els.activeList.appendChild(div);
       }
     }
 
     function renderLogs(){
-  els.logList.innerHTML = "";
-  setCounts();
+      els.logList.innerHTML = "";
+      setCounts();
 
-  const list = logs.filter(matchSearch).filter(e => String(e.status||"").toLowerCase() !== "pending");
-if (!list.length){
-    els.logList.innerHTML = "<div class='small'>No logs.</div>";
-    return;
-  }
+      const list = logs.filter(matchSearch).filter(e => String(e.status||"").toLowerCase() !== "pending");
+      if (!list.length){
+        els.logList.innerHTML = `<div class="empty">No logs.</div>`;
+        return;
+      }
 
-  for (const e of list){
-    const st = String(e.status || "").toLowerCase();
-    const suspicious = (String(e.tag||"").toLowerCase() === "suspicious") || (String(e.action||"").toLowerCase() === "suspicious");
-    const extra =
-      suspicious ? " logSus" :
-      st === "applied" ? " logOk" :
-      st === "failed"  ? " logFail" : "";const div = document.createElement("div");
-    div.className = "card" + extra + (String(e.id) === String(selectedLogId) ? " selected" : "");
-    div.innerHTML = makeLogCardHTML(e);
-    if (!uiLocked) div.onclick = () => { selectedLogId = String(e.id); selectedActiveUserId = null; renderActive(); renderLogs(); updateButtons(); };
-    els.logList.appendChild(div);
-  }
-}
+      for (const e of list){
+        const st = String(e.status || "").toLowerCase();
+        const suspicious = (String(e.tag||"").toLowerCase() === "suspicious") || (String(e.action||"").toLowerCase() === "suspicious");
+        const extra = suspicious ? " logSus" : st === "applied" ? " logOk" : st === "failed" ? " logFail" : "";
+
+        const div = document.createElement("div");
+        div.className = "card" + extra + (String(e.id) === String(selectedLogId) ? " selected" : "");
+        div.innerHTML = makeLogCardHTML(e);
+        if (!uiLocked){
+          div.onclick = () => {
+            selectedLogId = String(e.id);
+            selectedActiveUserId = null;
+            renderActive();
+            renderLogs();
+            updateButtons();
+          };
+        }
+        els.logList.appendChild(div);
+      }
+    }
 
     function updateButtons(){
       if (uiLocked){
@@ -831,7 +1303,6 @@ if (!list.length){
       els.unbanReason.disabled = !canUnban;
     }
 
-    
     let lockState = { locked:false, by:"", at:0 };
     let lockLastAt = 0;
 
@@ -840,32 +1311,33 @@ if (!list.length){
       try { return new Date(Number(ms)).toLocaleString(); } catch { return ""; }
     }
 
-function renderLockState(){
-  const locked = !!lockState.locked;
-  if (els.lockBtn){
-    els.lockBtn.textContent = locked ? "🔒" : "🔓";
-    const who = (lockState.by || "").trim();
-    const when = lockState.at ? fmtWhen(lockState.at) : "";
-    const stateText = locked ? "LOCKED" : "UNLOCKED";
-    const byText = who ? (" by " + who) : "";
-    const atText = when ? (" • " + when) : "";
-    const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
-    els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
-  }
-}
+    function renderLockState(){
+      const locked = !!lockState.locked;
+      if (els.lockBtn){
+        els.lockBtn.textContent = locked ? "🔒 Locked" : "🔓 Unlocked";
+        const who = (lockState.by || "").trim();
+        const when = lockState.at ? fmtWhen(lockState.at) : "";
+        const stateText = locked ? "LOCKED" : "UNLOCKED";
+        const byText = who ? (" by " + who) : "";
+        const atText = when ? (" • " + when) : "";
+        const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
+        els.lockBtn.setAttribute("data-tip", "Lock — " + stateText + byText + atText + " — " + actionHint);
+        els.lockBtn.classList.toggle("danger", locked);
+        els.lockBtn.classList.toggle("ghost", !locked);
+      }
+    }
 
     async function fetchLockState(){
       try{
-        const res = await fetch(endpoint("/lockState") + (endpoint("/lockState").includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
+        const url = endpoint("/lockState") + (endpoint("/lockState").includes("?") ? "&" : "?") + "t=" + Date.now();
+        const res = await fetch(url, { cache: "no-store" });
         const body = await res.json().catch(()=>null);
         if (res.ok && body && body.ok){
           lockState = { locked: !!body.locked, by: String(body.by||""), at: Number(body.at||0) };
           renderLockState();
 
-          // If lock changed, refresh players so UI reflects movement quickly
           if (lockState.at && lockState.at !== lockLastAt){
             lockLastAt = lockState.at;
-            // light refresh; don't spam
             fetchPlayers().catch(()=>{});
           }
         }
@@ -906,16 +1378,16 @@ function renderLockState(){
       }
     }
 
-async function fetchPlayers(){
+    async function fetchPlayers(){
       const url = endpoint("/players");
-      setStatus("loading","Loading players...");
+      setStatus("loading","Loading players…");
       const res = await fetch(url, { cache:"no-store" });
       if (!res.ok) throw new Error("Players HTTP " + res.status);
       const data = await res.json();
       activePlayers = Array.isArray(data.players) ? data.players : [];
       try{ for (const p of activePlayers) cacheNameFrom(p); } catch {}
-      els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
-setStatus("ok","OK");
+      els.meta.textContent = `Updated: ${data.updatedAt || "?"} • Players: ${data.totalPlayers ?? activePlayers.length}`;
+      setStatus("ok","OK");
       return activePlayers;
     }
 
@@ -925,11 +1397,10 @@ setStatus("ok","OK");
       if (!res.ok) throw new Error("Logs HTTP " + res.status);
       const data = await res.json();
       logs = mergeLogs(Array.isArray(data.items) ? data.items : []);
-      
       if (selectedLogId && !logs.some(e => String(e.id) === String(selectedLogId))){
         selectedLogId = null;
       }
-renderLogs();
+      renderLogs();
       updateButtons();
       return logs;
     }
@@ -942,267 +1413,203 @@ renderLogs();
       return Array.isArray(data.players) ? data.players : [];
     }
 
-    async function verifyByPresence(userId, timeoutMs){
-      const start = Date.now();
-      while (Date.now() - start < timeoutMs){
+    async function sendModeration(action, user, reason){
+      if (!user) return { ok:false };
+      const userId = Number(user.userId || 0);
+
+      if (isStaff(userId)) {
+        toast("err", "Blocked", "That user is STAFF and cannot be moderated.");
+        return { ok:false };
+      }
+
+      const adminKey = els.adminKey.value.trim();
+      if (!adminKey) {
+        toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
+        return { ok:false };
+      }
+
+      try{ cacheNameFrom(user); } catch {}
+
+      const payload = {
+        action,
+        userId,
+        reason: String(reason || ""),
+        by: String(getLoginUser() || ""),
+        username: String(user.username || ""),
+        displayName: String(user.displayName || "")
+      };
+
+      let res, body = null;
+      try{
+        res = await fetch(endpoint("/admin/moderate"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": adminKey
+          },
+          body: JSON.stringify(payload)
+        });
+        try { body = await res.json(); } catch { body = null; }
+      } catch(e){
+        toast("err", "Request failed", e.message);
+        return { ok:false };
+      }
+
+      if (!res || !res.ok) {
+        toast("err", "Request rejected", (body && body.error) ? body.error : ("HTTP " + (res ? res.status : "?")));
+        return { ok:false };
+      }
+
+      return { ok:true, id: body && body.id ? String(body.id) : "" };
+    }
+
+    async function enforceAndVerify(action, user, reason){
+      const act = String(action || "").toLowerCase();
+      const userId = Number(user && user.userId || 0);
+      if (act === "unban"){
+        const sent = await sendModeration("unban", user, reason || "");
+        return (sent && sent.ok) ? { ok:true, id: sent.id || "" } : { ok:false, message: "unban failed" };
+      }
+      if (!userId) return { ok:false, message: "missing userId" };
+
+      const started = Date.now();
+      const hardTimeoutMs = 60000;
+      const resendEveryMs = 500;
+      const checkEveryMs  = 400;
+      const refreshUiEveryMs = 700;
+
+      function updateOverlay(step){
+        const pct = Math.min(99, Math.floor(((Date.now() - started) / hardTimeoutMs) * 100));
+        setModerationProgress(pct, step || "Working…");
+        if (els.modOverlaySub) els.modOverlaySub.textContent = step || "Working…";
+      }
+
+      let lastSendAt = 0;
+      let lastUiAt = 0;
+      let lastId = "";
+      let _stage = "";
+
+      function setStage(msg){
+        if (_stage === msg) return;
+        _stage = msg;
+        updateOverlay(msg);
+      }
+
+      function normStr(v){ return String(v || "").trim(); }
+      function findLogById(id){
+        if (!id) return null;
+        return logs.find(e => String(e && e.id) === String(id)) || null;
+      }
+      function findLogBySignature(){
+        const targetAction = normStr(action).toLowerCase();
+        const targetUserId = Number(userId) || 0;
+        const targetBy = normStr(getLoginUser());
+        const targetReason = normStr(reason);
+
+        let best = null;
+        for (const e of logs){
+          if (!e) continue;
+          if (normStr(e.action).toLowerCase() !== targetAction) continue;
+          if (Number(e.userId || 0) !== targetUserId) continue;
+          if (targetBy && normStr(e.by) !== targetBy) continue;
+          if (targetReason && normStr(e.reason) !== targetReason) continue;
+          const t = Number(e.createdAt || e.ackedAt || 0) || 0;
+          if (t < started - 1500) continue;
+          if (!best) best = e;
+          else {
+            const bt = Number(best.createdAt || best.ackedAt || 0) || 0;
+            if (t > bt) best = e;
+          }
+        }
+        return best;
+      }
+
+      async function refreshUi(){
+        try{
+          await fetchPlayers();
+          await fetchLogs();
+          renderActive();
+          renderLogs();
+          setCounts();
+          updateButtons();
+        } catch {}
+      }
+
+      async function isStillHere(){
         try{
           const players = await fetchPlayersOnce();
-          const stillHere = players.some(p => Number(p.userId) === Number(userId));
-          if (!stillHere) return { ok:true };
-        } catch {}
-        await new Promise(r => setTimeout(r, 1000));
+          return players.some(p => Number(p.userId) === userId);
+        } catch {
+          return true;
+        }
       }
-      return { ok:false, timeout:true };
-    }
 
-    async function tryHistory(id){
-      try{
-        const res = await fetch(endpoint("/history"), { cache:"no-store" });
-        if (!res.ok) return null;
-        const data = await res.json();
-        const items = Array.isArray(data.items) ? data.items : [];
-        return items.find(x => String(x && x.id) === String(id)) || null;
-      } catch { return null; }
-    }
+      updateOverlay("Preparing…");
 
-    async function waitHistoryOk(id, timeoutMs){
-      const start = Date.now();
-      while (Date.now() - start < timeoutMs){
-        const item = await tryHistory(id);
-        if (item && item.status === "applied") return { ok:true };
-        if (item && item.status === "failed") return { ok:false, message: "failed" };
-        await new Promise(r => setTimeout(r, 1000));
-      }
-      return { ok:false, timeout:true };
-    }
-
-    async function sendModeration(action, user, reason){
-  if (!user) return { ok:false };
-  const userId = Number(user.userId || 0);
-
-  if (isStaff(userId)) {
-    toast("err", "Blocked", "That user is STAFF and cannot be moderated.");
-    return { ok:false };
-  }
-
-  const adminKey = els.adminKey.value.trim();
-  if (!adminKey) {
-    toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
-    return { ok:false };
-  }
-
-  // cache for nicer logs
-  try{ cacheNameFrom(user); } catch {}
-
-  const payload = {
-    action,
-    userId,
-    reason: String(reason || ""),
-    by: String(getLoginUser() || ""),
-    username: String(user.username || ""),
-    displayName: String(user.displayName || "")
-  };
-
-  let res, body = null;
-  try{
-    res = await fetch(endpoint("/admin/moderate"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-key": adminKey
-      },
-      body: JSON.stringify(payload)
-    });
-    try { body = await res.json(); } catch { body = null; }
-  } catch(e){
-    toast("err", "Request failed", e.message);
-    return { ok:false };
-  }
-
-  if (!res || !res.ok) {
-    toast("err", "Request rejected", (body && body.error) ? body.error : ("HTTP " + (res ? res.status : "?")));
-    return { ok:false };
-  }
-
-  return { ok:true, id: body && body.id ? String(body.id) : "" };
-}
-
-
-async function enforceAndVerify(action, user, reason){
-  const act = String(action || "").toLowerCase();
-  const userId = Number(user && user.userId || 0);
-
-  if (act === "unban"){
-    const sent = await sendModeration("unban", user, reason || "");
-    return (sent && sent.ok) ? { ok:true, id: sent.id || "" } : { ok:false, message: "unban failed" };
-  }
-
-  if (!userId) return { ok:false, message: "missing userId" };
-
-  const started = Date.now();
-  const hardTimeoutMs = 60000;
-  const resendEveryMs = 500;
-  const checkEveryMs  = 400;
-  const refreshUiEveryMs = 700;
-
-  function updateOverlay(step){
-    const pct = Math.min(99, Math.floor(((Date.now() - started) / hardTimeoutMs) * 100));
-    setModerationProgress(pct, step || "Working…");
-    if (els.modOverlaySub) els.modOverlaySub.textContent = step || "Working…";
-  }
-
-  let lastSendAt = 0;
-  let lastUiAt = 0;
-  let lastId = "";
-
-  
-  let _stage = "";
-  function setStage(msg){
-    if (_stage === msg) return;
-    _stage = msg;
-    updateOverlay(msg);
-  }
-
-  function normStr(v){ return String(v || "").trim(); }
-  function findLogById(id){
-    if (!id) return null;
-    return logs.find(e => String(e && e.id) === String(id)) || null;
-  }
-  function findLogBySignature(){
-    // Fallback if we never received an id (network glitch / duplicate sends)
-    const targetAction = normStr(action).toLowerCase();
-    const targetUserId = Number(userId) || 0;
-    const targetBy = normStr(by);
-    const targetReason = normStr(reason);
-
-    let best = null;
-    for (const e of logs){
-      if (!e) continue;
-      if (normStr(e.action).toLowerCase() !== targetAction) continue;
-      if (Number(e.userId || 0) !== targetUserId) continue;
-      if (targetBy && normStr(e.by) !== targetBy) continue;
-      if (targetReason && normStr(e.reason) !== targetReason) continue;
-
-      const t = Number(e.createdAt || e.ackedAt || 0) || 0;
-      if (t < started - 1500) continue; // must be created after we started (with small buffer)
-
-      if (!best) best = e;
-      else {
-        const bt = Number(best.createdAt || best.ackedAt || 0) || 0;
-        if (t > bt) best = e;
-      }
-    }
-    return best;
-  }
-
-async function refreshUi(){
-    try{
-      await fetchPlayers();
-      await fetchLogs();
-      renderActive();
-      renderLogs();
-      setCounts();
-      updateButtons();
-    } catch {}
-  }
-
-  async function isStillHere(){
-    try{
-      const players = await fetchPlayersOnce();
-      return players.some(p => Number(p.userId) === userId);
-    } catch {
-      return true;
-    }
-  }
-updateOverlay("Preparing…");
-
-  if (!(await isStillHere())){
-    setModerationProgress(100, "Already gone");
-    await fetchPlayers();
-    await fetchLogs();
-    renderActive();
-    updateButtons();
-    return { ok:true, id: "" };
-  }
-
-  while (Date.now() - started < hardTimeoutMs){
-    const now = Date.now();
-
-    if (!lastId && (now - lastSendAt >= resendEveryMs)) {
-      updateOverlay("Sending request to server…");
-      const sent = await sendModeration(act, user, reason || "");
-      lastSendAt = now;
-      if (sent && sent.ok && sent.id) lastId = String(sent.id);
-    }
-
-    if (now - lastUiAt >= refreshUiEveryMs){
-      lastUiAt = now;
-      setStage("Moderating in progress…");
-      await refreshUi();
-    }
-
-    // Prefer server-confirmed log status (applied/failed) over player presence.
-    // This avoids "stuck checking player list" when the user already left or appears in another place.
-    // Prefer server-confirmed log status (applied/failed) over player presence.
-    // Track by command id when available; otherwise match by signature (action/user/reason/by) created after start.
-    let logItem = findLogById(lastId);
-    if (!logItem) logItem = findLogBySignature();
-
-    if (logItem){
-      const st = String(logItem.status || "").toLowerCase();
-      if (st === "applied"){
-        setModerationProgress(100, "Success");
+      if (!(await isStillHere())){
+        setModerationProgress(100, "Already gone");
         await fetchPlayers();
         await fetchLogs();
         renderActive();
         updateButtons();
-
-return { ok:true, id: String(logItem.id || lastId || "") };
+        return { ok:true, id: "" };
       }
-      if (st === "failed"){
-        setModerationProgress(100, "Not successful");
-        await fetchPlayers();
-        await fetchLogs();
-        renderActive();
-        updateButtons();
 
-return { ok:false, id: String(logItem.id || lastId || ""), message: "failed" };
+      while (Date.now() - started < hardTimeoutMs){
+        const now = Date.now();
+
+        if (!lastId && (now - lastSendAt >= resendEveryMs)) {
+          updateOverlay("Sending request to server…");
+          const sent = await sendModeration(act, user, reason || "");
+          lastSendAt = now;
+          if (sent && sent.ok && sent.id) lastId = String(sent.id);
+        }
+
+        if (now - lastUiAt >= refreshUiEveryMs){
+          lastUiAt = now;
+          setStage("Moderating…");
+          await refreshUi();
+        }
+
+        let logItem = findLogById(lastId);
+        if (!logItem) logItem = findLogBySignature();
+
+        if (logItem){
+          const st = String(logItem.status || "").toLowerCase();
+          if (st === "applied"){
+            setModerationProgress(100, "Success");
+            await refreshUi();
+            return { ok:true, id: String(logItem.id || lastId || "") };
+          }
+          if (st === "failed"){
+            setModerationProgress(100, "Not successful");
+            await refreshUi();
+            return { ok:false, id: String(logItem.id || lastId || ""), message: "failed" };
+          }
+        }
+
+        if (!window.__goneStreak) window.__goneStreak = {};
+        const keyGone = String(action) + ":" + String(userId);
+        const still = await isStillHere();
+
+        if (!still && (act === "kick" || act === "ban")){
+          window.__goneStreak[keyGone] = (window.__goneStreak[keyGone] || 0) + 1;
+          if (window.__goneStreak[keyGone] >= 3){
+            setModerationProgress(100, "Success");
+            await refreshUi();
+            return { ok:true, id: String(lastId || "") };
+          }
+        } else {
+          window.__goneStreak[keyGone] = 0;
+        }
+
+        setStage("Moderating…");
+        await new Promise(r => setTimeout(r, checkEveryMs));
       }
+
+      setModerationProgress(100, "Timed out");
+      return { ok:false, timeout:true, message: "Timed out waiting for confirmation. Try again or use an in-game moderation method." };
     }
-
-    // Fallback (kick/ban only): if the player is consistently gone from the live player list,
-    // treat it as success even if ACK/log is delayed.
-    if (!window.__goneStreak) window.__goneStreak = {};
-    const keyGone = String(action) + ":" + String(userId);
-    const still = await isStillHere();
-    if (!still && (String(action||"").toLowerCase() === "kick" || String(action||"").toLowerCase() === "ban")){
-      window.__goneStreak[keyGone] = (window.__goneStreak[keyGone] || 0) + 1;
-      if (window.__goneStreak[keyGone] >= 3){
-        setModerationProgress(100, "Success");
-        await fetchPlayers();
-        await fetchLogs();
-        renderActive();
-        updateButtons();
-
-return { ok:true, id: String(lastId || "") };
-      }
-} else {
-  window.__goneStreak[keyGone] = 0;
-}
-
-setStage("Moderating in progress…");
-await new Promise(r => setTimeout(r, checkEveryMs));
-
-// Optional hint for the operator, but NOT the source of truth:
-// if they disappear, we still wait for log confirmation.
-if (!still){
-  setStage("Moderating in progress…");
-}
-  }
-
-  setModerationProgress(200, "Timed out");
-return { ok:false, timeout:true, message: "Issue on servers end. Please try using khols to moderate this user." };
-}
 
     function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
     function getSelectedLog(){ return logs.find(e => String(e.id) === String(selectedLogId)) || null; }
@@ -1221,7 +1628,7 @@ return { ok:false, timeout:true, message: "Issue on servers end. Please try usin
     els.save.onclick = () => {
       localStorage.setItem("worker_base_v1", baseUrl());
       localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
-      toast("ok","Saved","Worker Base + Admin Key stored in this browser");
+      toast("ok","Saved","Worker Base + Admin Key stored in this browser.");
       setStatus("ok","Saved");
     };
 
@@ -1231,99 +1638,61 @@ return { ok:false, timeout:true, message: "Issue on servers end. Please try usin
       try{
         await refreshAll();
       } catch(e){
-        setStatus("error", "Refresh failed: " + e.message);
+        setStatus("error", "Refresh failed");
         toast("err","Refresh failed", e.message);
       }
     };
 
     els.lockBtn && (els.lockBtn.onclick = async () => {
-      // Toggle current state
       await setLockState(!lockState.locked);
-      // refresh lock state from server shortly after
       setTimeout(() => { fetchLockState(); }, 500);
     });
 
-
-
-    els.clearLogsBtn && (els.clearLogsBtn.onclick = async () => {
-      if (!isSpecimen()) { toast("err","Specimen only",""); return; }
-      const adminKey = els.adminKey.value.trim();
-      if (!adminKey) { toast("err","Missing ADMIN_KEY","Enter ADMIN_KEY first."); return; }
-
-      try{
-        const res = await fetch(endpoint("/admin/clearLogs"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-key": adminKey,
-            "x-admin-user": String(getLoginUser() || "")
-          },
-          body: JSON.stringify({ user: String(getLoginUser() || "") })
-        });
-        let body = null;
-        try{ body = await res.json(); } catch {}
-        if (!res.ok){
-          toast("err","Clear logs failed", (body && body.error) ? body.error : ("HTTP " + res.status));
-          return;
-        }
-        toast("ok","Logs cleared","");
-        await fetchLogs();
-      }catch(e){
-        toast("err","Clear logs failed", e.message);
-      }
-    });
-
     async function runAction(action, user, reason, onSuccess){
-  const act = String(action || "").toLowerCase();
-  if (act === "kick" || act === "ban"){
-    showModerationOverlay(true, "Moderating user… this may take some time.");
-  }
-
-  beginVerifyLock();
-  try{
-    const v = await enforceAndVerify(action, user, reason || "");
-    if (v.ok){
-      toast("ok","Enforcement action approved","");
-      if (typeof onSuccess === "function") onSuccess();
-      await fetchLogs();
-      await fetchPlayers();
-    } else {
-      toast("err", v.timeout ? "ERROR: TIME OUT" : "Failed", v.message || "");
+      const act = String(action || "").toLowerCase();
+      if (act === "kick" || act === "ban"){
+        showModerationOverlay(true, "Moderating user… this may take some time.");
+      }
+      beginVerifyLock();
+      try{
+        const v = await enforceAndVerify(action, user, reason || "");
+        if (v.ok){
+          toast("ok","Action approved","");
+          if (typeof onSuccess === "function") onSuccess();
+          await fetchLogs();
+          await fetchPlayers();
+        } else {
+          toast("err", v.timeout ? "Timed out" : "Failed", v.message || "");
+        }
+      } finally {
+        endVerifyLock();
+        showModerationOverlay(false, "");
+      }
     }
-  } finally {
-    endVerifyLock();
-    showModerationOverlay(false, "");
-  }
-}
 
     els.kick.onclick = async () => {
       const p = getSelectedActive(); if (!p) return;
       await runAction("kick", p, "", null);
     };
-
     els.kickReason.onclick = async () => {
       const p = getSelectedActive(); if (!p) return;
       const r = prompt("Kick reason?") || "";
       await runAction("kick", p, r, null);
     };
-
     els.ban.onclick = async () => {
       const p = getSelectedActive(); if (!p) return;
       await runAction("ban", p, "", null);
     };
-
     els.banReason.onclick = async () => {
       const p = getSelectedActive(); if (!p) return;
       const r = prompt("Ban reason?") || "";
       await runAction("ban", p, r, null);
     };
-
     els.unban.onclick = async () => {
       const e = getSelectedLog(); if (!e) return;
       const user = { userId: e.userId, username: e.username || "", displayName: e.displayName || "" };
       await runAction("unban", user, "", () => { selectedLogId = null; });
     };
-
     els.unbanReason.onclick = async () => {
       const e = getSelectedLog(); if (!e) return;
       const r = prompt("Unban note?") || "";
@@ -1331,8 +1700,6 @@ return { ok:false, timeout:true, message: "Issue on servers end. Please try usin
       await runAction("unban", user, r, () => { selectedLogId = null; });
     };
 
-    
-    // ===== Custom tooltip system (styled) =====
     let _uiTipEl = null;
     let _uiTipTarget = null;
 
@@ -1350,12 +1717,9 @@ return { ok:false, timeout:true, message: "Issue on servers end. Please try usin
       const titleEl = el.querySelector("#uiTipTitle");
       const bodyEl  = el.querySelector("#uiTipBody");
       const raw = String(text || "").trim();
-
-      // Allow "Title — body" format
       const parts = raw.split(" — ");
       const t = (parts[0] || "").trim();
       const b = (parts.slice(1).join(" — ") || "").trim();
-
       if (titleEl) titleEl.textContent = t || "Info";
       if (bodyEl) bodyEl.textContent = b || "";
     }
@@ -1365,19 +1729,15 @@ return { ok:false, timeout:true, message: "Issue on servers end. Please try usin
       const pad = 12;
       const vw = window.innerWidth || 0;
       const vh = window.innerHeight || 0;
-
-      // Start near cursor
       let x = clientX + 14;
       let y = clientY + 14;
 
-      // Measure
       el.style.left = "0px";
       el.style.top = "0px";
-      el.style.maxWidth = "320px";
+      el.style.maxWidth = "340px";
       el.classList.add("show");
 
       const rect = el.getBoundingClientRect();
-
       if (x + rect.width + pad > vw) x = Math.max(pad, clientX - rect.width - 14);
       if (y + rect.height + pad > vh) y = Math.max(pad, clientY - rect.height - 14);
 
@@ -1401,10 +1761,8 @@ return { ok:false, timeout:true, message: "Issue on servers end. Please try usin
 
     function initTooltips(){
       ensureTip();
-
       const candidates = Array.from(document.querySelectorAll("[data-tip]"));
       for (const el of candidates){
-        // Mouse
         el.addEventListener("mouseenter", (e) => {
           const t = e.currentTarget;
           const tip = t.getAttribute("data-tip") || "";
@@ -1416,8 +1774,6 @@ return { ok:false, timeout:true, message: "Issue on servers end. Please try usin
           positionTip(e.clientX, e.clientY);
         });
         el.addEventListener("mouseleave", () => hideTip());
-
-        // Keyboard focus
         el.addEventListener("focus", (e) => {
           const r = e.currentTarget.getBoundingClientRect();
           const cx = Math.round(r.left + Math.min(40, r.width/2));
@@ -1426,14 +1782,11 @@ return { ok:false, timeout:true, message: "Issue on servers end. Please try usin
         });
         el.addEventListener("blur", () => hideTip());
       }
-
-      // Hide if scrolling/resizing
       window.addEventListener("scroll", () => hideTip(), { passive: true });
       window.addEventListener("resize", () => hideTip());
     }
-    
 
-function initPanel(){
+    function initPanel(){
       initTooltips();
       fetchLockState();
       setInterval(fetchLockState, 1500);
@@ -1445,15 +1798,14 @@ function initPanel(){
       els.workerBase.value = savedBase;
       els.adminKey.value = savedAdmin;
 
-      // Auto-load players + logs ONCE on page open.
-      // After that: players are manual refresh; logs update live for everyone.
       (async () => {
         try{
-          setStatus("ok","Loading…");
+          setStatus("loading","Loading…");
           await refreshAll();
           setStatus("ok","Ready");
         } catch (e){
-          setStatus("bad", String(e && e.message ? e.message : e));
+          setStatus("error","Failed to load");
+          toast("err","Load failed", String(e && e.message ? e.message : e));
         }
       })();
 
@@ -1462,24 +1814,19 @@ function initPanel(){
         try{
           if (_logsBusy) return;
           _logsBusy = true;
-          await fetchLogs(); // includes cache-buster + re-render
+          await fetchLogs();
         } catch {} finally {
           _logsBusy = false;
         }
       }, 3000);
     }
 
-    if (isLoggedIn()){ showApp(); initPanel(); }
-    else { showLogin(); }
+    if (isLoggedIn()){
+      showApp();
+      initPanel();
+    } else {
+      showLogin();
+    }
   </script>
-
-  <div class="pageNav">
-    <div class="navWrap">
-      <a href="#" class="disabled" aria-label="Previous">&lt;</a>
-      <span class="num">1</span>
-      <a href="group.html" class="" aria-label="Next">&gt;</a>
-    </div>
-  </div>
-
 </body>
 </html>
