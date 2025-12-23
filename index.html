@@ -1,1485 +1,2398 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Roblox Panel</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>Webpage</title>
   <style>
     :root{
-      --bg:#f7f7fb; --surface:#ffffff; --surface2:#fbfbfd;
-      --text:#111318; --muted:#5c6370;
-      --border:#e6e8ee; --border2:#d9dde6; --ring:#111318;
-      --btn:#ffffff; --btnText:#111318; --btnBorder:#d9dde6; --btnHover:#f3f4f7;
-      --danger:#b00020; --ok:#0b7a3b;
-      --radius:16px; --radius2:14px;
-      --shadow: 0 10px 30px rgba(17,19,24,.08);
-      --focus: 0 0 0 4px rgba(17,19,24,.12);
+      --bg:#0a0c12;
+      --bg2:#0c1020;
+      --panel: rgba(18,22,34,.62);
+      --panel2: rgba(18,22,34,.45);
+      --panel3: rgba(16,20,34,.62);
+      --text:#e9ecf2;
+      --muted:#a8b0bf;
+      --muted2:#7e8798;
+      --border: rgba(255,255,255,.08);
+      --border2: rgba(255,255,255,.14);
+      --shadow: 0 18px 48px rgba(0,0,0,.55);
+
+      --ok:#2bd576;
+      --warn:#f5c542;
+      --bad:#ff4d6d;
+      --blue:#6aa8ff;
+      --discord:#5865F2;
+
+      --r1:18px;
+      --r2:14px;
+      --r3:12px;
+
+      --sideW: 320px;
+      --topH: 64px;
+
+      --tap: 44px;
     }
-    [data-theme="dark"]{
-      --bg:#0c0f14; --surface:#121722; --surface2:#0f1420;
-      --text:#e9edf6; --muted:#a9b2c3;
-      --border:#202a3a; --border2:#2a3750; --ring:#e9edf6;
-      --btn:#141b29; --btnText:#e9edf6; --btnBorder:#2a3750; --btnHover:#1a2436;
-      --danger:#ff4d6d; --ok:#3ddc84;
-      --shadow: 0 14px 40px rgba(0,0,0,.45);
-      --focus: 0 0 0 4px rgba(233,237,246,.16);
-    }
+
     *{box-sizing:border-box}
+    html,body{height:100%}
     body{
-      font-family:system-ui,Arial; margin:0; color:var(--text); background:var(--bg);
-      transition: background .25s ease, color .25s ease;
-      min-height:100vh; display:flex; justify-content:center; align-items:center; padding:24px;
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1100px 600px at 15% -10%, rgba(141,99,255,.18), transparent 55%),
+        radial-gradient(900px 520px at 85% 0%, rgba(255,92,92,.12), transparent 60%),
+        radial-gradient(900px 520px at 70% 35%, rgba(74,169,255,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      overflow-x:hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
-    .app{width:min(1200px, 100%); margin:0 auto;}
-    .top{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap;}
-    h1{margin:0; font-size:34px; letter-spacing:-.5px; display:flex; align-items:center; gap:10px;}
-    .pillStatus{
-      display:inline-flex; align-items:center; gap:8px; padding:6px 10px;
-      border:1px solid var(--border); border-radius:999px;
-      background:rgba(255,255,255,.6); backdrop-filter: blur(8px);
-    }
-    [data-theme="dark"] .pillStatus{background:rgba(18,23,34,.6)}
-    .dot{width:8px;height:8px;border-radius:50%; background:var(--muted);}
-    .dot.ok{background:var(--ok)}
-    .dot.err{background:var(--danger)}
-    .dot.load{background:var(--muted); animation:pulse 1.2s ease-in-out infinite}
-    @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
-    .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .seg{
-      display:flex; border:1px solid var(--border); border-radius:999px; overflow:hidden;
-      background:var(--surface); box-shadow: var(--shadow);
-    }
-    .seg button{border:0;border-right:1px solid var(--border);border-radius:0;padding:8px 10px;background:transparent;color:var(--muted)}
-    .seg button:last-child{border-right:0}
-    .seg button[aria-pressed="true"]{background:var(--btnHover);color:var(--text)}
-    .grid{display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:18px;}
-    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
-    .col{
-      border:1px solid var(--border); border-radius:var(--radius); padding:16px;
-      background:var(--surface); box-shadow: var(--shadow);
-    }
-    .colTitle{font-size:22px; margin:0 0 12px; display:flex; align-items:center; justify-content:space-between; gap:12px;}
-    .countPill{font-size:12px;opacity:.9;padding:4px 8px;border:1px solid var(--border);border-radius:999px;color:var(--muted);background:var(--surface2)}
-    .scroll{height:420px; overflow:auto; border-top:1px solid var(--border); padding-top:12px; padding-right:6px;}
-    .card{
-      border:1px solid var(--border); border-radius:var(--radius2);
-      padding:12px 14px; margin:10px 0; cursor:pointer; user-select:none;
-      background:linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
-      transition: transform .15s ease, border-color .15s ease, background .2s ease;
-      transform: translateZ(0);
-    }
-    .card:hover{border-color:var(--border2);transform:translateY(-1px)}
-    .selected{outline:3px solid var(--ring);outline-offset:0;transform:translateY(-1px) scale(1.01)}
-    .row{display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin-top:18px;}
-    .field{min-width:220px; flex:1 1 220px;}
-    input{
-      width:100%; padding:11px 12px; border:1px solid var(--border2); border-radius:12px;
-      background:var(--surface); color:var(--text);
-      transition:border-color .15s ease, box-shadow .15s ease, background .2s ease;
-      outline:none;
-    }
-    input:focus{box-shadow:var(--focus);border-color:var(--border2)}
-    button{
-      padding:10px 12px; border:1px solid var(--btnBorder); border-radius:12px;
-      background:var(--btn); color:var(--btnText); cursor:pointer;
-      transition: transform .12s ease, background .15s ease, border-color .15s ease, opacity .15s ease;
-      outline:none; display:inline-flex; align-items:center; gap:8px;
-    }
-    button:hover{background:var(--btnHover)}
-    button:active{transform:translateY(1px)}
-    button:disabled{opacity:.45;cursor:not-allowed;transform:none}
-    .btns{display:flex;gap:10px;flex-wrap:wrap}
-    .divider{height:1px;background:var(--border);margin:14px 0}
-    .meta{opacity:.9;margin-top:10px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .small{font-size:12px;opacity:.88;color:var(--muted)}
-    .error{color:var(--danger);opacity:1}
-    .label{font-size:12px;opacity:.9;margin-bottom:6px;color:var(--muted)}
-    .pill{
-      display:inline-block; padding:3px 8px; border:1px solid var(--border);
-      border-radius:999px; margin-left:8px; font-size:12px; color:var(--muted); background:var(--surface2);
-    }
-    .staffPill{border-color:var(--border2);opacity:.95}
-    .staffCard{opacity:.55;cursor:not-allowed;filter:grayscale(1)}
-    .toastWrap{
-      position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
-      z-index:9999; pointer-events:none; display:flex; flex-direction:column; gap:8px;
-      width:min(560px, calc(100% - 24px));
-    }
-    .toast{
-      pointer-events:auto; border:1px solid var(--border);
-      background:rgba(255,255,255,.72); backdrop-filter: blur(10px);
-      box-shadow: var(--shadow); border-radius:14px; padding:10px 12px;
-      display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
-      animation: toastIn .18s ease-out;
-    }
-    [data-theme="dark"] .toast{background:rgba(18,23,34,.72)}
-    @keyframes toastIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
-    .toast .tTitle{font-weight:700}
-    .toast .tBody{font-size:12px;color:var(--muted);margin-top:2px}
-    .toast .x{border:0;background:transparent;padding:4px 6px;border-radius:10px}
-    .toast .x:hover{background:var(--btnHover)}
-    .toast.ok{border-color:rgba(11,122,59,.35)}
-    .toast.err{border-color:rgba(176,0,32,.35)}
-    [data-theme="dark"] .toast.ok{border-color:rgba(61,220,132,.35)}
-    [data-theme="dark"] .toast.err{border-color:rgba(255,77,109,.35)}
-    .overlay{
-      position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:24px;
-      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.08), transparent 55%), rgba(0,0,0,.22);
-      backdrop-filter: blur(8px); z-index:9998;
-    }
-    [data-theme="dark"] .overlay{
-      background: radial-gradient(1200px 700px at 50% 20%, rgba(233,237,246,.10), transparent 55%), rgba(0,0,0,.55);
-    }
-    .loginCard{
-      width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
-      background:var(--surface); box-shadow: var(--shadow); padding:18px; animation: toastIn .18s ease-out;
-    }
-    .loginTitle{font-size:22px;margin:0 0 8px}
-    .loginHint{margin:0 0 14px;color:var(--muted);font-size:13px}
-    .loginRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-    .loginRow .field{flex:1 1 240px; min-width:240px}
-    .loginFoot{margin-top:10px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
-    .dangerBtn{border:1px solid var(--border2);background:var(--danger);color:#fff;padding:10px 12px;border-radius:12px;cursor:pointer}
-.dangerBtn:hover{filter:brightness(.95)}
+    a{color:inherit;text-decoration:none}
+    button,input,select{font:inherit}
+    input,select{color:var(--text)}
+    .hidden{display:none!important}
 
-.ghostBtn{border:1px solid var(--border);background:transparent}
-    .ghostBtn:hover{background:var(--btnHover)}
-    @media (prefers-reduced-motion: reduce){ *{transition:none !important} .dot.load{animation:none !important} .spinner{animation: spin 1s linear infinite !important} }
-  .modOverlay{
-  position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px;
-  background: rgba(0,0,0,.22);
-  backdrop-filter: blur(10px);
-  z-index:10000;
-}
-[data-theme="dark"] .modOverlay{ background: rgba(0,0,0,.55); }
-.modCard{
-  width:min(520px, 100%); border:1px solid var(--border); border-radius:18px;
-  background:var(--surface); box-shadow: var(--shadow); padding:18px;
-  animation: toastIn .18s ease-out;
-}
-.modTitle{font-size:20px;margin:0 0 6px}
-.modHint{margin:0;color:var(--muted);font-size:13px}
-.spinRow{display:flex;align-items:center;gap:12px;margin-top:14px}
-.spinner{
-  width:34px;height:34px;border-radius:50%;
-  border:3px solid rgba(128,128,128,.25);
-  border-top-color: var(--ring);
-  animation: spin 1s linear infinite;
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-.modProgress{
-  margin-top: 14px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-.modProgressTop{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-.progressBar{
-  width:100%;
-  height:10px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:rgba(128,128,128,.10);
-  overflow:hidden;
-}
-.progressFill{
-  height:100%;
-  width:0%;
-  border-radius:999px;
-  background: var(--ring);
-  transition: width .2s ease;
-}
+    .layout{
+      min-height:100%;
+      display:grid;
+      grid-template-columns: var(--sideW) 1fr;
+    }
 
-  .logSus{
-    border-color: rgba(255,193,7,.42) !important;
-    background: linear-gradient(180deg, rgba(255,193,7,.10) 0%, var(--surface2) 100%) !important;
-  }
-  [data-theme="dark"] .logSus{
-    border-color: rgba(255,193,7,.42) !important;
-    background: linear-gradient(180deg, rgba(255,193,7,.12) 0%, rgba(18,23,34,.6) 100%) !important;
-  }
-  .logOk{
-  border-color: rgba(11,122,59,.35) !important;
-  background: linear-gradient(180deg, rgba(11,122,59,.10) 0%, var(--surface2) 100%) !important;
-}
-.logFail{
-  border-color: rgba(176,0,32,.35) !important;
-  background: linear-gradient(180deg, rgba(176,0,32,.10) 0%, var(--surface2) 100%) !important;
-}
-[data-theme="dark"] .logOk{
-  border-color: rgba(61,220,132,.35) !important;
-  background: linear-gradient(180deg, rgba(61,220,132,.10) 0%, rgba(18,23,34,.6) 100%) !important;
-}
-[data-theme="dark"] .logFail{
-  border-color: rgba(255,77,109,.35) !important;
-  background: linear-gradient(180deg, rgba(255,77,109,.10) 0%, rgba(18,23,34,.6) 100%) !important;
-}
-  
-    /* ===== Custom tooltips (styled, not browser default) ===== */
-    .uiTip{
-      position: fixed;
-      z-index: 999999;
-      max-width: 320px;
-      padding: 10px 12px;
-      border: 1px solid var(--border2);
-      background: var(--surface);
-      color: var(--text);
-      border-radius: 12px;
-      box-shadow: var(--shadow);
-      font-size: 13px;
-      line-height: 1.25;
-      opacity: 0;
-      transform: translateY(6px);
-      transition: opacity .12s ease, transform .12s ease;
-      pointer-events: none;
-      user-select: none;
-      white-space: normal;
+    .sidebar{
+      position:sticky;
+      top:0;
+      height:100dvh;
+      padding: 14px 12px;
+      border-right: 1px solid var(--border);
+      background: rgba(11,13,18,.46);
+      backdrop-filter: blur(14px);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      overflow:auto;
     }
-    .uiTip.show{
-      opacity: 1;
-      transform: translateY(0);
+
+    .brandRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 10px 10px 6px;
     }
-    .uiTip .tTitle{
-      font-weight: 700;
-      margin: 0 0 6px 0;
-      font-size: 13px;
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
     }
-    .uiTip .tBody{
-      margin: 0;
+    .mark{
+      width:18px;height:18px;border-radius:6px;
+      background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.28));
+      box-shadow: 0 8px 18px rgba(255,255,255,.08);
+      position:relative; overflow:hidden;
+      flex:0 0 auto;
+    }
+    .mark:after{
+      content:"";
+      position:absolute; inset:-40%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.85), transparent 55%);
+      transform: rotate(25deg); opacity:.55;
+    }
+    .brandText{
+      font-weight:900;
+      letter-spacing:-.2px;
+      line-height:1.1;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .brandSub{
+      display:block;
+      color:var(--muted2);
+      font-size:12px;
+      font-weight:750;
+      margin-top:2px;
+      letter-spacing:.12px;
+    }
+
+    .iconBtn{
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,.03);
+      display:grid;place-items:center;
+      cursor:pointer;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+    }
+    .iconBtn:hover{transform: translateY(-1px);background: rgba(255,255,255,.05);border-color: var(--border2)}
+    .iconBtn:active{transform: translateY(0px)}
+
+    .sideNav{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      padding: 0 8px;
+    }
+    .navItem{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid transparent;
       color: var(--muted);
-      font-size: 12.5px;
+      cursor:pointer;
+      min-height: var(--tap);
+      transition: background .18s ease, border-color .18s ease, color .18s ease;
+      user-select:none;
     }
-    
+    .navItem svg{opacity:.9}
+    .navItem:hover{background: rgba(255,255,255,.04);border-color: var(--border)}
+    .navItem.active{background: rgba(106,168,255,.10);border-color: rgba(106,168,255,.22);color: var(--text)}
 
-/* ===== Page nav ===== */
-.pageNav{
-  position: fixed;
-  left: 0; right: 0; bottom: 14px;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 9998;
-}
-.pageNav .navWrap{
-  pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border: 1px solid var(--border2);
-  background: var(--surface);
-  border-radius: 999px;
-  box-shadow: var(--shadow);
-}
-.pageNav a, .pageNav span{
-  font-size: 14px;
-  color: var(--text);
-}
-.pageNav a{
-  text-decoration: none;
-  padding: 6px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border2);
-  background: var(--btn);
-}
-.pageNav a:hover{ background: var(--btnHover); }
-.pageNav a.disabled{
-  pointer-events: none;
-  opacity: .45;
-}
-.pageNav .num{
-  min-width: 24px;
-  text-align: center;
-  font-weight: 800;
-}
-body{ padding-bottom: 74px; }
+    .sideCard{
+      margin: 0 8px;
+      border:1px solid var(--border);
+      background: var(--panel2);
+      border-radius: var(--r1);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      padding: 12px;
+      overflow:hidden;
+      position:relative;
+    }
+    .sideCard:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(520px 280px at 75% 0%, rgba(255,92,92,.12), transparent 58%),
+        radial-gradient(520px 280px at 0% 0%, rgba(124,92,255,.14), transparent 60%);
+      pointer-events:none;
+      opacity:.75;
+    }
+    .sideCard > *{position:relative;z-index:1}
+    .sideTitle{
+      font-weight:900;
+      letter-spacing:-.2px;
+      margin:0 0 8px;
+      font-size: 14px;
+      color: var(--text);
+      display:flex; align-items:center; gap:8px;
+    }
+    .sideMeta{
+      margin:0 0 10px;
+      color: var(--muted2);
+      font-size: 12.5px;
+      line-height:1.4;
+    }
 
-</style>
+    .discordBtn{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      min-height: var(--tap);
+      border-radius: 999px;
+      border: 1px solid rgba(88,101,242,.38);
+      background: linear-gradient(135deg, rgba(88,101,242,.28), rgba(88,101,242,.12));
+      color: rgba(186,195,255,.98);
+      cursor:pointer;
+      font-weight:850;
+      letter-spacing:.12px;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+    .discordBtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(88,101,242,.55);
+      background: linear-gradient(135deg, rgba(88,101,242,.36), rgba(88,101,242,.18));
+    }
+    .discordBtn:active{transform: translateY(0px)}
+
+    .embedWrap{
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(0,0,0,.18);
+      overflow:hidden;
+      height: 240px;
+    }
+    .embedWrap iframe{width:100%;height:100%;border:0;display:block}
+    .embedFallback{
+      height:100%;
+      display:grid;
+      place-items:center;
+      padding: 12px;
+      text-align:center;
+      color: var(--muted);
+      gap:8px;
+    }
+    .embedFallback a{
+      color: var(--blue);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      font-weight:850;
+    }
+
+    .main{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      min-height:100%;
+    }
+
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:10;
+      height: var(--topH);
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding: 0 16px;
+      background: rgba(11,13,18,.55);
+      backdrop-filter: blur(14px);
+      border-bottom:1px solid var(--border);
+    }
+
+    .topLeft{display:flex;align-items:center;gap:10px;min-width: 0}
+    .mobileMenuBtn{display:none}
+    .crumb{
+      display:flex;flex-direction:column;gap:2px;min-width:0;
+    }
+    .crumb b{
+      font-size: 14px;
+      letter-spacing:-.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .crumb span{font-size: 12px;color:var(--muted2);font-weight:750}
+
+    .search{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-width: 0;
+    }
+    .searchBox{
+      width: min(680px, 100%);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border:1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(18,22,34,.68);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .searchBox input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: var(--text);
+      min-width: 0;
+    }
+    .kbd{
+      font-size:12px;
+      color: var(--muted2);
+      border:1px solid var(--border);
+      border-bottom-color: rgba(255,255,255,.18);
+      padding:2px 8px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.03);
+      white-space:nowrap;
+    }
+
+    .topActions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .btn{
+      min-height: var(--tap);
+      padding: 10px 14px;
+      border-radius: 999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      cursor:pointer;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+      display:inline-flex;align-items:center;justify-content:center;gap:10px;
+      font-weight:850;
+      letter-spacing:.12px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .btn:hover{transform: translateY(-1px);background: rgba(255,255,255,.06);border-color: var(--border2)}
+    .btn:active{transform: translateY(0px)}
+    .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+    .btnPrimary{background: rgba(43,213,118,.12);border-color: rgba(43,213,118,.28)}
+    .btnPrimary:hover{background: rgba(43,213,118,.16);border-color: rgba(43,213,118,.38)}
+    .btnGhost{background: rgba(255,255,255,.02)}
+    .btnDanger{background: rgba(255,77,109,.10);border-color: rgba(255,77,109,.26)}
+    .btnDanger:hover{background: rgba(255,77,109,.14);border-color: rgba(255,77,109,.34)}
+
+    .content{
+      width:min(1320px, 100%);
+      margin: 0 auto;
+      padding: 18px 16px 34px;
+      min-width:0;
+    }
+
+    .hero{
+      border:1px solid var(--border);
+      background: rgba(18,22,34,.55);
+      border-radius: var(--r1);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      position:relative;
+      overflow:hidden;
+    }
+    .hero:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(600px 320px at 75% 15%, rgba(255,70,70,.16), transparent 58%),
+        radial-gradient(520px 280px at 20% 0%, rgba(124,92,255,.14), transparent 60%),
+        radial-gradient(520px 280px at 10% 80%, rgba(74,169,255,.10), transparent 60%);
+      pointer-events:none;
+    }
+    .heroInner{position:relative;z-index:1;display:grid;grid-template-columns: 1.3fr .7fr;gap:16px;align-items:center}
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius: 999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-size:13px;
+      font-weight:750;
+      width:fit-content;
+    }
+    .badgeDot{
+      width:18px;height:18px;border-radius:9px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,.15));
+      box-shadow: 0 10px 24px rgba(255,255,255,.10);
+      display:grid;place-items:center;font-size:12px;color:#101422;
+      flex:0 0 auto;
+    }
+    h1{
+      margin: 12px 0 8px;
+      font-size: clamp(30px, 4.2vw, 46px);
+      line-height:1.03;
+      letter-spacing:-.8px;
+    }
+    .accent{color: #79ff5e}
+    .subtitle{
+      margin:0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height:1.55;
+      max-width: 70ch;
+    }
+
+    .heroRight{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .pill{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      padding: 10px 12px;
+      border-radius: 16px;
+      color: var(--muted);
+      font-size: 13px;
+      display:flex;
+      gap:10px;
+      align-items:baseline;
+      min-width: 220px;
+    }
+    .pill b{color:var(--text);letter-spacing:-.2px}
+    .pill small{color:var(--muted2);font-weight:750}
+
+    .sectionRow{
+      margin-top: 14px;
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .sectionRow .left{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+    }
+    .sectionTitle{
+      font-weight:900;
+      letter-spacing:-.2px;
+      margin:0;
+      font-size: 16px;
+    }
+    .sectionHint{
+      margin:0;
+      color: var(--muted2);
+      font-size: 13px;
+      line-height:1.45;
+    }
+
+    .miniControls{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .fieldInline{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      border-radius: 999px;
+      padding: 8px 10px;
+      min-height: var(--tap);
+    }
+    .fieldInline label{
+      font-size:12px;
+      font-weight:850;
+      letter-spacing:.12px;
+      color: var(--muted2);
+      white-space:nowrap;
+    }
+    .fieldInline input{
+      width: 240px;
+      max-width: 42vw;
+      background: transparent;
+      border:0;
+      outline:none;
+      color: var(--text);
+      font-weight:750;
+      min-width: 0;
+    }
+
+    .grid{
+      margin-top: 14px;
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .card{
+      border:1px solid var(--border);
+      background: var(--panel2);
+      border-radius: var(--r1);
+      padding: 14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      overflow:hidden;
+      position:relative;
+      min-width:0;
+      aspect-ratio: 1;
+    }
+    .card:hover{transform: translateY(-2px);border-color: var(--border2);background: rgba(18,22,34,.60)}
+    .cardTop{display:flex;align-items:flex-start;gap:12px;margin-bottom: 12px}
+    .thumb{
+      width:46px;height:46px;
+      border-radius: 14px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.05);
+      overflow:hidden;
+      flex:0 0 auto;
+      display:grid;
+      place-items:center;
+    }
+    .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .thumbFallback{width:24px;height:24px;opacity:.82}
+
+    .titleCol{flex:1;min-width:0}
+    .gameName{
+      margin:0 0 4px;
+      font-size: 15px;
+      font-weight:900;
+      letter-spacing:-.2px;
+      line-height:1.25;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .gameMeta{
+      font-size: 12.5px;
+      color: var(--muted2);
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .statusPill{
+      margin-left:auto;
+      border-radius: 999px;
+      padding: 7px 10px;
+      border:1px solid var(--border);
+      font-size: 12px;
+      font-weight:900;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      background: rgba(255,255,255,.03);
+      flex:0 0 auto;
+    }
+    .statusOk{color: rgba(43,213,118,.98);border-color: rgba(43,213,118,.26);background: rgba(43,213,118,.09)}
+    .statusWarn{color: rgba(245,197,66,.98);border-color: rgba(245,197,66,.26);background: rgba(245,197,66,.09)}
+    .statusBad{color: rgba(255,77,109,.98);border-color: rgba(255,77,109,.26);background: rgba(255,77,109,.09)}
+    .statusNeutral{color: rgba(168,176,191,.98);border-color: var(--border);background: rgba(255,255,255,.03)}
+
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0 0 10px;
+    }
+    .chip{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      border-radius: var(--r2);
+      padding: 10px 10px;
+      min-height: 52px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:4px;
+      min-width:0;
+    }
+    .chip b{
+      font-size: 16px;
+      letter-spacing:-.2px;
+      line-height:1.1;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .chip span{
+      font-size: 12px;
+      color: var(--muted2);
+      font-weight:850;
+      letter-spacing:.12px;
+    }
+
+    .cardActions{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 8px;
+    }
+    .link{
+      color: var(--blue);
+      font-size: 13px;
+      font-weight:900;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .smallBtn{
+      min-height: var(--tap);
+      padding: 10px 12px;
+      border-radius: 14px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      cursor:pointer;
+      font-weight:900;
+      font-size: 13px;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .smallBtn:hover{transform: translateY(-1px);background: rgba(255,255,255,.05);border-color: var(--border2)}
+    .smallBtn:active{transform: translateY(0px)}
+    .smallBtn.danger{border-color: rgba(255,77,109,.26);background: rgba(255,77,109,.07)}
+    .smallBtn.danger:hover{background: rgba(255,77,109,.11);border-color: rgba(255,77,109,.36)}
+
+    .fileInputWrapper{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .fileInputLabel{
+      padding:10px 14px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:rgba(255,255,255,.03);
+      color:var(--muted);
+      cursor:pointer;
+      font-size:13px;
+      font-weight:750;
+      letter-spacing:.12px;
+      transition:all .18s ease;
+      display:inline-block;
+      user-select:none;
+    }
+
+    .fileInputLabel:hover{
+      background:rgba(255,255,255,.05);
+      border-color:var(--border2);
+    }
+
+    #fileInput{
+      display:none;
+    }
+
+    .hintBox{
+      margin-top: 10px;
+      padding: 10px 10px;
+      border-radius: var(--r2);
+      border: 1px dashed rgba(255,255,255,.16);
+      background: rgba(255,255,255,.02);
+      color: var(--muted);
+      line-height:1.45;
+      font-size: 13px;
+    }
+
+    footer{
+      margin-top: 18px;
+      color: var(--muted2);
+      font-size: 12.5px;
+      padding: 12px 0 6px;
+      text-align:center;
+    }
+
+    .modalOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.60);
+      backdrop-filter: blur(10px);
+      display:none;
+      place-items:center;
+      padding: 18px;
+      z-index: 60;
+    }
+    .modal{
+      width: min(620px, 100%);
+      border-radius: var(--r1);
+      border:1px solid var(--border);
+      background: rgba(18,22,34,.86);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .modalHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 10px;
+    }
+    .modalTitle{
+      font-weight: 950;
+      letter-spacing:-.3px;
+      font-size: 16px;
+      margin:0;
+    }
+    .modalClose{
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      cursor:pointer;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    .modalClose:hover{background: rgba(255,255,255,.05);border-color: var(--border2);transform: translateY(-1px)}
+    .modalClose:active{transform: translateY(0px)}
+    .modalGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      margin-bottom: 8px;
+      min-width:0;
+    }
+    .field label{
+      color: var(--muted2);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing:.12px;
+    }
+    .field input{
+      padding: 12px 12px;
+      border-radius: 14px;
+      border:1px solid var(--border);
+      background: rgba(16,20,34,.65);
+      outline:none;
+      transition: border-color .18s ease, background .18s ease;
+      min-width:0;
+    }
+    .field input:focus{border-color: rgba(106,168,255,.35);background: rgba(16,20,34,.78)}
+    .modalFoot{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-top: 12px;
+      flex-wrap:wrap;
+    }
+    .modalFoot .smallBtn{min-width: 120px;justify-content:center}
+
+    .error{
+      margin-top: 10px;
+      color: rgba(255,77,109,.98);
+      font-weight: 900;
+      font-size: 13px;
+      display:none;
+    }
+    .shake{animation: shake .32s ease-in-out 0s 1}
+    @keyframes shake{
+      0%{transform: translateX(0px)}
+      25%{transform: translateX(6px)}
+      50%{transform: translateX(-6px)}
+      75%{transform: translateX(4px)}
+      100%{transform: translateX(0px)}
+    }
+
+    .updatingOverlay{
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(14px);
+    }
+    .updatingOverlay.hidden{ display:none!important; }
+    .updatingCard{
+      width: min(560px, 100%);
+      border-radius: var(--r1);
+      border: 1px solid var(--border);
+      background: rgba(18,22,34,.78);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      display:grid;
+      gap: 10px;
+      justify-items:center;
+      text-align:center;
+    }
+    .spinner{
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 3px solid rgba(255,255,255,.14);
+      border-top-color: rgba(255,255,255,.82);
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin{ to { transform: rotate(360deg); } }
+    .updatingTitle{
+      font-weight: 950;
+      letter-spacing: -.2px;
+      font-size: 18px;
+      margin: 4px 0 0;
+    }
+    .updatingSub{
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.45;
+      margin:0;
+      white-space:pre-line;
+    }
+    .progressBar{
+      width: min(420px, 100%);
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+      margin-top: 6px;
+    }
+    .progressFill{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(106,168,255,.65), rgba(43,213,118,.65));
+      transition: width .25s ease;
+    }
+
+    .drawerBackdrop{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      display:none;
+      z-index: 80;
+    }
+    .drawerBackdrop.open{display:block}
+
+    .sidebar.drawer{
+      position:fixed;
+      left:0;
+      top:0;
+      bottom:0;
+      width: min(var(--sideW), 92vw);
+      transform: translateX(-105%);
+      transition: transform .24s ease;
+      z-index: 90;
+    }
+    .sidebar.drawer.open{transform: translateX(0%)}
+
+    .readonly [data-admin="1"]{display:none!important}
+
+    @media (max-width: 1040px){
+      :root{ --sideW: 300px; }
+      .heroInner{grid-template-columns: 1fr; align-items:flex-start}
+      .heroRight{justify-content:flex-start}
+    }
+
+    @media (max-width: 880px){
+      .layout{grid-template-columns: 1fr}
+      .sidebar{display:none}
+      .mobileMenuBtn{display:grid}
+      .search{justify-content:flex-end}
+      .searchBox{width: 100%}
+      .topActions .btnLabel{display:none}
+    }
+
+    @media (max-width: 560px){
+      .topbar{padding: 0 10px}
+      .searchBox{padding: 10px 10px}
+      .kbd{display:none}
+      .hero{padding: 14px}
+      .pill{min-width: 0; width:100%}
+      .fieldInline input{width: 48vw}
+      .stats{grid-template-columns: 1fr; }
+      .modalGrid{grid-template-columns: 1fr}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{scroll-behavior:auto!important}
+      .iconBtn,.btn,.smallBtn,.card{transition:none!important}
+      .spinner{animation:none!important}
+      .card:hover,.btn:hover,.smallBtn:hover,.iconBtn:hover{transform:none!important}
+    }
+  </style>
 </head>
 <body>
-  <div class="app" id="app" style="display:none">
-    <div class="top">
-      <h1>
-        Players in-game
-        <span class="pillStatus">
-          <span class="dot" id="statusDot"></span>
-          <span class="small" id="status"></span>
-        </span>
-      </h1>
+  <div class="drawerBackdrop" id="drawerBackdrop" aria-hidden="true"></div>
 
-      <div class="toolbar">
-        <div class="seg" role="group" aria-label="Theme">
-          <button id="themeLight" type="button" aria-pressed="false" data-tip="Light">☀️</button>
-          <button id="themeDark" type="button" aria-pressed="true" data-tip="Dark">🌙</button>
-          <button id="themeAuto" type="button" aria-pressed="false" data-tip="Auto">🖥️</button>
+  <aside class="sidebar drawer" id="drawerSidebar" aria-label="Sidebar (mobile)">
+    <div class="brandRow">
+      <div class="brand">
+        <div class="mark" aria-hidden="true"></div>
+        <div class="crumb">
+          <b>Game Status</b>
+          <span>Status Tracker</span>
         </div>
-        <span class="pillStatus" style="align-self:center">
-  <span class="small">👤</span>
-  <span class="small" id="whoami">—</span>
-</span>
-<button id="logout" type="button" class="ghostBtn" data-tip="Log out">🚪 Logout</button>
       </div>
+      <button class="iconBtn" id="drawerClose" type="button" aria-label="Close menu" title="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
 
-    <div class="row">
-      <div class="field">
-        <div class="label">Worker Base URL</div>
-        <input id="workerBase" placeholder="https://panel.example.workers.dev" />
+    <div class="sideNav" id="sideNavMobile">
+      <div class="navItem active" data-view="games">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M8 4h13v6H8zM3 14h18v6H3z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+          <path d="M3 4h3v6H3z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+        </svg>
+        <span>Games</span>
       </div>
-      <div class="field">
-        <div class="label">Admin Key</div>
-        <input id="adminKey" placeholder="ADMIN_KEY (stored in your browser)" />
+      <div class="navItem" data-view="information">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>Information</span>
       </div>
-      <div class="field">
-        <div class="label">Search</div>
-        <input id="search" placeholder="Search name / display / id" />
+      <div class="navItem" data-view="settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+          <path d="M19.4 15a7.97 7.97 0 0 0 .1-1 7.97 7.97 0 0 0-.1-1l2-1.5-2-3.5-2.4.6a7.9 7.9 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7.9 7.9 0 0 0-1.7 1L5.5 6.5l-2 3.5L5.5 11a7.97 7.97 0 0 0-.1 1 7.97 7.97 0 0 0 .1 1l-2 1.5 2 3.5 2.4-.6a7.9 7.9 0 0 0 1.7 1l.4 2.5h4.6l.4-2.5a7.9 7.9 0 0 0 1.7-1l2.4.6 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+        </svg>
+        <span>Settings</span>
       </div>
-      <div class="btns" style="margin-top:18px">
-        <button id="save" type="button" data-tip="Save settings (Worker URL + Admin key) to your browser">💾 Save</button>
-        <button id="lockBtn" type="button" class="ghostBtn" data-tip="Lock / Unlock">🔒</button>
-<button id="refresh" type="button" data-tip="Refresh players + logs from the Worker">🔄 Refresh</button>
-      </div>
-    </div>
-
-    <div class="meta" id="meta">Updated: ?</div>
-
-    <div class="grid">
-      <div class="col">
-        <div class="colTitle">
-          <span>Active Users</span>
-          <span class="countPill" id="activeCount">0</span>
-        </div>
-        <div class="scroll" id="activeList"></div>
-      </div>
-
-      <div class="col">
-        <div class="colTitle">
-          <span>Logs</span>
-          <span class="small" style="margin-left:auto;color:var(--muted);font-size:12px;opacity:.95">We’re now logging any new group members who have suspicious usernames or are affiliated with suspicious groups. Bots may appear in these logs, please ignore them.</span>
-          <span class="countPill" id="logCount">0</span>
-        </div>
-        <div class="scroll" id="logList"></div>
+      <div class="navItem" data-view="downloads">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 18v-8M7 13l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>Downloads</span>
       </div>
     </div>
+<div style="height: 8px;"></div>
+    <footer style="padding: 0 10px 10px; text-align:left; opacity:.9">
+      <div style="font-weight:850; letter-spacing:.12px; color:var(--muted2); font-size:12px">Tip</div>
+      <div style="color:var(--muted2); font-size:12.5px; margin-top:6px; line-height:1.4">
+        On mobile, open the menu to access settings.
+      </div>
+    </footer>
+  </aside>
 
-    <div class="divider"></div>
+  <div class="layout" id="layout">
+    <aside class="sidebar" aria-label="Sidebar (desktop)">
+      <div class="brandRow">
+        <div class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <div style="min-width:0">
+            <div class="brandText">Game Status</div>
+            <span class="brandSub">Status Tracker</span>
+          </div>
+        </div>
+        <button class="iconBtn" id="openSettingsBtn" type="button" aria-label="Open settings" title="Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M19.4 15a7.97 7.97 0 0 0 .1-1 7.97 7.97 0 0 0-.1-1l2-1.5-2-3.5-2.4.6a7.9 7.9 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7.9 7.9 0 0 0-1.7 1L5.5 6.5l-2 3.5L5.5 11a7.97 7.97 0 0 0-.1 1 7.97 7.97 0 0 0 .1 1l-2 1.5 2 3.5 2.4-.6a7.9 7.9 0 0 0 1.7 1l.4 2.5h4.6l.4-2.5a7.9 7.9 0 0 0 1.7-1l2.4.6 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+          </svg>
+        </button>
+      </div>
 
-    <div class="btns">
-      <button id="kick" type="button">👢 Kick</button>
-      <button id="kickReason" type="button">📝 Kick With Reason</button>
-      <button id="ban" type="button">⛔ Ban</button>
-      <button id="banReason" type="button">🧾 Ban With Reason</button>
-      <button id="unban" type="button">✅ Unban</button>
-      <button id="unbanReason" type="button">🗒️ Unban With Note</button>
+      <div class="sideNav" id="sideNavDesktop">
+        <div class="navItem active" data-view="games">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M8 4h13v6H8zM3 14h18v6H3z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+            <path d="M3 4h3v6H3z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+          </svg>
+          <span>Games</span>
+        </div>
+        <div class="navItem" data-view="information">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>Information</span>
+        </div>
+        <div class="navItem" data-view="settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M19.4 15a7.97 7.97 0 0 0 .1-1 7.97 7.97 0 0 0-.1-1l2-1.5-2-3.5-2.4.6a7.9 7.9 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7.9 7.9 0 0 0-1.7 1L5.5 6.5l-2 3.5L5.5 11a7.97 7.97 0 0 0-.1 1 7.97 7.97 0 0 0 .1 1l-2 1.5 2 3.5 2.4-.6a7.9 7.9 0 0 0 1.7 1l.4 2.5h4.6l.4-2.5a7.9 7.9 0 0 0 1.7-1l2.4.6 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+          </svg>
+          <span>Settings</span>
+        </div>
+        <div class="navItem" data-view="downloads">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 18v-8M7 13l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 20h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>Downloads</span>
+        </div>
+      </div>
+<footer style="margin-top:auto;padding:10px">
+        <a href="https://discord.gg/7am9dHvZc9" target="_blank" class="discordBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M20.317 4.368c-1.578-.7-3.282-1.189-5.047-1.23a.06.06 0 0 0-.063.03c-.219.405-.471.936-.646 1.354-1.945-.292-3.897-.292-5.796 0-.174-.419-.428-.95-.646-1.354a.06.06 0 0 0-.062-.03c-1.765.041-3.469.53-5.047 1.23a.06.06 0 0 0-.03.026C.5 9.092.5 13.77 2.278 18.06a.06.06 0 0 0 .047.028c1.972.37 3.88.88 5.735 1.527a.06.06 0 0 0 .065-.02c.479-.657.909-1.351 1.285-2.074a.06.06 0 0 0-.033-.084 12.4 12.4 0 0 1-1.76-.849.06.06 0 0 1-.006-.1c.118-.087.236-.177.35-.268a.06.06 0 0 1 .063-.008c3.694 1.686 7.702 1.686 11.36 0a.06.06 0 0 1 .063.008c.114.091.232.18.35.268a.06.06 0 0 1-.006.1 12.37 12.37 0 0 1-1.76.85.06.06 0 0 0-.033.083c.376.723.806 1.417 1.285 2.074a.06.06 0 0 0 .065.02c1.855-.647 3.763-1.157 5.735-1.527a.06.06 0 0 0 .047-.027c1.894-4.348 1.894-9.026 0-13.374a.06.06 0 0 0-.03-.026zM8.02 15.33c-1.183 0-2.157-.965-2.157-2.156 0-1.192.974-2.157 2.157-2.157 1.183 0 2.157.965 2.157 2.157 0 1.191-.974 2.156-2.157 2.156zm7.975 0c-1.183 0-2.157-.965-2.157-2.156 0-1.192.974-2.157 2.157-2.157 1.183 0 2.157.965 2.157 2.157 0 1.191-.974 2.156-2.157 2.156z"/>
+          </svg>
+          <span>Join Discord</span>
+        </a>
+        <div style="margin-top:12px;padding:10px;text-align:center;font-size:12px;color:var(--muted2);line-height:1.4">
+          If you would like your game displayed here, join our Discord or DM blocky7yt.
+        </div>
+      </footer>
+    </aside>
+
+    <div class="main" id="main">
+      <header class="topbar" aria-label="Top bar">
+        <div class="topLeft">
+          <button class="iconBtn mobileMenuBtn" id="drawerOpen" type="button" aria-label="Open menu" title="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="crumb">
+            <b id="crumbTitle">Games</b>
+            <span id="crumbSub">Track live stats with one click</span>
+          </div>
+        </div>
+
+        <div class="search" id="searchWrap">
+          <div class="searchBox" role="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" opacity=".9"/>
+              <path d="M16.2 16.2 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+            </svg>
+            <input id="searchInput" placeholder="Search by label, name, or placeId..." autocomplete="off" />
+            <span class="kbd">Ctrl K</span>
+          </div>
+        </div>
+
+        <div class="topActions">
+          <button class="btn btnPrimary" id="refreshBtn" type="button" aria-label="Load games">
+            <span class="btnLabel">Load Games</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-3-6.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M21 3v7h-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+
+          <button class="btn btnGhost" id="addGameBtn" type="button" data-admin="1" aria-label="Add game">
+            <span class="btnLabel">Add</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+
+          <button class="iconBtn" id="signinBtn" type="button" title="Manager sign in" aria-label="Manager sign in" data-admin="0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" stroke-width="2" opacity=".95"/>
+              <path d="M4 21a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2" opacity=".95"/>
+            </svg>
+          </button>
+
+          <button class="iconBtn" id="logoutBtn" type="button" title="Logout" aria-label="Logout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M10 17l1 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+              <path d="M10 7h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-6" stroke="currentColor" stroke-width="2" opacity=".9"/>
+              <path d="M14 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M7 9l-3 3 3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="hero" id="gamesView">
+          <div class="heroInner">
+            <div>
+              <div class="badge"><span class="badgeDot">●</span><span>Roblox Game Status Monitor</span></div>
+              <h1><span class="accent">Status</span>Tracker</h1>
+              <p class="subtitle">
+                tap on <b>load games</b> to refresh the game list. updates may be delayed due to api limits.
+              </p>
+            </div>
+
+            <div class="heroRight">
+              <div class="pill">
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <small>Last updated</small>
+                  <b id="lastUpdated">Not yet</b>
+                </div>
+              </div>
+              <div class="pill">
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <small>Games</small>
+                  <b id="gamesCount">0</b>
+                </div>
+                <div style="margin-left:auto;display:flex;flex-direction:column;gap:2px;align-items:flex-end">
+                  <small>Queue</small>
+                  <b id="queueCount">0</b>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hintBox" style="margin-top: 12px;">
+            The proxy setting is available on the <b>Settings</b> page.
+          </div>
+          <div id="gamesGrid" class="gamesGrid grid"></div>
+          <div id="emptyState" class="emptyState hidden">
+            <div style="text-align:center; padding:40px 20px; color:var(--muted2)">
+              <div style="font-size:14px; margin-bottom:10px">No games loaded yet</div>
+              <div style="font-size:12px">Click "Load Games" to fetch your game list</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="informationView" class="hero hidden">
+          <div class="heroInner">
+            <div>
+              <h2 style="margin-top:0">Information</h2>
+              <p class="subtitle" style="margin-bottom:20px">How to re-upload games without restrictions</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>[RECOMMENDED] Privacy-first browsing</h3>
+            <p>Use a browser that's very privacy focused, I personally utilize LibreWolf (a fork of Firefox) and it clearly handicaps the roblox website and makes your hardware info harder to track to know who you exactly may be, if you combinate these tricks you can really keep yourself away from roblox's banwaves that involve you for avoiding their enforcement actions.</p>
+
+            <h3>[RECOMMENDED] What to use to avoid detection</h3>
+            <p>Virtual Machine + VPN/Proxy (Spoofs Hardware ID and IP)</p>
+
+            <h3>[RECOMMENDED] Alternative Accounts</h3>
+            <p>Alternative Accounts, when game gets taken down and alt recieves warning, create new one so enforcement actions don't pile up to a eventual termination. (PLEASE DON'T ADD YOUR EMAILS OR PHONE NUMBER TO IT, THIS'LL CAUSE ROBLOX TO KNOW ALL THOSE WARNINGS WERE YOU AND BASICALLY HIT YOU WITH A IP BAN AND A BAN ON ALL OF YOUR ACCOUNTS that are being utilized)</p>
+
+            <h3>[RECOMMENDED] Age Ratings</h3>
+            <p>Make the age rating be flooded like: Blood (Light/Realistic), Crude humor (Moderate), Fear (Repeated/Moderate), Sensitive Issues (Present), Social Hangout (Present), Violence (Repeated/Moderate) this increases the uptime of the game as roblox takes longer to scan and moderate the game properly</p>
+          </div>
+        </section>
+
+        <section id="settingsView" class="hero hidden">
+          <div class="heroInner">
+            <div>
+              <h2 style="margin-top:0">Settings</h2>
+              <p class="subtitle" style="margin-bottom:20px">Configure proxy and manage your games</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Proxy Base URL</h3>
+            <div class="field">
+              <label for="proxyInput">Proxy URL (optional)</label>
+              <input id="proxyInput" placeholder="e.g. https://api.example.com" spellcheck="false" />
+            </div>
+            <div style="display:flex;gap:10px;margin-top:10px">
+              <button class="smallBtn" id="saveProxyBtn" type="button">Save</button>
+              <button class="smallBtn danger" id="resetProxyBtn" type="button">Reset to Origin</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Game Management</h3>
+            <button class="smallBtn danger" id="resetDefaultsBtn" type="button" data-admin="1">Reset to Defaults</button>
+            <p style="font-size:12px;color:var(--muted2);margin-top:10px">Requires manager login</p>
+          </div>
+        </section>
+
+        <section id="downloadsView" class="hero hidden">
+          <div class="heroInner">
+            <div>
+              <h2 style="margin-top:0">Downloads</h2>
+              <p class="subtitle" style="margin-bottom:20px">Share files with everyone</p>
+            </div>
+          </div>
+
+          <div class="card" data-admin="1">
+            <h3>Upload Files</h3>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Upload files to make them available for everyone to download</p>
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+              <input type="file" id="fileInput" multiple style="flex:1;min-width:200px" />
+              <button class="smallBtn" id="uploadBtn" type="button">Upload</button>
+            </div>
+            <div id="uploadStatus" style="font-size:12px;color:var(--muted2);margin-top:10px"></div>
+          </div>
+
+          <div class="card">
+            <h3>Available Downloads</h3>
+            <div id="downloadsList" style="display:flex;flex-direction:column;gap:10px;">
+              <div style="text-align:center;padding:20px;color:var(--muted2);font-size:13px">No files available yet</div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 
-  <div class="overlay" id="loginOverlay" style="display:none">
-    <div class="loginCard">
-      <h2 class="loginTitle">Panel Login</h2>
-      <p class="loginHint">Enter your panel username to continue.</p>
+  <div class="modalOverlay" id="loginOverlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <div class="modal" id="loginCard">
+      <div class="modalHead">
+        <h3 class="modalTitle" id="loginTitle">Manager Login</h3>
+        <button class="modalClose" id="loginCloseBtn" type="button" aria-label="Close login">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
 
-      <div class="loginRow">
+      <form id="loginForm" autocomplete="off">
         <div class="field">
-          <div class="label">Username</div>
-          <input id="loginUser" placeholder="e.g. Username" autocomplete="off" />
+          <label for="username">Username</label>
+          <input id="username" name="username" placeholder="Username" spellcheck="false" />
         </div>
-        <button id="loginBtn" type="button">🔓 Login</button>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" placeholder="Password" />
+        </div>
+
+        <div class="modalFoot">
+          <button class="smallBtn danger" id="loginCancelBtn" type="button">Cancel</button>
+          <button class="smallBtn" type="submit">Login</button>
+        </div>
+
+        <div class="error" id="loginError">Invalid credentials.</div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modalOverlay" id="addOverlay" role="dialog" aria-modal="true" aria-labelledby="addTitle">
+    <div class="modal">
+      <div class="modalHead">
+        <h3 class="modalTitle" id="addTitle">Add Roblox Game</h3>
+        <button class="modalClose" id="addClose" type="button" aria-label="Close add game">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
       </div>
 
-      <div class="loginFoot">
-        <span class="small" id="loginStatus"></span>
-        <span class="small">Tip: usernames are case-insensitive</span>
+      <div class="modalGrid">
+        <div class="field">
+          <label for="placeIdInput">Place ID</label>
+          <input id="placeIdInput" placeholder="e.g. 920587237" inputmode="numeric" />
+        </div>
+        <div class="field">
+          <label for="labelInput">Label (optional)</label>
+          <input id="labelInput" placeholder="Overrides the displayed name" />
+        </div>
+      </div>
+
+      <div class="hintBox" style="margin-top:10px">
+        Stored in your browser and synced to your server list (if your /games endpoint is enabled).
+      </div>
+
+      <div class="modalFoot">
+        <button class="smallBtn danger" id="cancelAdd" type="button">Cancel</button>
+        <button class="smallBtn" id="confirmAdd" type="button">Add</button>
       </div>
     </div>
   </div>
 
-<div class="modOverlay" id="modOverlay" style="display:none">
-  <div class="modCard">
-    <h2 class="modTitle">Moderating User</h2>
-    <p class="modHint">This may take some time. Please keep this tab open.</p>
-    <div class="spinRow">
+  <div id="updatingOverlay" class="updatingOverlay hidden" aria-live="polite" aria-busy="true">
+    <div class="updatingCard">
       <div class="spinner" aria-hidden="true"></div>
-      <div class="small" id="modOverlaySub">Applying action…</div>
+      <div class="updatingTitle">Updating in progress</div>
+      <p class="updatingSub" id="updatingSub">Please wait.</p>
+      <div class="progressBar" aria-hidden="true"><div class="progressFill" id="progressFill"></div></div>
     </div>
-
-<div class="modProgress" aria-label="Moderation progress">
-  <div class="modProgressTop">
-    <span class="small" id="modStep">Starting…</span>
-    <span class="small" id="modPct">0%</span>
   </div>
-  <div class="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-    <div class="progressFill" id="modFill"></div>
-  </div>
-</div>
-  </div>
-</div>
-
-  <div class="toastWrap" id="toasts"></div>
 
   <script>
-    const ALLOWED_USERNAMES = new Set(["eagla","nebula","specimen","arrow","damage","caprie"]);
-    const STAFF_IDS = new Set([8007453710,4976035348,154251360,9930928180,485280430]);
+    const AUTH_HASH = "65a64fae3e736b8dfd1b97f77e136401b124ecc1f0821b918c8917e15720c8ff";
+    const SERVER_BASE = location.origin;
 
+    const LS_AUTH = "roblox_status_auth_v1";
+    const LS_GAMES = "roblox_status_games_v1";
+    const LS_PROXY = "roblox_status_proxy_v1";
+    const LS_BOOT = "roblox_status_boot_v1";
 
-    // ===== Name cache (so Enforcement Logs show names even if older entries lacked them) =====
-    const NAME_CACHE_KEY = "panel_name_cache_v1";
+    const LS_QUEUE = "roblox_status_queue_v1";
+    const LS_NEXT_AT = "roblox_status_next_at_v1";
+    const LS_REFRESHING = "roblox_status_refreshing_v1";
+    const LS_BACKOFF = "roblox_status_backoff_v1";
+    const LS_LOAD_UNTIL = "roblox_status_load_until_v1";
+    const LS_SNAPSHOT  = "roblox_status_snapshot_v1";
 
-    function loadNameCache(){
-      try{
-        const raw = localStorage.getItem(NAME_CACHE_KEY);
-        const obj = raw ? JSON.parse(raw) : {};
-        return (obj && typeof obj === "object") ? obj : {};
-      } catch { return {}; }
+    const LS_QUEUE_TOTAL = "roblox_status_queue_total_v1";
+const DEFAULT_GAMES = [{"placeId":"127489751384518","label":"mans game"},{"placeId":"79113339074958","label":"Bosque"},{"placeId":"135812330239853","label":"Anything2"},{"placeId":"12537025499","label":"Oreos and Mans game"},{"placeId":"94673503120567","label":"Nom your friends"},{"placeId":"72870375444312","label":"nom game"},{"placeId":"130749299036683","label":"mio lab"},{"placeId":"103873633743150","label":"The Village of Vale"}];
+
+    const LOAD_COOLDOWN_MS = 300000;
+    const PER_GAME_DELAY_MS = 2500;
+
+    const $ = (id) => document.getElementById(id);
+
+    const gamesGrid = $("gamesGrid");
+    const emptyState = $("emptyState");
+    const searchInput = $("searchInput");
+    const proxyInput = $("proxyInput");
+    const saveProxyBtn = $("saveProxyBtn");
+    const resetProxyBtn = $("resetProxyBtn");
+    const resetDefaultsBtn = $("resetDefaultsBtn");
+
+    const refreshBtn = $("refreshBtn");
+    const addGameBtn = $("addGameBtn");
+    const signinBtn = $("signinBtn");
+    const logoutBtn = $("logoutBtn");
+    const openSettingsBtn = $("openSettingsBtn");
+
+    const lastUpdated = $("lastUpdated");
+    const gamesCount = $("gamesCount");
+    const queueCount = $("queueCount");
+
+    const addOverlay = $("addOverlay");
+    const addClose = $("addClose");
+    const cancelAdd = $("cancelAdd");
+    const confirmAdd = $("confirmAdd");
+    const placeIdInput = $("placeIdInput");
+    const labelInput = $("labelInput");
+
+    const groupFallback = $("groupFallback");
+    const groupFallbackDesk = $("groupFallbackDesk");
+
+    const iframes = Array.from(document.querySelectorAll("iframe"));
+
+    const loginOverlay = $("loginOverlay");
+    const loginForm = $("loginForm");
+    const loginError = $("loginError");
+    const loginCard = $("loginCard");
+    const loginCloseBtn = $("loginCloseBtn");
+    const loginCancelBtn = $("loginCancelBtn");
+
+    const updatingOverlay = $("updatingOverlay");
+    const updatingSub = $("updatingSub");
+    const progressFill = $("progressFill");
+
+    const drawerSidebar = $("drawerSidebar");
+    const drawerBackdrop = $("drawerBackdrop");
+    const drawerOpen = $("drawerOpen");
+    const drawerClose = $("drawerClose");
+
+    const gamesView = $("gamesView");
+    const informationView = $("informationView");
+    const settingsView = $("settingsView");
+    const downloadsView = $("downloadsView");
+    const crumbTitle = $("crumbTitle");
+    const crumbSub = $("crumbSub");
+    const fileInput = $("fileInput");
+    const uploadBtn = $("uploadBtn");
+    const uploadStatus = $("uploadStatus");
+    const downloadsList = $("downloadsList");
+
+let games = [];
+    let proxyBase = "";
+    let isRefreshing = false;
+    let lastSnapshot = loadSnapshotCache();
+    let pollTimer = null;
+    let btnTimer = null;
+
+    const LS_DOWNLOADS = "roblox_status_downloads_v1";
+
+    let downloadDB = null;
+
+    function initDownloadsDB(){
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open("RobloxStatusDB", 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          downloadDB = request.result;
+          resolve();
+        };
+        
+        request.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains("downloads")) {
+            db.createObjectStore("downloads", { keyPath: "id" });
+          }
+        };
+      });
     }
 
-    function saveNameCache(cache){
-      try{ localStorage.setItem(NAME_CACHE_KEY, JSON.stringify(cache)); } catch {}
+    function loadDownloads(){
+      return new Promise((resolve) => {
+        if (!downloadDB) return resolve([]);
+        
+        const tx = downloadDB.transaction("downloads", "readonly");
+        const store = tx.objectStore("downloads");
+        const request = store.getAll();
+        
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => resolve([]);
+      });
     }
 
-    function cacheNameFrom(user){
-      if (!user) return;
-      const id = Number(user.userId || 0);
-      if (!id) return;
-      const username = String(user.username || "");
-      const displayName = String(user.displayName || "");
-      if (!username && !displayName) return;
-
-      const cache = loadNameCache();
-      cache[String(id)] = { username, displayName, at: Date.now() };
-      saveNameCache(cache);
+    async function saveDownloads(){
+      await renderDownloads();
     }
 
-    function resolveName(userId, username, displayName){
-      const u = String(username || "");
-      const d = String(displayName || "");
-      if (u || d) return { username: u, displayName: d };
+    async function renderDownloads(){
+      const files = await loadDownloads();
+      if (!downloadsList) return;
 
-      // Try active list
-      const found = activePlayers && activePlayers.find(p => Number(p.userId) === Number(userId));
-      if (found && (found.username || found.displayName)){
-        cacheNameFrom(found);
-        return { username: String(found.username || ""), displayName: String(found.displayName || "") };
-      }
-
-      // Try cache
-      const cache = loadNameCache();
-      const hit = cache[String(Number(userId))];
-      if (hit && (hit.username || hit.displayName)){
-        return { username: String(hit.username || ""), displayName: String(hit.displayName || "") };
-      }
-
-      return { username: "", displayName: "" };
-    }
-    const els = {
-      app: document.getElementById("app"),
-      loginOverlay: document.getElementById("loginOverlay"),
-      loginUser: document.getElementById("loginUser"),
-      loginBtn: document.getElementById("loginBtn"),
-      loginStatus: document.getElementById("loginStatus"),
-      logout: document.getElementById("logout"),
-      whoami: document.getElementById("whoami"),
-
-      status: document.getElementById("status"),
-      statusDot: document.getElementById("statusDot"),
-      meta: document.getElementById("meta"),
-
-      workerBase: document.getElementById("workerBase"),
-      adminKey: document.getElementById("adminKey"),
-      search: document.getElementById("search"),
-      save: document.getElementById("save"),
-      refresh: document.getElementById("refresh"),
-      lockBtn: document.getElementById("lockBtn"),
-      clearLogsBtn: document.getElementById("clearLogsBtn"),
-
-      activeList: document.getElementById("activeList"),
-      logList: document.getElementById("logList"),
-      activeCount: document.getElementById("activeCount"),
-      logCount: document.getElementById("logCount"),
-      toasts: document.getElementById("toasts"),
-      modOverlay: document.getElementById("modOverlay"),
-      modOverlaySub: document.getElementById("modOverlaySub"),
-      modFill: document.getElementById("modFill"),
-      modPct: document.getElementById("modPct"),
-      modStep: document.getElementById("modStep"),
-
-      kick: document.getElementById("kick"),
-      kickReason: document.getElementById("kickReason"),
-      ban: document.getElementById("ban"),
-      banReason: document.getElementById("banReason"),
-      unban: document.getElementById("unban"),
-      unbanReason: document.getElementById("unbanReason"),
-
-      themeLight: document.getElementById("themeLight"),
-      themeDark: document.getElementById("themeDark"),
-      themeAuto: document.getElementById("themeAuto"),
-    };
-
-    function esc(s){
-      return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
-    }
-
-    function toast(kind, title, body){
-      const div = document.createElement("div");
-      div.className = "toast " + (kind || "");
-      div.innerHTML = `
-        <div>
-          <div class="tTitle">${esc(title || "")}</div>
-          ${body ? `<div class="tBody">${esc(body)}</div>` : ""}
-        </div>
-        <button class="x" type="button" aria-label="Close">✕</button>
-      `;
-      div.querySelector(".x").onclick = () => div.remove();
-      els.toasts.appendChild(div);
-      setTimeout(() => { if (div.isConnected) div.remove(); }, 3200);
-    }
-
-    function setStatus(state, text){
-      els.status.textContent = text || "";
-      els.status.className = "small" + (state === "error" ? " error" : "");
-      els.statusDot.className = "dot" + (state === "ok" ? " ok" : state === "error" ? " err" : " load");
-    }
-
-function setModerationProgress(pct, stepText){
-  const p = Math.max(0, Math.min(100, Math.floor(Number(pct) || 0)));
-  if (els.modFill) els.modFill.style.width = p + "%";
-  if (els.modPct) els.modPct.textContent = p + "%";
-  if (els.modStep) els.modStep.textContent = stepText || "";
-  const bar = els.modOverlay ? els.modOverlay.querySelector(".progressBar") : null;
-  if (bar) bar.setAttribute("aria-valuenow", String(p));
-}
-
-function showModerationOverlay(show, subText){
-  if (!els.modOverlay) return;
-  if (show){
-    if (els.modOverlaySub) els.modOverlaySub.textContent = subText || "Applying action…";
-    setModerationProgress(0, "Starting…");
-    els.modOverlay.style.display = "flex";
-  } else {
-    els.modOverlay.style.display = "none";
-  }
-}
-
-
-    function applyTheme(mode){
-      localStorage.setItem("panel_theme_mode", mode);
-      els.themeLight.setAttribute("aria-pressed", mode === "light");
-      els.themeDark.setAttribute("aria-pressed", mode === "dark");
-      els.themeAuto.setAttribute("aria-pressed", mode === "auto");
-      if (mode === "auto"){ document.documentElement.removeAttribute("data-theme"); return; }
-      document.documentElement.setAttribute("data-theme", mode);
-    }
-    applyTheme(localStorage.getItem("panel_theme_mode") || "dark");
-    els.themeLight.onclick = () => applyTheme("light");
-    els.themeDark.onclick = () => applyTheme("dark");
-    els.themeAuto.onclick = () => applyTheme("auto");
-
-    function normalizeUser(s){ return String(s || "").trim().toLowerCase(); }
-    function isLoggedIn(){ return localStorage.getItem("panel_logged_in") === "1"; }
-    function setLoggedIn(username){
-      localStorage.setItem("panel_logged_in", "1");
-      localStorage.setItem("panel_login_user", String(username || ""));
-    }
-    function clearLoggedIn(){
-      localStorage.removeItem("panel_logged_in");
-      localStorage.removeItem("panel_login_user");
-    }
-    function getLoginUser(){ return localStorage.getItem("panel_login_user") || ""; }
-
-    function updateWhoAmI(){
-      if (!els.whoami) return;
-      const u = String(getLoginUser() || "").trim();
-      els.whoami.textContent = u ? u : "—";
-    }
-
-    function showLogin(){
-      if (els.whoami) els.whoami.textContent = "—";
-      els.app.style.display = "none";
-      els.loginOverlay.style.display = "flex";
-      els.loginStatus.textContent = "";
-      els.loginUser.value = "";
-      els.loginUser.focus();
-    }
-    function showApp(){
-      els.loginOverlay.style.display = "none";
-      els.app.style.display = "block";
-    }
-
-    function attemptLogin(){
-      const u = normalizeUser(els.loginUser.value);
-      if (!u){ els.loginStatus.textContent = "Enter a username."; els.loginStatus.className = "small error"; return; }
-      if (!ALLOWED_USERNAMES.has(u)){
-        els.loginStatus.textContent = "Invalid username.";
-        els.loginStatus.className = "small error";
-        toast("err","Login denied","That username is not allowed");
+      if (files.length === 0){
+        downloadsList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted2);font-size:13px">No files available yet</div>';
         return;
       }
-      setLoggedIn(u);
-      toast("ok","Logged in","Welcome");
-      showApp();
-      initPanel();
+
+      downloadsList.innerHTML = files.map(file => {
+        const size = file.size ? (file.size > 1024*1024 ? (file.size/(1024*1024)).toFixed(2) + ' MB' : (file.size/1024).toFixed(2) + ' KB') : 'Unknown';
+        const date = file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : '';
+        return `
+          <div style="border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap\">
+            <div style=\"min-width:0;flex:1\">
+              <div style=\"font-weight:700;color:var(--text);margin-bottom:4px;word-break:break-word\">${escapeHtml(file.name)}</div>\n              <div style=\"font-size:12px;color:var(--muted2)\">Size: ${size} • ${date}</div>\n            </div>\n            <div style=\"display:flex;gap:10px;align-items:center\">
+              <button class=\"smallBtn\" type=\"button\" onclick=\"downloadFile('${escapeAttr(file.id)}')\" style=\"color:var(--blue);font-weight:750;font-size:13px\">Download</button>\n              <button class=\"smallBtn danger\" type=\"button\" onclick=\"removeDownload('${escapeAttr(file.id)}')\" data-admin=\"1\" style=\"display:${isAuthed() ? 'inline-flex' : 'none'}\">Remove</button>\n            </div>\n          </div>\n        `;
+      }).join('');
     }
 
-    els.loginBtn.onclick = attemptLogin;
-    els.loginUser.addEventListener("keydown", (e) => { if (e.key === "Enter") attemptLogin(); });
-    els.logout.onclick = () => { if (!confirm("Log out?")) return; clearLoggedIn(); toast("ok","Logged out",""); showLogin(); };
-
-    function isStaff(userId){ return STAFF_IDS.has(Number(userId)); }
-
-    function baseUrl(){
-      const raw = (els.workerBase.value || "").trim().replace(/\/+$/,"");
-      return raw;
-    }
-    function endpoint(path){ return baseUrl() + path; }
-
-    let activePlayers = [];
-    let logs = [];
-    function mergeLogs(items){
-      // Keep ALL log entries (no dedupe). Newest first.
-      const arr = Array.isArray(items) ? items.slice() : [];
-      function createdAtNum(e){
-        const v = e && (e.createdAt ?? e.ackedAt ?? e.time ?? 0);
-        const n = Number(v);
-        return Number.isFinite(n) ? n : 0;
-      }
-      arr.sort((a,b) => createdAtNum(b) - createdAtNum(a));
-      return arr;
+    function escapeHtml(str){
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
     }
 
-    let selectedActiveUserId = null;
-    let selectedLogId = null;
-    let uiLocked = false;
-    // pendingHidden removed: we never optimistically hide players during moderation
-    let refreshCooldownUntil = 0;
-    let refreshCooldownTimer = null;
+    function escapeAttr(str){
+      return String(str).replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
+    }
 
-    function startCooldown(btn, seconds, label){
-      const until = Date.now() + seconds * 1000;
-      btn.disabled = true;
-      const orig = btn.textContent;
-      const tick = () => {
-        const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
-        if (left > 0){
-          btn.textContent = `⏳ ${label} (${left}s)`;
-          refreshCooldownTimer = setTimeout(tick, 250);
-        } else {
-          btn.textContent = orig;
-          btn.disabled = false;
-          if (refreshCooldownTimer) clearTimeout(refreshCooldownTimer);
-          refreshCooldownTimer = null;
+    async function downloadFile(id){
+      if (!downloadDB) return;
+      
+      const tx = downloadDB.transaction("downloads", "readonly");
+      const store = tx.objectStore("downloads");
+      const request = store.get(id);
+      
+      request.onsuccess = () => {
+        const file = request.result;
+        if (file && file.blob){
+          const url = URL.createObjectURL(file.blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = file.name;
+          a.click();
+          URL.revokeObjectURL(url);
         }
       };
-      tick();
     }
 
-    function beginVerifyLock(){
-      uiLocked = true;
-      selectedActiveUserId = null;
-      selectedLogId = null;
-      renderActive();
-      renderLogs();
-      updateButtons();
-      setStatus("loading","Verifying...");
-    }
-    function endVerifyLock(){
-      uiLocked = false;
-      updateButtons();
-      setStatus("ok","Ready");
+    async function removeDownload(id){
+      if (!downloadDB) return;
+      
+      const tx = downloadDB.transaction("downloads", "readwrite");
+      const store = tx.objectStore("downloads");
+      store.delete(id);
+      
+      tx.oncomplete = async () => await renderDownloads();
     }
 
-    function setCounts(){
-      els.activeCount.textContent = String(activePlayers.length || 0);
-      els.logCount.textContent = String(logs.filter(e => String(e.status||"").toLowerCase() !== "pending").length || 0);
-}
-
-    function matchSearch(p){
-      const q = normalizeUser(els.search.value);
-      if (!q) return true;
-      const id = String(p.userId || "");
-      const u = normalizeUser(p.username || "");
-      const d = normalizeUser(p.displayName || "");
-      const by = normalizeUser(p.by || "");
-      return id.includes(q) || u.includes(q) || d.includes(q) || by.includes(q);
+    async function addDownloadFile(name, size, blob){
+      if (!downloadDB) return;
+      
+      const file = {
+        id: Date.now() + Math.random(),
+        name: name,
+        size: size,
+        uploadedAt: new Date().toISOString(),
+        blob: blob
+      };
+      
+      const tx = downloadDB.transaction("downloads", "readwrite");
+      const store = tx.objectStore("downloads");
+      store.add(file);
+      
+      tx.oncomplete = async () => await renderDownloads();
+      tx.onerror = () => console.error("Error adding download:", tx.error);
     }
 
-    function makePlayerCardHTML(p){
-      const name = esc(p.displayName || p.username || ("User " + p.userId));
-      const handle = esc(p.username || "");
-      const team = p.team ? `<span class="pill">${esc(p.team)}</span>` : "";
-      const place = p.placeId ? `<span class="pill">Place ${esc(p.placeId)}</span>` : "";
-      const staff = isStaff(p.userId) ? `<span class="pill staffPill">STAFF</span>` : "";
-      return `
-        <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${team} ${place} ${staff}</div>
-        <div class="small">UserId: ${Number(p.userId) || ""}</div>
-      `;
+    function fmt(n){
+      if (n === null || n === undefined) return "—";
+      const num = Number(n);
+      if (!Number.isFinite(num)) return "—";
+      return num.toLocaleString();
     }
 
-    function makeLogCardHTML(e){
-  const resolved = resolveName(e.userId, e.username, e.displayName);
-  const name = esc(resolved.displayName || resolved.username || ("User " + e.userId));
-  const handle = esc(resolved.username || "");
-  const actionRaw = String(e.action || "");
-  const action = esc(actionRaw.toUpperCase());
-  const by = esc(e.by || "");
-  const reason = esc(e.reason || "");
-  const when = e.createdAt ? new Date(Number(e.createdAt)).toLocaleString() : "";
-
-  const st = String(e.status || "").toLowerCase();
-  const statusText =
-    st === "applied" ? "SUCCESS" :
-    st === "failed"  ? "NOT SUCCESSFUL" :
-    "";
-
-  const tag = String(e.tag || "");
-  const flags = Array.isArray(e.flags) ? e.flags : [];
-  const groups = Array.isArray(e.flagGroups) ? e.flagGroups : [];
-
-  const suspicious = (tag.toLowerCase() === "suspicious") || (String(actionRaw).toLowerCase() === "suspicious");
-
-  const statusPill = statusText ? `<span class="pill">${esc(statusText)}</span>` : "";
-  const tagPill = suspicious ? `<span class="pill" style="border-color:rgba(255,193,7,.55)">SUSPICIOUS</span>` : (tag ? `<span class="pill">${esc(tag)}</span>` : "");
-
-  const flagsPill = flags.length ? `<span class="pill">Flags: ${esc(flags.join(", "))}</span>` : "";
-  const groupsPill = groups.length ? `<span class="pill">Groups: ${esc(groups.join(", "))}</span>` : "";
-
-  const pills = [
-    action ? `<span class="pill">${action}</span>` : "",
-    tagPill,
-    statusPill,
-    by ? `<span class="pill">By: ${by}</span>` : "",
-    when ? `<span class="pill">${esc(when)}</span>` : "",
-    flagsPill,
-    groupsPill,
-  ].filter(Boolean).join(" ");
-
-  return `
-    <div><b>${name}</b> <span class="small">${handle ? "(@" + handle + ")" : ""}</span> ${pills}</div>
-    <div class="small">UserId: ${Number(e.userId) || ""}</div>
-    ${reason ? `<div class="small">Note: ${reason}</div>` : ""}
-  `;
-}
-
-    function renderActive(){
-      els.activeList.innerHTML = "";
-      setCounts();
-
-      const list = activePlayers.filter(matchSearch);
-      if (!list.length){
-        els.activeList.innerHTML = "<div class='small'>No players match.</div>";
-        return;
-      }
-
-      for (const p of list){
-const staff = isStaff(p.userId);
-        const div = document.createElement("div");
-        div.className =
-          "card" +
-          (Number(p.userId) === Number(selectedActiveUserId) ? " selected" : "") +
-          (staff ? " staffCard" : "");
-        div.innerHTML = makePlayerCardHTML(p);
-        if (!staff && !uiLocked) div.onclick = () => { selectedActiveUserId = Number(p.userId); selectedLogId = null; renderActive(); renderLogs(); updateButtons(); };
-        els.activeList.appendChild(div);
-      }
+    function nowTime(){
+      const d = new Date();
+      return d.toLocaleString(undefined, {hour:"2-digit", minute:"2-digit", second:"2-digit"});
     }
 
-    function renderLogs(){
-  els.logList.innerHTML = "";
-  setCounts();
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-  const list = logs.filter(matchSearch).filter(e => String(e.status||"").toLowerCase() !== "pending");
-if (!list.length){
-    els.logList.innerHTML = "<div class='small'>No logs.</div>";
-    return;
-  }
-
-  for (const e of list){
-    const st = String(e.status || "").toLowerCase();
-    const suspicious = (String(e.tag||"").toLowerCase() === "suspicious") || (String(e.action||"").toLowerCase() === "suspicious");
-    const extra =
-      suspicious ? " logSus" :
-      st === "applied" ? " logOk" :
-      st === "failed"  ? " logFail" : "";const div = document.createElement("div");
-    div.className = "card" + extra + (String(e.id) === String(selectedLogId) ? " selected" : "");
-    div.innerHTML = makeLogCardHTML(e);
-    if (!uiLocked) div.onclick = () => { selectedLogId = String(e.id); selectedActiveUserId = null; renderActive(); renderLogs(); updateButtons(); };
-    els.logList.appendChild(div);
-  }
-}
-
-    function updateButtons(){
-      if (uiLocked){
-        els.kick.disabled = true; els.kickReason.disabled = true; els.ban.disabled = true; els.banReason.disabled = true;
-        els.unban.disabled = true; els.unbanReason.disabled = true;
-        return;
-      }
-      const active = activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null;
-      const logSel = logs.find(e => String(e.id) === String(selectedLogId)) || null;
-
-      const activeOk = !!active && !isStaff(active.userId);
-      els.kick.disabled = !activeOk;
-      els.kickReason.disabled = !activeOk;
-      els.ban.disabled = !activeOk;
-      els.banReason.disabled = !activeOk;
-
-      const canUnban = !!logSel && String(logSel.action || "").toLowerCase() === "ban" && !isStaff(logSel.userId);
-      els.unban.disabled = !canUnban;
-      els.unbanReason.disabled = !canUnban;
+    function showUpdating(text){
+      if (updatingSub) updatingSub.textContent = text || "Please wait...";
+      if (updatingOverlay) updatingOverlay.classList.remove("hidden");
+    }
+    function hideUpdating(){
+      if (updatingOverlay) updatingOverlay.classList.add("hidden");
+      if (updatingSub) updatingSub.textContent = "Please wait...";
+      if (progressFill) progressFill.style.width = "0%";
     }
 
-    
-    let lockState = { locked:false, by:"", at:0 };
-    let lockLastAt = 0;
-
-    function fmtWhen(ms){
-      if (!ms) return "";
-      try { return new Date(Number(ms)).toLocaleString(); } catch { return ""; }
+    function setProgress(done, total){
+      if (!progressFill) return;
+      const t = Math.max(1, Number(total) || 1);
+      const d = Math.max(0, Math.min(t, Number(done) || 0));
+      progressFill.style.width = ((d / t) * 100).toFixed(0) + "%";
     }
 
-function renderLockState(){
-  const locked = !!lockState.locked;
-  if (els.lockBtn){
-    els.lockBtn.textContent = locked ? "🔒" : "🔓";
-    const who = (lockState.by || "").trim();
-    const when = lockState.at ? fmtWhen(lockState.at) : "";
-    const stateText = locked ? "LOCKED" : "UNLOCKED";
-    const byText = who ? (" by " + who) : "";
-    const atText = when ? (" • " + when) : "";
-    const actionHint = locked ? "Click to unlock (teleport players to main place)." : "Click to lock (send joiners + players to lock place).";
-    els.lockBtn.setAttribute("data-tip", stateText + byText + atText + " — " + actionHint);
-  }
-}
-
-    async function fetchLockState(){
+    function saveQueueState(queue, nextAt){
+      localStorage.setItem(LS_QUEUE, JSON.stringify(queue || []));
+      localStorage.setItem(LS_NEXT_AT, String(nextAt || Date.now()));
+      localStorage.setItem(LS_REFRESHING, "1");
+    }
+    function clearQueueState(){
+      localStorage.removeItem(LS_QUEUE);
+      localStorage.removeItem(LS_NEXT_AT);
+      localStorage.removeItem(LS_REFRESHING);
+      localStorage.removeItem(LS_BACKOFF);
+      localStorage.removeItem(LS_QUEUE_TOTAL);
+    }
+    function loadQueueState(){
       try{
-        const res = await fetch(endpoint("/lockState") + (endpoint("/lockState").includes("?") ? "&" : "?") + "t=" + Date.now(), { cache: "no-store" });
-        const body = await res.json().catch(()=>null);
-        if (res.ok && body && body.ok){
-          lockState = { locked: !!body.locked, by: String(body.by||""), at: Number(body.at||0) };
-          renderLockState();
+        const q = JSON.parse(localStorage.getItem(LS_QUEUE) || "[]");
+        const nextAt = Number(localStorage.getItem(LS_NEXT_AT) || "0") || 0;
+        const active = localStorage.getItem(LS_REFRESHING) === "1";
+        const backoff = Number(localStorage.getItem(LS_BACKOFF) || "0") || 0;
+        const total = Number(localStorage.getItem(LS_QUEUE_TOTAL) || "0") || 0;
+        return { q: Array.isArray(q) ? q : [], nextAt, active, backoff, total };
+      }catch{
+        return { q: [], nextAt: 0, active: false, backoff: 0, total: 0 };
+      }
+    }
+    function setBackoff(ms){ localStorage.setItem(LS_BACKOFF, String(ms || 0)); }
 
-          // If lock changed, refresh players so UI reflects movement quickly
-          if (lockState.at && lockState.at !== lockLastAt){
-            lockLastAt = lockState.at;
-            // light refresh; don't spam
-            fetchPlayers().catch(()=>{});
-          }
+    async function sha256Hex(str){
+      const enc = new TextEncoder().encode(str);
+      const buf = await crypto.subtle.digest("SHA-256", enc);
+      const bytes = Array.from(new Uint8Array(buf));
+      return bytes.map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function setAuthed(v){ localStorage.setItem(LS_AUTH, v ? "1" : "0"); }
+    function isAuthed(){ return localStorage.getItem(LS_AUTH) === "1"; }
+
+    function openLogin(){
+      loginError.style.display = "none";
+      loginOverlay.style.display = "grid";
+      setTimeout(() => $("username").focus(), 0);
+    }
+    function closeLogin(){
+      loginOverlay.style.display = "none";
+      $("password").value = "";
+    }
+
+    function openAdd(){
+      addOverlay.style.display = "grid";
+      placeIdInput.value = "";
+      labelInput.value = "";
+      setTimeout(() => placeIdInput.focus(), 0);
+    }
+    function closeAdd(){ addOverlay.style.display = "none"; }
+
+    function normalizeGames(list){
+      return (Array.isArray(list) ? list : [])
+        .map(x => ({ placeId: String(x.placeId || "").trim(), label: String(x.label || "").trim() }))
+        .filter(x => /^\d+$/.test(x.placeId));
+    }
+
+    function saveCachedGames(){ localStorage.setItem(LS_GAMES, JSON.stringify(games)); }
+    function loadCachedGames(){
+      try{
+        const raw = localStorage.getItem(LS_GAMES);
+        if (!raw) return [];
+        return normalizeGames(JSON.parse(raw));
+      }catch{ return []; }
+    }
+
+    let snapshotSaveTimer = null;
+
+    function saveSnapshotCache(){
+      try{
+        const obj = {};
+        for (const [k,v] of lastSnapshot.entries()){
+          if (/^\d+$/.test(String(k))) obj[String(k)] = v;
         }
+        localStorage.setItem(LS_SNAPSHOT, JSON.stringify(obj));
       }catch{}
     }
 
-    async function setLockState(locked){
-      const adminKey = els.adminKey.value.trim();
-      if (!adminKey){ toast("err","Missing ADMIN_KEY","Enter ADMIN_KEY first."); return; }
-      const user = String(getLoginUser() || "").trim();
-      if (!user){ toast("err","Not logged in","Log in first."); return; }
+    function queueSaveSnapshotCache(){
+      if (snapshotSaveTimer) return;
+      snapshotSaveTimer = setTimeout(() => {
+        snapshotSaveTimer = null;
+        saveSnapshotCache();
+      }, 200);
+    }
 
+    function loadSnapshotCache(){
       try{
-        const res = await fetch(endpoint("/admin/setLock"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-key": adminKey,
-            "x-admin-user": user
-          },
-          body: JSON.stringify({ locked: !!locked, user })
-        });
-        const body = await res.json().catch(()=>null);
-        if (!res.ok){
-          if (body && body.error === "Cooldown"){
-            const s = Math.ceil(Number(body.waitMs || 0) / 1000);
-            toast("err","Cooldown","Try again in " + s + "s");
-          }else{
-            toast("err","Lock failed", (body && body.error) ? body.error : ("HTTP " + res.status));
-          }
-          return;
+        const raw = localStorage.getItem(LS_SNAPSHOT);
+        if (!raw) return new Map();
+        const obj = JSON.parse(raw);
+        const m = new Map();
+        for (const k of Object.keys(obj || {})){
+          if (/^\d+$/.test(String(k))) m.set(String(k), obj[k]);
         }
-        lockState = { locked: !!body.locked, by: String(body.by||user), at: Number(body.at||Date.now()) };
-        renderLockState();
-        toast("ok", lockState.locked ? "Game locked" : "Game unlocked", "");
-      }catch(e){
-        toast("err","Lock failed", e.message);
+        return m;
+      }catch{
+        return new Map();
       }
     }
 
-async function fetchPlayers(){
-      const url = endpoint("/players");
-      setStatus("loading","Loading players...");
-      const res = await fetch(url, { cache:"no-store" });
-      if (!res.ok) throw new Error("Players HTTP " + res.status);
-      const data = await res.json();
-      activePlayers = Array.isArray(data.players) ? data.players : [];
-      try{ for (const p of activePlayers) cacheNameFrom(p); } catch {}
-      els.meta.textContent = `Updated: ${data.updatedAt || "?"} | Total Players: ${data.totalPlayers ?? activePlayers.length}`;
-setStatus("ok","OK");
-      return activePlayers;
+    async function fetchServerGames(){
+      const res = await fetch(SERVER_BASE + "/games", { headers: { "accept": "application/json" }, cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const j = await res.json();
+      const list = normalizeGames(j && j.games ? j.games : j);
+      return { list, updatedAt: j && j.updatedAt ? String(j.updatedAt) : "" };
     }
 
-    async function fetchLogs(){
-      const url = endpoint("/history") + (endpoint("/history").includes("?") ? "&" : "?") + "t=" + Date.now();
-      const res = await fetch(url, { cache:"no-store" });
-      if (!res.ok) throw new Error("Logs HTTP " + res.status);
-      const data = await res.json();
-      logs = mergeLogs(Array.isArray(data.items) ? data.items : []);
-      
-      if (selectedLogId && !logs.some(e => String(e.id) === String(selectedLogId))){
-        selectedLogId = null;
-      }
-renderLogs();
-      updateButtons();
-      return logs;
+    async function pushServerGames(list){
+      const res = await fetch(SERVER_BASE + "/games", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "content-type": "application/json",
+          "x-auth": AUTH_HASH
+        },
+        body: JSON.stringify({ games: list }),
+        cache: "no-store"
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const j = await res.json();
+      const out = normalizeGames(j && j.games ? j.games : j);
+      return out;
     }
 
-    async function fetchPlayersOnce(){
-      const url = endpoint("/players");
-      const res = await fetch(url, { cache:"no-store" });
-      if (!res.ok) throw new Error("Players HTTP " + res.status);
-      const data = await res.json();
-      return Array.isArray(data.players) ? data.players : [];
-    }
-
-    async function verifyByPresence(userId, timeoutMs){
-      const start = Date.now();
-      while (Date.now() - start < timeoutMs){
-        try{
-          const players = await fetchPlayersOnce();
-          const stillHere = players.some(p => Number(p.userId) === Number(userId));
-          if (!stillHere) return { ok:true };
-        } catch {}
-        await new Promise(r => setTimeout(r, 1000));
-      }
-      return { ok:false, timeout:true };
-    }
-
-    async function tryHistory(id){
+    async function syncGames(force){
       try{
-        const res = await fetch(endpoint("/history"), { cache:"no-store" });
-        if (!res.ok) return null;
-        const data = await res.json();
-        const items = Array.isArray(data.items) ? data.items : [];
-        return items.find(x => String(x && x.id) === String(id)) || null;
-      } catch { return null; }
-    }
-
-    async function waitHistoryOk(id, timeoutMs){
-      const start = Date.now();
-      while (Date.now() - start < timeoutMs){
-        const item = await tryHistory(id);
-        if (item && item.status === "applied") return { ok:true };
-        if (item && item.status === "failed") return { ok:false, message: "failed" };
-        await new Promise(r => setTimeout(r, 1000));
-      }
-      return { ok:false, timeout:true };
-    }
-
-    async function sendModeration(action, user, reason){
-  if (!user) return { ok:false };
-  const userId = Number(user.userId || 0);
-
-  if (isStaff(userId)) {
-    toast("err", "Blocked", "That user is STAFF and cannot be moderated.");
-    return { ok:false };
-  }
-
-  const adminKey = els.adminKey.value.trim();
-  if (!adminKey) {
-    toast("err", "Missing ADMIN_KEY", "Enter ADMIN_KEY first.");
-    return { ok:false };
-  }
-
-  // cache for nicer logs
-  try{ cacheNameFrom(user); } catch {}
-
-  const payload = {
-    action,
-    userId,
-    reason: String(reason || ""),
-    by: String(getLoginUser() || ""),
-    username: String(user.username || ""),
-    displayName: String(user.displayName || "")
-  };
-
-  let res, body = null;
-  try{
-    res = await fetch(endpoint("/admin/moderate"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-key": adminKey
-      },
-      body: JSON.stringify(payload)
-    });
-    try { body = await res.json(); } catch { body = null; }
-  } catch(e){
-    toast("err", "Request failed", e.message);
-    return { ok:false };
-  }
-
-  if (!res || !res.ok) {
-    toast("err", "Request rejected", (body && body.error) ? body.error : ("HTTP " + (res ? res.status : "?")));
-    return { ok:false };
-  }
-
-  return { ok:true, id: body && body.id ? String(body.id) : "" };
-}
-
-
-async function enforceAndVerify(action, user, reason){
-  const act = String(action || "").toLowerCase();
-  const userId = Number(user && user.userId || 0);
-
-  if (act === "unban"){
-    const sent = await sendModeration("unban", user, reason || "");
-    return (sent && sent.ok) ? { ok:true, id: sent.id || "" } : { ok:false, message: "unban failed" };
-  }
-
-  if (!userId) return { ok:false, message: "missing userId" };
-
-  const started = Date.now();
-  const hardTimeoutMs = 60000;
-  const resendEveryMs = 500;
-  const checkEveryMs  = 400;
-  const refreshUiEveryMs = 700;
-
-  function updateOverlay(step){
-    const pct = Math.min(99, Math.floor(((Date.now() - started) / hardTimeoutMs) * 100));
-    setModerationProgress(pct, step || "Working…");
-    if (els.modOverlaySub) els.modOverlaySub.textContent = step || "Working…";
-  }
-
-  let lastSendAt = 0;
-  let lastUiAt = 0;
-  let lastId = "";
-
-  
-  let _stage = "";
-  function setStage(msg){
-    if (_stage === msg) return;
-    _stage = msg;
-    updateOverlay(msg);
-  }
-
-  function normStr(v){ return String(v || "").trim(); }
-  function findLogById(id){
-    if (!id) return null;
-    return logs.find(e => String(e && e.id) === String(id)) || null;
-  }
-  function findLogBySignature(){
-    // Fallback if we never received an id (network glitch / duplicate sends)
-    const targetAction = normStr(action).toLowerCase();
-    const targetUserId = Number(userId) || 0;
-    const targetBy = normStr(by);
-    const targetReason = normStr(reason);
-
-    let best = null;
-    for (const e of logs){
-      if (!e) continue;
-      if (normStr(e.action).toLowerCase() !== targetAction) continue;
-      if (Number(e.userId || 0) !== targetUserId) continue;
-      if (targetBy && normStr(e.by) !== targetBy) continue;
-      if (targetReason && normStr(e.reason) !== targetReason) continue;
-
-      const t = Number(e.createdAt || e.ackedAt || 0) || 0;
-      if (t < started - 1500) continue; // must be created after we started (with small buffer)
-
-      if (!best) best = e;
-      else {
-        const bt = Number(best.createdAt || best.ackedAt || 0) || 0;
-        if (t > bt) best = e;
+        const { list } = await fetchServerGames();
+        const same = JSON.stringify(list) === JSON.stringify(games);
+        if (force || !same){
+          games = list;
+          saveCachedGames();
+          render();
+        }
+      }catch{
+        if (!games.length){
+          games = loadCachedGames();
+          render();
+        }
       }
     }
-    return best;
-  }
 
-async function refreshUi(){
-    try{
-      await fetchPlayers();
-      await fetchLogs();
-      renderActive();
-      renderLogs();
+    function setProxyBase(v){
+      proxyBase = (v || "").trim().replace(/\/$/, "");
+      localStorage.setItem(LS_PROXY, proxyBase);
+      proxyInput.value = proxyBase;
+    }
+    function loadProxyBase(){
+      const v = localStorage.getItem(LS_PROXY) || "";
+      if (v && v.trim()){
+        proxyBase = v.trim().replace(/\/$/, "");
+      }else{
+        proxyBase = location.origin;
+      }
+      if (proxyInput) proxyInput.value = proxyBase;
+    }
+
+    function ensureBootDefaults(){
+      if (localStorage.getItem(LS_BOOT) === "1") return;
+      games = normalizeGames(DEFAULT_GAMES);
+      saveCachedGames();
+      localStorage.setItem(LS_BOOT, "1");
+    }
+
+    function setView(view){
+      const isSettings = view === "settings";
+      const isInformation = view === "information";
+      const isDownloads = view === "downloads";
+      if (gamesView) gamesView.classList.toggle("hidden", isSettings || isInformation || isDownloads);
+      if (informationView) informationView.classList.toggle("hidden", !isInformation);
+      if (settingsView) settingsView.classList.toggle("hidden", !isSettings);
+      if (downloadsView) downloadsView.classList.toggle("hidden", !isDownloads);
+      if (crumbTitle) crumbTitle.textContent = isSettings ? "Settings" : isInformation ? "Information" : isDownloads ? "Downloads" : "Games";
+      if (crumbSub) crumbSub.textContent = isSettings ? "Configure proxy and sidebar" : isInformation ? "How to re-upload games without restrictions" : isDownloads ? "Share files with everyone" : "Track live stats with one click";
+
+      for (const nav of document.querySelectorAll(".navItem")){
+        nav.classList.toggle("active", nav.getAttribute("data-view") === view);
+      }
+
+      if (isDownloads) renderDownloads();
+
+      if (drawerSidebar && drawerSidebar.classList.contains("open")) closeDrawer();
+    }
+
+    function openDrawer(){
+      drawerBackdrop.classList.add("open");
+      drawerSidebar.classList.add("open");
+    }
+    function closeDrawer(){
+      drawerBackdrop.classList.remove("open");
+      drawerSidebar.classList.remove("open");
+    }
+
+    function applyPermissions(isManager){
+      document.body.classList.toggle("readonly", !isManager);
+      if (signinBtn) signinBtn.style.display = isManager ? "none" : "grid";
+      if (logoutBtn) logoutBtn.style.display = isManager ? "grid" : "none";
+      if (!isManager) closeAdd();
+    }
+
+    function setCounts(){
+      if (gamesCount) gamesCount.textContent = String(games.length);
+      const st = loadQueueState();
+      if (queueCount) queueCount.textContent = String((st.q || []).length);
+    }
+
+    function cardTemplate(id){
+      return `
+        <div class="card" data-placeid="${id}">
+          <div class="cardTop">
+            <div class="thumb" data-thumb>
+              <svg class="thumbFallback" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 12a7 7 0 0 1 14 0v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6Z" stroke="currentColor" stroke-width="2" opacity=".75"/>
+                <path d="M9 10a3 3 0 0 1 6 0" stroke="currentColor" stroke-width="2" opacity=".75"/>
+              </svg>
+            </div>
+
+            <div class="titleCol">
+              <div class="gameName" data-name>Not loaded</div>
+              <div class="gameMeta">
+                <span data-place>Place ${id}</span>
+                <span data-updated></span>
+              </div>
+            </div>
+
+            <div class="statusPill statusNeutral" data-status>Idle</div>
+          </div>
+
+          <div class="stats">
+            <div class="chip"><b data-playing>—</b><span>Active</span></div>
+            <div class="chip"><b data-favs>—</b><span>Favorites</span></div>
+            <div class="chip"><b data-visits>—</b><span>Visits</span></div>
+          </div>
+
+          <div class="cardActions">
+            <a class="link" href="https://www.roblox.com/games/${id}" target="_blank" rel="noopener" data-link>Open on Roblox</a>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button class="smallBtn" data-refresh type="button">Refresh</button>
+              <button class="smallBtn danger" data-remove type="button" data-admin="1">Remove</button>
+            </div>
+          </div>
+
+          <div class="hintBox hidden" data-error></div>
+        </div>
+      `;
+    }
+
+    function bindCard(el){
+      const placeId = el.getAttribute("data-placeid");
+
+      el.querySelector("[data-remove]").addEventListener("click", async () => {
+        if (!isAuthed()) return openLogin();
+
+        games = games.filter(x => x.placeId !== placeId);
+        lastSnapshot.delete(placeId);
+        saveCachedGames();
+        saveSnapshotCache();
+
+        el.remove();
+        emptyState.classList.toggle("hidden", games.length !== 0);
+        filterBySearch();
+        setCounts();
+
+        try{ await pushServerGames(games); }catch{}
+      });
+
+      el.querySelector("[data-refresh]").addEventListener("click", () => enqueuePlaces([placeId]));
+    }
+
+    function applyCachedSnapshots(){
+      if (!gamesGrid) return;
+      for (const el of gamesGrid.querySelectorAll(".card")){
+        const placeId = el.getAttribute("data-placeid");
+        const snap = lastSnapshot.get(placeId);
+        if (snap) applyToCard(placeId, snap, true);
+      }
+    }
+
+    function getSearchTextFor(placeId){
+      const cfg = games.find(g => g.placeId === String(placeId));
+      const label = (cfg && cfg.label) ? String(cfg.label) : "";
+      const snap = lastSnapshot.get(String(placeId));
+      const name = snap && snap.displayName ? String(snap.displayName) : "";
+      return (label + " " + name + " " + String(placeId)).toLowerCase();
+    }
+
+    function filterBySearch(){
+      if (!gamesGrid || !searchInput) return;
+      const q = (searchInput.value || "").trim().toLowerCase();
+      for (const el of gamesGrid.querySelectorAll(".card")){
+        const placeId = el.getAttribute("data-placeid") || "";
+        const hay = getSearchTextFor(placeId);
+        const ok = !q || hay.includes(q);
+        el.style.display = ok ? "" : "none";
+      }
+    }
+
+    function render(){
+      if (gamesGrid) gamesGrid.innerHTML = games.map(g => cardTemplate(g.placeId)).join("");
+      if (emptyState) emptyState.classList.toggle("hidden", games.length !== 0);
+
+      if (gamesGrid) {
+        for (const el of gamesGrid.querySelectorAll(".card")) bindCard(el);
+      }
+
+      applyCachedSnapshots();
+      filterBySearch();
       setCounts();
-      updateButtons();
-    } catch {}
-  }
-
-  async function isStillHere(){
-    try{
-      const players = await fetchPlayersOnce();
-      return players.some(p => Number(p.userId) === userId);
-    } catch {
-      return true;
-    }
-  }
-updateOverlay("Preparing…");
-
-  if (!(await isStillHere())){
-    setModerationProgress(100, "Already gone");
-    await fetchPlayers();
-    await fetchLogs();
-    renderActive();
-    updateButtons();
-    return { ok:true, id: "" };
-  }
-
-  while (Date.now() - started < hardTimeoutMs){
-    const now = Date.now();
-
-    if (!lastId && (now - lastSendAt >= resendEveryMs)) {
-      updateOverlay("Sending request to server…");
-      const sent = await sendModeration(act, user, reason || "");
-      lastSendAt = now;
-      if (sent && sent.ok && sent.id) lastId = String(sent.id);
     }
 
-    if (now - lastUiAt >= refreshUiEveryMs){
-      lastUiAt = now;
-      setStage("Moderating in progress…");
-      await refreshUi();
+    function setStatus(el, type, text){
+      el.classList.remove("statusOk", "statusWarn", "statusBad", "statusNeutral");
+      if (type === "ok") el.classList.add("statusOk");
+      else if (type === "warn") el.classList.add("statusWarn");
+      else if (type === "bad") el.classList.add("statusBad");
+      else el.classList.add("statusNeutral");
+      el.textContent = text;
     }
 
-    // Prefer server-confirmed log status (applied/failed) over player presence.
-    // This avoids "stuck checking player list" when the user already left or appears in another place.
-    // Prefer server-confirmed log status (applied/failed) over player presence.
-    // Track by command id when available; otherwise match by signature (action/user/reason/by) created after start.
-    let logItem = findLogById(lastId);
-    if (!logItem) logItem = findLogBySignature();
+    async function fetchJson(url){
+      const abs = String(url || "");
+      const base = (proxyBase || "").trim().replace(/\/$/, "");
+      const isRelative = !/^https?:\/\//i.test(abs);
 
-    if (logItem){
-      const st = String(logItem.status || "").toLowerCase();
-      if (st === "applied"){
-        setModerationProgress(100, "Success");
-        await fetchPlayers();
-        await fetchLogs();
-        renderActive();
-        updateButtons();
-
-return { ok:true, id: String(logItem.id || lastId || "") };
+      let target = abs;
+      if (isRelative || (base && abs.startsWith(base))) {
+        target = abs;
+      } else if (base) {
+        target = base + "/proxy?url=" + encodeURIComponent(abs);
       }
-      if (st === "failed"){
-        setModerationProgress(100, "Not successful");
-        await fetchPlayers();
-        await fetchLogs();
-        renderActive();
-        updateButtons();
 
-return { ok:false, id: String(logItem.id || lastId || ""), message: "failed" };
+      const res = await fetch(target, { headers: { "accept": "application/json" }, cache: "no-store" });
+      const ct = res.headers.get("content-type") || "";
+      if (!res.ok){
+        const body = ct.includes("application/json") ? JSON.stringify(await res.json()).slice(0, 700) : (await res.text()).slice(0, 700);
+        const err = new Error("HTTP " + res.status + " " + body);
+        err.status = res.status;
+        throw err;
+      }
+      if (!ct.includes("application/json")){
+        const txt = await res.text();
+        throw new Error("Unexpected content-type: " + ct + " body: " + txt.slice(0, 140));
+      }
+      return res.json();
+    }
+
+    async function getStats(placeId){
+      const base = (proxyBase || "").trim().replace(/\/$/, "");
+      const url = (base ? `${base}/stats?placeId=${encodeURIComponent(String(placeId))}` : `/stats?placeId=${encodeURIComponent(String(placeId))}`);
+      const res = await fetch(url, { headers: { "accept": "application/json" }, cache: "no-store" });
+      const ct = res.headers.get("content-type") || "";
+      if (!res.ok){
+        const body = ct.includes("application/json") ? JSON.stringify(await res.json()).slice(0, 700) : (await res.text()).slice(0, 700);
+        const err = new Error("HTTP " + res.status + " " + body);
+        err.status = res.status;
+        throw err;
+      }
+      return await res.json();
+    }
+
+    async function getIcon(universeId){
+      if (!universeId) return "";
+      const u = `https://thumbnails.roblox.com/v1/games/icons?universeIds=${encodeURIComponent(String(universeId))}&size=150x150&format=Png&isCircular=false`;
+      const j = await fetchJson(u);
+      const item = j && j.data && j.data[0];
+      return (item && item.imageUrl) ? item.imageUrl : "";
+    }
+
+    function shouldUpdate(placeId, snapshot){
+      const prev = lastSnapshot.get(placeId);
+      const same = prev && JSON.stringify(prev) === JSON.stringify(snapshot);
+      if (!same) { lastSnapshot.set(placeId, snapshot); queueSaveSnapshotCache(); }
+      return !same;
+    }
+
+    function applyToCard(placeId, payload, fromCache){
+      const card = gamesGrid.querySelector(`.card[data-placeid="${CSS.escape(placeId)}"]`);
+      if (!card) return;
+
+      const nameEl = card.querySelector("[data-name]");
+      const statusEl = card.querySelector("[data-status]");
+      const playingEl = card.querySelector("[data-playing]");
+      const favsEl = card.querySelector("[data-favs]");
+      const visitsEl = card.querySelector("[data-visits]");
+      const updatedEl = card.querySelector("[data-updated]");
+      const linkEl = card.querySelector("[data-link]");
+      const thumbEl = card.querySelector("[data-thumb]");
+      const errEl = card.querySelector("[data-error]");
+
+      const iconUrl = payload.iconUrl ? String(payload.iconUrl) : "";
+      if (iconUrl){
+        if (!thumbEl.querySelector("img")) thumbEl.innerHTML = `<img alt="" />`;
+        const img = thumbEl.querySelector("img");
+        if (img){
+          img.loading = "lazy";
+          img.decoding = "async";
+          img.referrerPolicy = "no-referrer";
+          if (img.src !== iconUrl) img.src = iconUrl;
+        }
+      }
+
+      nameEl.textContent = payload.displayName || ("Place " + placeId);
+      playingEl.textContent = fmt(payload.playing);
+      favsEl.textContent = fmt(payload.favoritedCount);
+      visitsEl.textContent = fmt(payload.visits);
+
+      updatedEl.textContent = payload.updated ? ("Updated " + new Date(payload.updated).toLocaleDateString()) : "";
+
+      if (payload.url){
+        linkEl.href = payload.url;
+        linkEl.textContent = "Open on Roblox";
+      }else{
+        linkEl.href = "https://www.roblox.com/games/" + placeId;
+        linkEl.textContent = "Open on Roblox";
+      }
+
+      const hasErr = !!payload.error;
+      errEl.classList.toggle("hidden", !hasErr);
+      errEl.textContent = payload.error || "";
+
+      if (payload.takenDown){
+        setStatus(statusEl, "bad", "Taken down");
+      }else if (payload.isPlayable === false){
+        setStatus(statusEl, "warn", "Unplayable");
+      }else if (payload.ok || fromCache){
+        setStatus(statusEl, "ok", fromCache ? "Cached" : "Online");
+      }else{
+        setStatus(statusEl, "neutral", "Unknown");
       }
     }
 
-    // Fallback (kick/ban only): if the player is consistently gone from the live player list,
-    // treat it as success even if ACK/log is delayed.
-    if (!window.__goneStreak) window.__goneStreak = {};
-    const keyGone = String(action) + ":" + String(userId);
-    const still = await isStillHere();
-    if (!still && (String(action||"").toLowerCase() === "kick" || String(action||"").toLowerCase() === "ban")){
-      window.__goneStreak[keyGone] = (window.__goneStreak[keyGone] || 0) + 1;
-      if (window.__goneStreak[keyGone] >= 3){
-        setModerationProgress(100, "Success");
-        await fetchPlayers();
-        await fetchLogs();
-        renderActive();
-        updateButtons();
+    async function refreshOne(placeId){
+      const card = gamesGrid.querySelector(`.card[data-placeid="${CSS.escape(placeId)}"]`);
+      if (!card) return;
 
-return { ok:true, id: String(lastId || "") };
+      const statusEl = card.querySelector("[data-status]");
+      setStatus(statusEl, "neutral", "Fetching...");
+
+      const cfg = games.find(g => g.placeId === placeId) || { placeId, label: "" };
+
+      try{
+        const details = await getStats(placeId);
+
+        let iconUrl = (details && details.iconUrl) ? String(details.iconUrl) : "";
+        if (!iconUrl && details && details.universeId){
+          try{ iconUrl = await getIcon(details.universeId); }catch{}
+        }
+
+        const game = details && details.game ? details.game : null;
+        const displayName = (cfg.label && cfg.label.length) ? cfg.label : (details.name || (game && game.name) || ("Place " + placeId));
+        const rootPlace = (game && game.rootPlaceId) ? String(game.rootPlaceId) : String(placeId);
+        const url = "https://www.roblox.com/games/" + rootPlace;
+
+        const payload = {
+          ok: true,
+          placeId,
+          displayName,
+          url,
+          iconUrl: iconUrl,
+          playing: game ? game.playing : null,
+          visits: game ? game.visits : null,
+          favoritedCount: game ? game.favoritedCount : null,
+          updated: game ? game.updated : null,
+          takenDown: !!details.takenDown,
+          isPlayable: (game && typeof game.isPlayable === "boolean") ? game.isPlayable : null,
+          error: details && details.reason ? String(details.reason) : ""
+        };
+
+        const snapshot = {
+          displayName, url, iconUrl: payload.iconUrl,
+          playing: payload.playing, visits: payload.visits, favoritedCount: payload.favoritedCount,
+          updated: payload.updated, takenDown: payload.takenDown, isPlayable: payload.isPlayable
+        };
+
+        if (shouldUpdate(placeId, snapshot)){
+          applyToCard(placeId, payload, false);
+        }else{
+          setStatus(statusEl, payload.takenDown ? "bad" : "ok", payload.takenDown ? "Taken down" : "Online");
+        }
+
+      }catch(err){
+        const msg = String(err && err.message ? err.message : err);
+        const status = err && typeof err.status === "number" ? err.status : null;
+
+        let statusText = "Unknown";
+        let type = "neutral";
+        let errorText = msg;
+
+        if (status === 429){
+          type = "warn";
+          statusText = "Rate limited";
+          errorText = "Too many requests. Backing off.";
+          setBackoff(6500);
+        }else if (status === 404){
+          type = "bad";
+          statusText = "Taken down";
+          errorText = "Not found (404).";
+        }else if (status === 403){
+          type = "warn";
+          statusText = "Restricted";
+          errorText = "Forbidden (403). This place may be private/restricted.";
+        }
+
+        applyToCard(placeId, {
+          ok:false,
+          placeId,
+          displayName: cfg.label || ("Place " + placeId),
+          url: "https://www.roblox.com/games/" + placeId,
+          iconUrl:"",
+          playing:null, visits:null, favoritedCount:null, updated:null,
+          isPlayable:null, takenDown: (status === 404),
+          error: errorText
+        }, false);
+
+        setStatus(statusEl, type, statusText);
       }
-} else {
-  window.__goneStreak[keyGone] = 0;
-}
+    }
 
-setStage("Moderating in progress…");
-await new Promise(r => setTimeout(r, checkEveryMs));
+    function enqueuePlaces(placeIds){
+      const ids = (Array.isArray(placeIds) ? placeIds : []).map(x => String(x)).filter(x => /^\d+$/.test(x));
+      if (!ids.length) return;
 
-// Optional hint for the operator, but NOT the source of truth:
-// if they disappear, we still wait for log confirmation.
-if (!still){
-  setStage("Moderating in progress…");
-}
-  }
+      const st = loadQueueState();
+      const existing = new Set(st.q || []);
+      const merged = (st.q || []).slice();
 
-  setModerationProgress(200, "Timed out");
-return { ok:false, timeout:true, message: "Issue on servers end. Please try using khols to moderate this user." };
-}
+      for (const id of ids){
+        if (!existing.has(id)){
+          merged.push(id);
+          existing.add(id);
+        }
+      }
 
-    function getSelectedActive(){ return activePlayers.find(p => Number(p.userId) === Number(selectedActiveUserId)) || null; }
-    function getSelectedLog(){ return logs.find(e => String(e.id) === String(selectedLogId)) || null; }
+      const nextAt = st.active ? st.nextAt : Date.now();
+      saveQueueState(merged, nextAt);
+
+      if (!st.total) localStorage.setItem(LS_QUEUE_TOTAL, String(merged.length));
+
+      if (!isRefreshing){
+        isRefreshing = true;
+        showUpdating("Updating in progress...");
+        updateLoadBtnState();
+        setCounts();
+        processQueue();
+      }else{
+        setCounts();
+      }
+    }
 
     async function refreshAll(){
-      await fetchPlayers();
-      await fetchLogs();
-      renderActive();
-      renderLogs();
+      const st = loadQueueState();
+      if (st.active){
+        if (!isRefreshing){
+          isRefreshing = true;
+          showUpdating("Updating in progress... resuming");
+          updateLoadBtnState();
+          setCounts();
+          processQueue();
+        }
+        return;
+      }
+      if (isRefreshing) return;
+
+      isRefreshing = true;
+      updateLoadBtnState();
+
+      const ids = games.map(g => g.placeId);
+      if (ids.length === 0){
+        lastUpdated.textContent = "—";
+        isRefreshing = false;
+        updateLoadBtnState();
+        setCounts();
+        return;
+      }
+
+      saveQueueState(ids, Date.now());
+      localStorage.setItem(LS_QUEUE_TOTAL, String(ids.length));
+      showUpdating("Updating in progress...");
       setCounts();
-      updateButtons();
+      processQueue();
     }
 
-    els.search.addEventListener("input", () => { renderActive(); renderLogs(); updateButtons(); });
+    async function processQueue(){
+      const st = loadQueueState();
+      const queue = st.q || [];
+      const total = st.total || queue.length || 1;
 
-    els.save.onclick = () => {
-      localStorage.setItem("worker_base_v1", baseUrl());
-      localStorage.setItem("admin_key_v1", els.adminKey.value.trim());
-      toast("ok","Saved","Worker Base + Admin Key stored in this browser");
-      setStatus("ok","Saved");
-    };
-
-    els.refresh.onclick = async () => {
-      if (els.refresh.disabled) return;
-      startCooldown(els.refresh, 10, "Refresh");
-      try{
-        await refreshAll();
-      } catch(e){
-        setStatus("error", "Refresh failed: " + e.message);
-        toast("err","Refresh failed", e.message);
+      if (!queue.length){
+        lastUpdated.textContent = nowTime();
+        hideUpdating();
+        clearQueueState();
+        isRefreshing = false;
+        updateLoadBtnState();
+        setCounts();
+        return;
       }
+
+      const nextAt = st.nextAt || 0;
+      const waitMs = Math.max(0, nextAt - Date.now());
+      const current = queue[0];
+
+      const done = Math.max(0, total - queue.length);
+      setProgress(done, total);
+
+      showUpdating(`Updating in progress...\nNext: ${current}\n${done}/${total} completed`);
+
+      if (waitMs > 0) await sleep(waitMs);
+
+      try{ await refreshOne(current); }catch{}
+
+      queue.shift();
+
+      const backoff = Number(localStorage.getItem(LS_BACKOFF) || "0") || 0;
+      const delay = backoff > 0 ? backoff : PER_GAME_DELAY_MS;
+      if (backoff > 0) setBackoff(0);
+
+      saveQueueState(queue, Date.now() + delay);
+
+      await sleep(20);
+      setCounts();
+      processQueue();
+    }
+
+    async function addGame(placeId, label){
+      const pid = String(placeId || "").trim();
+      if (!/^\d+$/.test(pid)) return false;
+      if (games.some(g => g.placeId === pid)) return false;
+
+      games.unshift({ placeId: pid, label: String(label || "").trim() });
+      saveCachedGames();
+
+      const htmlCard = cardTemplate(pid);
+      gamesGrid.insertAdjacentHTML("afterbegin", htmlCard);
+      const el = gamesGrid.querySelector(`.card[data-placeid="${CSS.escape(pid)}"]`);
+      if (el){
+        bindCard(el);
+        const snap = lastSnapshot.get(pid);
+        if (snap) applyToCard(pid, snap, true);
+      }
+
+      emptyState.classList.toggle("hidden", games.length !== 0);
+      filterBySearch();
+      setCounts();
+
+      try{ await pushServerGames(games); }catch{}
+      return true;
+    }
+
+    function bindShortcuts(){
+      window.addEventListener("keydown", (e) => {
+        const k = e.key?.toLowerCase();
+        if ((e.ctrlKey || e.metaKey) && k === "k"){
+          e.preventDefault();
+          if (searchInput) searchInput.focus();
+        }
+        if (e.key === "Escape"){
+          closeAdd();
+          closeLogin();
+          closeDrawer();
+        }
+      });
+    }
+
+    function setLoadUntil(ts){
+      localStorage.setItem(LS_LOAD_UNTIL, String(ts || 0));
+    }
+    function getLoadUntil(){
+      return Number(localStorage.getItem(LS_LOAD_UNTIL) || "0") || 0;
+    }
+    function formatRemain(ms){
+      const s = Math.max(0, Math.ceil(ms / 1000));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return m > 0 ? `${m}:${String(r).padStart(2,"0")}` : `${r}s`;
+    }
+
+    function updateLoadBtnState(){
+      if (!refreshBtn) return;
+
+      if (isRefreshing){
+        refreshBtn.disabled = true;
+        refreshBtn.querySelector(".btnLabel")?.replaceWith();
+        refreshBtn.innerHTML = `
+          <span class="btnLabel">Loading</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-3-6.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M21 3v7h-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        `;
+        return;
+      }
+
+      const until = getLoadUntil();
+      const now = Date.now();
+      const remain = until - now;
+
+      refreshBtn.disabled = remain > 0;
+      const label = remain > 0 ? `Load (${formatRemain(remain)})` : "Load Games";
+      refreshBtn.innerHTML = `
+        <span class="btnLabel">${label}</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-3-6.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M21 3v7h-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      `;
+    }
+
+      const showFallback = () => {
+        if (groupFallback) groupFallback.style.display = "grid";
+        if (groupFallbackDesk) groupFallbackDesk.style.display = "grid";
+      };
+      const hideFallback = () => {
+        if (groupFallback) groupFallback.style.display = "none";
+        if (groupFallbackDesk) groupFallbackDesk.style.display = "none";
+      };
+
+    hideFallback();
+    const onFail = () => showFallback();
+    const onLoad = () => {
+      try{ hideFallback(); }catch{}
     };
 
-    els.lockBtn && (els.lockBtn.onclick = async () => {
-      // Toggle current state
-      await setLockState(!lockState.locked);
-      // refresh lock state from server shortly after
-      setTimeout(() => { fetchLockState(); }, 500);
+    for (const fr of iframes){
+      fr.addEventListener("error", onFail);
+      fr.addEventListener("load", onLoad);
+    }
+
+    setTimeout(() => {
+      try{
+        if (!iframes[0] || !iframes[0].src) showFallback();
+      }catch{ showFallback(); }
+    }, 1200);
+
+    function wireNav(){
+      for (const el of document.querySelectorAll(".navItem")){
+        el.addEventListener("click", () => {
+          const v = el.getAttribute("data-view") || "games";
+          setView(v);
+        });
+      }
+      if (openSettingsBtn) openSettingsBtn.addEventListener("click", () => setView("settings"));
+    }
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loginError.style.display = "none";
+      const u = ($("username").value || "").trim();
+      const p = ($("password").value || "");
+      const h = await sha256Hex(u + ":" + p);
+      if (h === AUTH_HASH){
+        setAuthed(true);
+        closeLogin();
+        applyPermissions(true);
+        await syncGames(true);
+      }else{
+        setAuthed(false);
+        loginError.style.display = "block";
+        loginCard.classList.remove("shake");
+        void loginCard.offsetWidth;
+        loginCard.classList.add("shake");
+      }
     });
 
+    logoutBtn.addEventListener("click", () => { setAuthed(false); applyPermissions(false); closeLogin(); });
 
+    signinBtn.addEventListener("click", () => openLogin());
+    loginCloseBtn.addEventListener("click", closeLogin);
+    loginCancelBtn.addEventListener("click", closeLogin);
+    loginOverlay.addEventListener("click", (e) => { if (e.target === loginOverlay) closeLogin(); });
 
-    els.clearLogsBtn && (els.clearLogsBtn.onclick = async () => {
-      if (!isSpecimen()) { toast("err","Specimen only",""); return; }
-      const adminKey = els.adminKey.value.trim();
-      if (!adminKey) { toast("err","Missing ADMIN_KEY","Enter ADMIN_KEY first."); return; }
+    addGameBtn.addEventListener("click", () => { if (!isAuthed()) return openLogin(); openAdd(); });
+    addClose.addEventListener("click", closeAdd);
+    cancelAdd.addEventListener("click", closeAdd);
+    addOverlay.addEventListener("click", (e) => { if (e.target === addOverlay) closeAdd(); });
+
+    confirmAdd.addEventListener("click", async () => {
+      if (!isAuthed()) return openLogin();
+      const pid = placeIdInput.value.trim();
+      const lbl = labelInput.value.trim();
+      const ok = await addGame(pid, lbl);
+      if (ok) closeAdd();
+      else{ placeIdInput.focus(); placeIdInput.select(); }
+    });
+
+    refreshBtn.addEventListener("click", () => {
+      if (isRefreshing) return;
+      const until = getLoadUntil();
+      if (Date.now() < until){
+        updateLoadBtnState();
+        return;
+      }
+      setLoadUntil(Date.now() + LOAD_COOLDOWN_MS);
+      updateLoadBtnState();
+      refreshAll();
+    });
+
+    if (searchInput) searchInput.addEventListener("input", () => filterBySearch());
+
+    if (uploadBtn) uploadBtn.addEventListener("click", async () => {
+      if (!isAuthed()) return openLogin();
+      
+      const files = fileInput.files;
+      if (!files.length){
+        uploadStatus.textContent = "Please select a file first";
+        uploadStatus.style.color = "var(--bad)";
+        return;
+      }
+
+      uploadStatus.textContent = "Uploading...";
+      uploadStatus.style.color = "var(--muted)";
+      uploadBtn.disabled = true;
 
       try{
-        const res = await fetch(endpoint("/admin/clearLogs"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-key": adminKey,
-            "x-admin-user": String(getLoginUser() || "")
-          },
-          body: JSON.stringify({ user: String(getLoginUser() || "") })
-        });
-        let body = null;
-        try{ body = await res.json(); } catch {}
-        if (!res.ok){
-          toast("err","Clear logs failed", (body && body.error) ? body.error : ("HTTP " + res.status));
-          return;
+        for (let i = 0; i < files.length; i++){
+          const file = files[i];
+          await addDownloadFile(file.name, file.size, file);
         }
-        toast("ok","Logs cleared","");
-        await fetchLogs();
-      }catch(e){
-        toast("err","Clear logs failed", e.message);
+        
+        uploadStatus.textContent = "Files uploaded successfully!";
+        uploadStatus.style.color = "var(--ok)";
+        fileInput.value = "";
+        
+        setTimeout(() => {
+          uploadStatus.textContent = "";
+        }, 3000);
+      }catch(err){
+        uploadStatus.textContent = "Upload failed: " + err.message;
+        uploadStatus.style.color = "var(--bad)";
+      }finally{
+        uploadBtn.disabled = false;
       }
     });
 
-    async function runAction(action, user, reason, onSuccess){
-  const act = String(action || "").toLowerCase();
-  if (act === "kick" || act === "ban"){
-    showModerationOverlay(true, "Moderating user… this may take some time.");
-  }
+    if (saveProxyBtn) saveProxyBtn.addEventListener("click", () => { setProxyBase(proxyInput.value); });
+    if (proxyInput) proxyInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); setProxyBase(proxyInput.value); }
+    });
+    if (resetProxyBtn) resetProxyBtn.addEventListener("click", () => { localStorage.removeItem(LS_PROXY); loadProxyBase(); });
 
-  beginVerifyLock();
-  try{
-    const v = await enforceAndVerify(action, user, reason || "");
-    if (v.ok){
-      toast("ok","Enforcement action approved","");
-      if (typeof onSuccess === "function") onSuccess();
-      await fetchLogs();
-      await fetchPlayers();
-    } else {
-      toast("err", v.timeout ? "ERROR: TIME OUT" : "Failed", v.message || "");
-    }
-  } finally {
-    endVerifyLock();
-    showModerationOverlay(false, "");
-  }
-}
+if (resetDefaultsBtn) resetDefaultsBtn.addEventListener("click", async () => {
+  if (!isAuthed()) return openLogin();
+  games = normalizeGames(DEFAULT_GAMES);
+  lastSnapshot.clear();
+  saveCachedGames();
+  saveSnapshotCache();
+  render();
+  try{ await pushServerGames(games); }catch{}
+});
 
-    els.kick.onclick = async () => {
-      const p = getSelectedActive(); if (!p) return;
-      await runAction("kick", p, "", null);
-    };
+    drawerOpen?.addEventListener("click", openDrawer);
+    drawerClose?.addEventListener("click", closeDrawer);
+    drawerBackdrop?.addEventListener("click", closeDrawer);
 
-    els.kickReason.onclick = async () => {
-      const p = getSelectedActive(); if (!p) return;
-      const r = prompt("Kick reason?") || "";
-      await runAction("kick", p, r, null);
-    };
+    function init(){
+      ensureBootDefaults();
+      loadProxyBase();
+games = loadCachedGames();
+      render();
 
-    els.ban.onclick = async () => {
-      const p = getSelectedActive(); if (!p) return;
-      await runAction("ban", p, "", null);
-    };
+      initDownloadsDB().then(() => renderDownloads()).catch(err => console.error("Failed to init downloads DB:", err));
 
-    els.banReason.onclick = async () => {
-      const p = getSelectedActive(); if (!p) return;
-      const r = prompt("Ban reason?") || "";
-      await runAction("ban", p, r, null);
-    };
+      syncGames(true);
 
-    els.unban.onclick = async () => {
-      const e = getSelectedLog(); if (!e) return;
-      const user = { userId: e.userId, username: e.username || "", displayName: e.displayName || "" };
-      await runAction("unban", user, "", () => { selectedLogId = null; });
-    };
+      bindShortcuts();
+      wireNav();
+      applyPermissions(isAuthed());
+      setView("games");
 
-    els.unbanReason.onclick = async () => {
-      const e = getSelectedLog(); if (!e) return;
-      const r = prompt("Unban note?") || "";
-      const user = { userId: e.userId, username: e.username || "", displayName: e.displayName || "" };
-      await runAction("unban", user, r, () => { selectedLogId = null; });
-    };
-
-    
-    // ===== Custom tooltip system (styled) =====
-    let _uiTipEl = null;
-    let _uiTipTarget = null;
-
-    function ensureTip(){
-      if (_uiTipEl) return _uiTipEl;
-      _uiTipEl = document.createElement("div");
-      _uiTipEl.className = "uiTip";
-      _uiTipEl.innerHTML = '<div class="tTitle" id="uiTipTitle"></div><div class="tBody" id="uiTipBody"></div>';
-      document.body.appendChild(_uiTipEl);
-      return _uiTipEl;
-    }
-
-    function setTipContent(text){
-      const el = ensureTip();
-      const titleEl = el.querySelector("#uiTipTitle");
-      const bodyEl  = el.querySelector("#uiTipBody");
-      const raw = String(text || "").trim();
-
-      // Allow "Title — body" format
-      const parts = raw.split(" — ");
-      const t = (parts[0] || "").trim();
-      const b = (parts.slice(1).join(" — ") || "").trim();
-
-      if (titleEl) titleEl.textContent = t || "Info";
-      if (bodyEl) bodyEl.textContent = b || "";
-    }
-
-    function positionTip(clientX, clientY){
-      const el = ensureTip();
-      const pad = 12;
-      const vw = window.innerWidth || 0;
-      const vh = window.innerHeight || 0;
-
-      // Start near cursor
-      let x = clientX + 14;
-      let y = clientY + 14;
-
-      // Measure
-      el.style.left = "0px";
-      el.style.top = "0px";
-      el.style.maxWidth = "320px";
-      el.classList.add("show");
-
-      const rect = el.getBoundingClientRect();
-
-      if (x + rect.width + pad > vw) x = Math.max(pad, clientX - rect.width - 14);
-      if (y + rect.height + pad > vh) y = Math.max(pad, clientY - rect.height - 14);
-
-      el.style.left = x + "px";
-      el.style.top  = y + "px";
-    }
-
-    function showTipFor(target, clientX, clientY){
-      const text = (target && target.getAttribute) ? target.getAttribute("data-tip") : "";
-      if (!text) return;
-      _uiTipTarget = target;
-      setTipContent(text);
-      positionTip(clientX, clientY);
-    }
-
-    function hideTip(){
-      if (!_uiTipEl) return;
-      _uiTipEl.classList.remove("show");
-      _uiTipTarget = null;
-    }
-
-    function initTooltips(){
-      ensureTip();
-
-      const candidates = Array.from(document.querySelectorAll("[data-tip]"));
-      for (const el of candidates){
-        // Mouse
-        el.addEventListener("mouseenter", (e) => {
-          const t = e.currentTarget;
-          const tip = t.getAttribute("data-tip") || "";
-          if (!tip) return;
-          showTipFor(t, e.clientX, e.clientY);
-        });
-        el.addEventListener("mousemove", (e) => {
-          if (_uiTipTarget !== e.currentTarget) return;
-          positionTip(e.clientX, e.clientY);
-        });
-        el.addEventListener("mouseleave", () => hideTip());
-
-        // Keyboard focus
-        el.addEventListener("focus", (e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          const cx = Math.round(r.left + Math.min(40, r.width/2));
-          const cy = Math.round(r.top + r.height + 6);
-          showTipFor(e.currentTarget, cx, cy);
-        });
-        el.addEventListener("blur", () => hideTip());
+      const st = loadQueueState();
+      if (st.active){
+        isRefreshing = true;
+        showUpdating("Updating in progress... resuming");
+        updateLoadBtnState();
+        setCounts();
+        processQueue();
+      }else{
+        hideUpdating();
       }
 
-      // Hide if scrolling/resizing
-      window.addEventListener("scroll", () => hideTip(), { passive: true });
-      window.addEventListener("resize", () => hideTip());
-    }
-    
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(() => syncGames(false), 25000);
 
-function initPanel(){
-      initTooltips();
-      fetchLockState();
-      setInterval(fetchLockState, 1500);
+      if (btnTimer) clearInterval(btnTimer);
+      btnTimer = setInterval(updateLoadBtnState, 500);
+      updateLoadBtnState();
 
-      updateWhoAmI();
-
-      const savedBase = localStorage.getItem("worker_base_v1") || "https://panel.sixteysevenharry.workers.dev";
-      const savedAdmin = localStorage.getItem("admin_key_v1") || "";
-      els.workerBase.value = savedBase;
-      els.adminKey.value = savedAdmin;
-
-      // Auto-load players + logs ONCE on page open.
-      // After that: players are manual refresh; logs update live for everyone.
-      (async () => {
-        try{
-          setStatus("ok","Loading…");
-          await refreshAll();
-          setStatus("ok","Ready");
-        } catch (e){
-          setStatus("bad", String(e && e.message ? e.message : e));
-        }
-      })();
-
-      let _logsBusy = false;
-      setInterval(async () => {
-        try{
-          if (_logsBusy) return;
-          _logsBusy = true;
-          await fetchLogs(); // includes cache-buster + re-render
-        } catch {} finally {
-          _logsBusy = false;
-        }
-      }, 3000);
+      setCounts();
     }
 
-    if (isLoggedIn()){ showApp(); initPanel(); }
-    else { showLogin(); }
+    init();
   </script>
-
-  <div class="pageNav">
-    <div class="navWrap">
-      <a href="#" class="disabled" aria-label="Previous">&lt;</a>
-      <span class="num">1</span>
-      <a href="group.html" class="" aria-label="Next">&gt;</a>
-    </div>
-  </div>
-
 </body>
 </html>
